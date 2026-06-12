@@ -69,7 +69,7 @@ export default async function ConversationPage({
       </div>
 
       <div className="min-h-0 flex-1">
-        <ChatRoom conversationId={conversation.id} />
+        <ChatRoom conversationId={conversation.id} currentUserId={user.id} isCompanyViewer={isCompany} />
       </div>
     </div>
   );

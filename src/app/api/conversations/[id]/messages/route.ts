@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { getConversationForUser } from "@/lib/messages";
+import { getAblyRest } from "@/lib/ably";
+import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
 
 export type ChatMessage = {
   id: string;
@@ -79,7 +81,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "メッセージを入力してください" }, { status: 400 });
   }
 
-  await prisma.$transaction([
+  const [message] = await prisma.$transaction([
     prisma.message.create({
       data: {
         conversationId: conversation.id,
@@ -93,5 +95,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }),
   ]);
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  const senderIsCompany = user.companyMember?.companyId === conversation.companyId;
+  const payload: ChatMessage = {
+    id: message.id,
+    body: message.body,
+    senderName: senderIsCompany
+      ? conversation.company.name
+      : (user.engineerProfile?.displayName ?? user.name ?? "繝ｦ繝ｼ繧ｶ繝ｼ"),
+    mine: true,
+    createdAt: message.createdAt.toISOString(),
+  };
+
+  const ably = getAblyRest();
+  if (ably) {
+    const channel = ably.channels.get(getConversationChannelName(conversation.id));
+    try {
+      await channel.publish(CHAT_MESSAGE_CREATED_EVENT, {
+        ...payload,
+        senderId: user.id,
+        senderIsCompany,
+      });
+    } catch (error) {
+      console.error("Failed to publish chat message to Ably", error);
+    }
+  }
+
+  return NextResponse.json({ message: payload }, { status: 201 });
 }

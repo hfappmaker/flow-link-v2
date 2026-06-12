@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Realtime } from "ably";
 import useSWR from "swr";
 import { SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
 
 type ChatMessage = {
   id: string;
@@ -14,16 +16,30 @@ type ChatMessage = {
   createdAt: string;
 };
 
+type RealtimeChatMessage = Omit<ChatMessage, "mine"> & {
+  senderId: string;
+  senderIsCompany: boolean;
+};
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export function ChatRoom({ conversationId }: { conversationId: string }) {
+export function ChatRoom({
+  conversationId,
+  currentUserId,
+  isCompanyViewer,
+}: {
+  conversationId: string;
+  currentUserId: string;
+  isCompanyViewer: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [realtimeUnavailable, setRealtimeUnavailable] = useState(false);
   const { data, mutate, isLoading } = useSWR<{ messages: ChatMessage[] }>(
     `/api/conversations/${conversationId}/messages`,
     fetcher,
-    { refreshInterval: 4000 },
+    { refreshInterval: realtimeUnavailable ? 4000 : 0 },
   );
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messages = data?.messages ?? [];
 
@@ -31,18 +47,74 @@ export function ChatRoom({ conversationId }: { conversationId: string }) {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
+  useEffect(() => {
+    setRealtimeUnavailable(false);
+
+    const ably = new Realtime({
+      authUrl: `/api/ably/auth?conversationId=${encodeURIComponent(conversationId)}`,
+      authMethod: "GET",
+    });
+    const channel = ably.channels.get(getConversationChannelName(conversationId));
+    let closed = false;
+
+    void channel.subscribe(CHAT_MESSAGE_CREATED_EVENT, (message) => {
+      const incoming = message.data as RealtimeChatMessage;
+      const chatMessage: ChatMessage = {
+        id: incoming.id,
+        body: incoming.body,
+        senderName: incoming.senderName,
+        createdAt: incoming.createdAt,
+        mine: isCompanyViewer ? incoming.senderIsCompany : incoming.senderId === currentUserId,
+      };
+
+      void mutate((current) => {
+        const existing = current?.messages ?? [];
+        if (existing.some((m) => m.id === chatMessage.id)) return current;
+        return { messages: [...existing, chatMessage] };
+      }, { revalidate: false });
+    }).catch(() => {
+      if (!closed) {
+        setRealtimeUnavailable(true);
+        void mutate();
+      }
+    });
+
+    ably.connection.on("failed", () => {
+      if (!closed) {
+        setRealtimeUnavailable(true);
+        void mutate();
+      }
+    });
+
+    return () => {
+      closed = true;
+      channel.unsubscribe();
+      ably.close();
+    };
+  }, [conversationId, currentUserId, isCompanyViewer, mutate]);
+
   async function send() {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
     setDraft("");
     try {
-      await fetch(`/api/conversations/${conversationId}/messages`, {
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body }),
       });
-      await mutate();
+      if (!response.ok) throw new Error("Failed to send message");
+      const result = (await response.json()) as { message?: ChatMessage };
+      if (result.message) {
+        await mutate((current) => {
+          const existing = current?.messages ?? [];
+          if (existing.some((m) => m.id === result.message?.id)) return current;
+          return { messages: [...existing, result.message as ChatMessage] };
+        }, { revalidate: false });
+      } else {
+        await mutate();
+      }
     } finally {
       setSending(false);
     }
