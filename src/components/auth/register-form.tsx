@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
@@ -39,17 +38,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: "ENGINEER" | "COMPA
       return;
     }
 
-    const result = await signIn("credentials", {
-      email: payload.email,
-      password: payload.password,
-      redirect: false,
-    });
-    if (result?.error) {
-      router.push("/login");
-      return;
-    }
-    router.push("/onboarding");
-    router.refresh();
+    router.push(`/login?registered=1&email=${encodeURIComponent(payload.email)}`);
   }
 
   const tab = (value: "ENGINEER" | "COMPANY", label: string, description: string) => (
