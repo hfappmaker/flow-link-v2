@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm *)",
+      "PowerShell(Get-Item \"C:/Users/furugakihiromitsu/source/repos/flow-link-v2/levtech/levtech-sample/levtech-screenshots-2026-06-12T12-45-22-817Z/manifest.json\" | Select-Object Length; \\(Get-Content \"C:/Users/furugakihiromitsu/source/repos/flow-link-v2/levtech/levtech-sample/levtech-screenshots-2026-06-12T12-45-22-817Z/manifest.json\" -Raw\\).Length)",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(\"C:/Users/furugakihiromitsu/source/repos/flow-link-v2/levtech/levtech-sample/levtech-project-search-2026-06-12T12-52-49-560Z/03-search-results.png\"\\); \"$\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\))"
+    ]
+  }
+}

@@ -1,0 +1,381 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// 認証 (Auth.js)
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ENGINEER
+  COMPANY
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          UserRole?
+
+  accounts        Account[]
+  sessions        Session[]
+  engineerProfile EngineerProfile?
+  companyMember   CompanyMember?
+  applications    Application[]
+  savedProjects   SavedProject[]
+  scoutsReceived  Scout[]          @relation("ScoutEngineer")
+  scoutsSent      Scout[]          @relation("ScoutSender")
+  messages        Message[]
+  conversations   Conversation[]   @relation("ConversationEngineer")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @id
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// マスタ
+// ---------------------------------------------------------------------------
+
+enum SkillCategory {
+  LANGUAGE
+  FRAMEWORK
+  INFRA
+  DATABASE
+  TOOL
+  OTHER
+}
+
+model Skill {
+  id       String        @id @default(cuid())
+  name     String        @unique
+  category SkillCategory @default(OTHER)
+
+  projects  ProjectSkill[]
+  engineers EngineerSkill[]
+}
+
+// ---------------------------------------------------------------------------
+// エンジニア
+// ---------------------------------------------------------------------------
+
+enum RemoteType {
+  FULL_REMOTE
+  REMOTE_MAIN
+  PARTIAL_REMOTE
+  ONSITE_MAIN
+}
+
+enum WorkStatus {
+  AVAILABLE      // 案件を探している
+  OPEN_TO_OFFERS // 良い案件があれば検討
+  UNAVAILABLE    // 稼働中・受付停止
+}
+
+model EngineerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName       String
+  title             String? // 職種（例: バックエンドエンジニア）
+  bio               String? // 自己紹介・経歴サマリ
+  location          String?
+  yearsOfExperience Int?
+  desiredRateMin    Int? // 希望単価 下限（円/月）
+  desiredRateMax    Int? // 希望単価 上限（円/月）
+  desiredWeeklyDays Int? // 希望稼働日数（週N日）
+  remotePreference  RemoteType?
+  workStatus        WorkStatus  @default(OPEN_TO_OFFERS)
+  githubUrl         String?
+  portfolioUrl      String?
+  isPublic          Boolean     @default(true) // 企業からの検索・スカウトを許可
+
+  skills        EngineerSkill[]
+  workHistories WorkHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EngineerSkill {
+  engineerProfileId String
+  skillId           String
+  years             Int? // 経験年数
+
+  engineerProfile EngineerProfile @relation(fields: [engineerProfileId], references: [id], onDelete: Cascade)
+  skill           Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([engineerProfileId, skillId])
+}
+
+model WorkHistory {
+  id                String   @id @default(cuid())
+  engineerProfileId String
+  projectName       String
+  role              String?
+  description       String?
+  techStack         String?
+  startYearMonth    String? // 例: 2024-04
+  endYearMonth      String? // null = 現在も稼働中
+
+  engineerProfile EngineerProfile @relation(fields: [engineerProfileId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// 企業
+// ---------------------------------------------------------------------------
+
+model Company {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  industry    String?
+  website     String?
+  location    String?
+  logoUrl     String?
+
+  members  CompanyMember[]
+  projects Project[]
+  scouts   Scout[]
+  conversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CompanyMember {
+  id        String @id @default(cuid())
+  userId    String @unique
+  companyId String
+  role      String @default("admin")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// 案件
+// ---------------------------------------------------------------------------
+
+enum ProjectStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+model Project {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  title       String
+  summary     String? // リード文
+  jobCategory String // 募集職種
+  status      ProjectStatus @default(OPEN)
+  publishedAt DateTime?
+
+  rateMin       Int? // 単価 下限（円/月）
+  rateMax       Int? // 単価 上限（円/月）
+  weeklyDaysMin Int  @default(5)
+  weeklyDaysMax Int  @default(5)
+  remoteType    RemoteType @default(FULL_REMOTE)
+  location      String?
+  contractType  String     @default("業務委託")
+  industry      String?
+
+  merits             String? // 参画メリット（改行区切り）
+  background         String? // 募集背景
+  description        String // 業務内容
+  requiredSkillsText String? // 必須要件（改行区切り）
+  preferredSkillsText String? // 歓迎要件（改行区切り）
+  idealCandidate     String? // 求める人物像
+  devEnvironment     String? // 開発環境
+  features           String[] // こだわり条件タグ
+
+  viewCount Int @default(0)
+
+  skills       ProjectSkill[]
+  applications Application[]
+  savedBy      SavedProject[]
+  scouts       Scout[]
+  conversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+}
+
+model ProjectSkill {
+  projectId String
+  skillId   String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, skillId])
+}
+
+model SavedProject {
+  userId    String
+  projectId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, projectId])
+}
+
+// ---------------------------------------------------------------------------
+// 応募・スカウト
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  APPLIED   // 応募済み
+  SCREENING // 書類選考中
+  INTERVIEW // 面談調整中
+  OFFERED   // オファー
+  ACCEPTED  // 成約
+  REJECTED  // 見送り
+  WITHDRAWN // 辞退
+}
+
+model Application {
+  id             String @id @default(cuid())
+  projectId      String
+  engineerUserId String
+
+  status  ApplicationStatus @default(APPLIED)
+  message String? // 応募時メッセージ
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  engineer     User          @relation(fields: [engineerUserId], references: [id], onDelete: Cascade)
+  conversation Conversation?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, engineerUserId])
+}
+
+enum ScoutStatus {
+  SENT     // 送信済み（未対応）
+  ACCEPTED // 興味あり
+  DECLINED // 辞退
+}
+
+model Scout {
+  id             String  @id @default(cuid())
+  companyId      String
+  projectId      String?
+  engineerUserId String
+  senderUserId   String
+
+  title   String?
+  message String
+  status  ScoutStatus @default(SENT)
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  engineer     User          @relation("ScoutEngineer", fields: [engineerUserId], references: [id], onDelete: Cascade)
+  sender       User          @relation("ScoutSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  conversation Conversation?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// メッセージ
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id             String  @id @default(cuid())
+  companyId      String
+  engineerUserId String
+  projectId      String?
+  applicationId  String? @unique
+  scoutId        String? @unique
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  engineer    User         @relation("ConversationEngineer", fields: [engineerUserId], references: [id], onDelete: Cascade)
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  scout       Scout?       @relation(fields: [scoutId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([engineerUserId])
+}
+
+model Message {
+  id             String  @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  readAt         DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
