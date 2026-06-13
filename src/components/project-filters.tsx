@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Input, Select } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
+  PREFECTURES,
   PROJECT_FEATURES,
   REMOTE_TYPE_LABELS,
   WEEKLY_DAYS_OPTIONS,
@@ -125,6 +126,14 @@ export function ProjectFilters({
             ))}
           </Select>
         </div>
+      </FilterSection>
+
+      <FilterSection title="都道府県">
+        <CheckboxGroup
+          name="prefecture"
+          selected={parsed.prefecture}
+          options={PREFECTURES.map((prefecture) => ({ value: prefecture, label: prefecture }))}
+        />
       </FilterSection>
 
       <FilterSection title="稼働日数">

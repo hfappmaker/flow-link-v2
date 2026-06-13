@@ -11,6 +11,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
 import {
   formatDate,
+  formatProjectLocation,
   formatRateRange,
   formatWeeklyDays,
   formatYen,
@@ -88,6 +89,7 @@ export default async function ProjectDetailPage({
     : [null, null];
 
   const isOpen = project.status === "OPEN";
+  const locationLabel = formatProjectLocation(project.location, project.prefecture);
 
   const applyArea = (
     <div className="space-y-3">
@@ -192,7 +194,7 @@ export default async function ProjectDetailPage({
                   </span>
                 </InfoRow>
                 <InfoRow label="リモート頻度">{REMOTE_TYPE_LABELS[project.remoteType]}</InfoRow>
-                {project.location ? <InfoRow label="場所">{project.location}</InfoRow> : null}
+                {locationLabel ? <InfoRow label="場所">{locationLabel}</InfoRow> : null}
                 <InfoRow label="契約形態">{project.contractType}</InfoRow>
                 {project.industry ? <InfoRow label="業界">{project.industry}</InfoRow> : null}
                 {project.features.length > 0 ? (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
+  PREFECTURES,
   PROJECT_FEATURES,
   REMOTE_TYPE_LABELS,
   SKILL_CATEGORY_LABELS,
@@ -214,7 +215,18 @@ export function ProjectForm({
           </div>
           <div>
             <Label htmlFor="location">場所</Label>
-            <Input id="location" name="location" maxLength={100} defaultValue={project?.location ?? ""} placeholder="例: 渋谷（東京都）" />
+            <Input id="location" name="location" maxLength={100} defaultValue={project?.location ?? ""} placeholder="例: 渋谷 / 六本木 / フルリモート補足" />
+          </div>
+          <div>
+            <Label htmlFor="prefecture">都道府県</Label>
+            <Select id="prefecture" name="prefecture" defaultValue={project?.prefecture ?? ""}>
+              <option value="">選択しない</option>
+              {PREFECTURES.map((prefecture) => (
+                <option key={prefecture} value={prefecture}>
+                  {prefecture}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label htmlFor="contractType">契約形態</Label>

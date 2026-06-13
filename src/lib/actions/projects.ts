@@ -7,6 +7,7 @@ import { RemoteType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import { PREFECTURES } from "@/lib/constants";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -22,6 +23,7 @@ const projectSchema = z
     weeklyDaysMax: z.coerce.number().int().min(1).max(5),
     remoteType: z.enum(RemoteType),
     location: z.string().max(100).optional(),
+    prefecture: z.enum(PREFECTURES).optional(),
     industry: z.string().max(100).optional(),
     contractType: z.string().max(50).optional(),
     merits: z.string().max(4000).optional(),
@@ -52,6 +54,7 @@ function parseProjectForm(formData: FormData) {
     weeklyDaysMax: formData.get("weeklyDaysMax"),
     remoteType: formData.get("remoteType"),
     location: emptyToUndefined(formData.get("location")),
+    prefecture: emptyToUndefined(formData.get("prefecture")),
     industry: emptyToUndefined(formData.get("industry")),
     contractType: emptyToUndefined(formData.get("contractType")),
     merits: emptyToUndefined(formData.get("merits")),

@@ -21,6 +21,14 @@ export function formatWeeklyDays(min: number, max: number): string {
   return `週${min}日〜週${max}日`;
 }
 
+export function formatProjectLocation(
+  location: string | null,
+  prefecture: string | null,
+): string | null {
+  if (location && prefecture) return `${location}（${prefecture}）`;
+  return location || prefecture || null;
+}
+
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",

@@ -3,7 +3,13 @@ import { Building2, CalendarDays, MapPin } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
-import { formatDate, formatRateRange, formatWeeklyDays, isNew } from "@/lib/format";
+import {
+  formatDate,
+  formatProjectLocation,
+  formatRateRange,
+  formatWeeklyDays,
+  isNew,
+} from "@/lib/format";
 
 export type ProjectCardData = Prisma.ProjectGetPayload<{
   include: {
@@ -13,6 +19,8 @@ export type ProjectCardData = Prisma.ProjectGetPayload<{
 }>;
 
 export function ProjectCard({ project }: { project: ProjectCardData }) {
+  const locationLabel = formatProjectLocation(project.location, project.prefecture);
+
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -37,10 +45,10 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
           {formatWeeklyDays(project.weeklyDaysMin, project.weeklyDaysMax)}
         </span>
         <Badge tone="blue">{REMOTE_TYPE_LABELS[project.remoteType]}</Badge>
-        {project.location ? (
+        {locationLabel ? (
           <span className="inline-flex items-center gap-1 text-slate-600">
             <MapPin className="h-4 w-4 text-slate-400" />
-            {project.location}
+            {locationLabel}
           </span>
         ) : null}
         <span className="inline-flex items-center gap-1 text-slate-500">

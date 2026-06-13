@@ -237,6 +237,7 @@ model Project {
   weeklyDaysMax Int  @default(5)
   remoteType    RemoteType @default(FULL_REMOTE)
   location      String?
+  prefecture    String?
   contractType  String     @default("業務委託")
   industry      String?
 

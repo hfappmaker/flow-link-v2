@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { RemoteType, SkillCategory } from "@prisma/client";
-import { PAGE_SIZE } from "@/lib/constants";
+import { PAGE_SIZE, PREFECTURES } from "@/lib/constants";
 
 export type ProjectSearchParams = {
   q?: string;
@@ -9,6 +9,7 @@ export type ProjectSearchParams = {
   langText?: string;
   skill?: string | string[];
   skillText?: string;
+  prefecture?: string | string[];
   rateMin?: string;
   rateMax?: string;
   days?: string | string[];
@@ -33,6 +34,9 @@ export function parseProjectSearch(params: ProjectSearchParams) {
     (Object.values(RemoteType) as string[]).includes(r),
   );
   const features = toArray(params.features).filter(Boolean);
+  const prefecture = toArray(params.prefecture).filter((p): p is (typeof PREFECTURES)[number] =>
+    (PREFECTURES as readonly string[]).includes(p),
+  );
   const rateMin = Number.parseInt(params.rateMin ?? "", 10) || undefined;
   const rateMax = Number.parseInt(params.rateMax ?? "", 10) || undefined;
 
@@ -43,6 +47,7 @@ export function parseProjectSearch(params: ProjectSearchParams) {
     langText: params.langText?.trim() || undefined,
     skill: toArray(params.skill).filter(Boolean),
     skillText: params.skillText?.trim() || undefined,
+    prefecture,
     rateMin,
     rateMax,
     days,
@@ -104,6 +109,7 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
   }
   if (skillFilters.length > 0) and.push({ OR: skillFilters });
 
+  if (parsed.prefecture.length > 0) and.push({ prefecture: { in: parsed.prefecture } });
   if (parsed.rateMin) and.push({ OR: [{ rateMax: null }, { rateMax: { gte: parsed.rateMin } }] });
   if (parsed.rateMax) and.push({ OR: [{ rateMin: null }, { rateMin: { lte: parsed.rateMax } }] });
   if (parsed.days.length > 0) {
@@ -144,6 +150,7 @@ export function buildSearchQueryString(
   if (parsed.langText) sp.set("langText", parsed.langText);
   for (const skill of parsed.skill) sp.append("skill", skill);
   if (parsed.skillText) sp.set("skillText", parsed.skillText);
+  for (const prefecture of parsed.prefecture) sp.append("prefecture", prefecture);
   if (parsed.rateMin) sp.set("rateMin", String(parsed.rateMin));
   if (parsed.rateMax) sp.set("rateMax", String(parsed.rateMax));
   for (const d of parsed.days) sp.append("days", String(d));
