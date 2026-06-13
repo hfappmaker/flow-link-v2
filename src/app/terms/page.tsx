@@ -114,8 +114,7 @@ export default function TermsPage() {
   return (
     <article className="bg-white">
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
-        <p className="text-sm font-bold text-blue-600">FlowLink</p>
-        <h1 className="mt-2 text-3xl font-black text-slate-900">利用規約</h1>
+        <h1 className="text-3xl font-black text-slate-900">利用規約</h1>
         <p className="mt-3 text-sm text-slate-500">制定日: 2026年6月13日</p>
 
         <div className="mt-10 space-y-8">
