@@ -3,6 +3,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { getProfileDocumentsRoot } from "@/lib/profile-documents";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -56,7 +57,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const uploadsRoot = path.resolve(process.cwd(), ".uploads", "engineer-documents");
+  const uploadsRoot = getProfileDocumentsRoot();
   const documentPath = path.resolve(document.filePath);
   if (!documentPath.startsWith(`${uploadsRoot}${path.sep}`)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

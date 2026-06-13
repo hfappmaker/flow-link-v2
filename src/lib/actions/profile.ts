@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
 import { PREFECTURES } from "@/lib/constants";
+import { getProfileDocumentsRoot } from "@/lib/profile-documents";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -59,7 +60,7 @@ async function saveProfileDocument(
     return { error: "ファイル形式と拡張子が一致していません" };
   }
 
-  const uploadDir = path.join(process.cwd(), ".uploads", "engineer-documents", profileId);
+  const uploadDir = path.join(getProfileDocumentsRoot(), profileId);
   await mkdir(uploadDir, { recursive: true });
   const filePath = path.join(uploadDir, `${kind}-${Date.now()}-${randomUUID()}${ext}`);
   await writeFile(filePath, Buffer.from(await value.arrayBuffer()));
