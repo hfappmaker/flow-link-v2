@@ -51,9 +51,15 @@ function MicrosoftIcon() {
 }
 
 const buttonClass =
-  "flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50";
+  "flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 
-export function OAuthButtons({ availability }: { availability: OAuthAvailability }) {
+export function OAuthButtons({
+  availability,
+  disabled = false,
+}: {
+  availability: OAuthAvailability;
+  disabled?: boolean;
+}) {
   const items = [
     { key: "google", id: "google", label: "Googleで続ける", icon: <GoogleIcon />, enabled: availability.google },
     { key: "github", id: "github", label: "GitHubで続ける", icon: <GitHubIcon />, enabled: availability.github },
@@ -75,6 +81,7 @@ export function OAuthButtons({ availability }: { availability: OAuthAvailability
           key={item.key}
           type="button"
           className={buttonClass}
+          disabled={disabled}
           onClick={() => signIn(item.id, { redirectTo: "/post-login" })}
         >
           {item.icon}

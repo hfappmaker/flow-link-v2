@@ -11,6 +11,9 @@ const registerSchema = z.object({
   email: z.email("メールアドレスの形式が正しくありません"),
   password: z.string().min(8, "パスワードは8文字以上で入力してください").max(100),
   role: z.enum(["ENGINEER", "COMPANY"]),
+  agreedToTerms: z.literal(true, {
+    error: "利用規約およびプライバシーポリシーへの同意が必要です",
+  }),
 });
 
 export async function POST(request: Request) {

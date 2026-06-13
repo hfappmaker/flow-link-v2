@@ -17,6 +17,12 @@ export function SiteFooter() {
           <Link href="/register?role=company" className="hover:text-slate-700">
             企業の方はこちら
           </Link>
+          <Link href="/terms" className="hover:text-slate-700">
+            利用規約
+          </Link>
+          <Link href="/privacy" className="hover:text-slate-700">
+            プライバシーポリシー
+          </Link>
         </nav>
         <p className="text-xs">© 2026 FlowLink</p>
       </div>
