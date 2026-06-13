@@ -84,6 +84,7 @@ async function main() {
     });
 
   const passwordHash = await bcrypt.hash("password123", 10);
+  const emailVerified = new Date();
 
   // ---- 企業 ----
   const techflow = await prisma.company.create({
@@ -121,6 +122,7 @@ async function main() {
     data: {
       name: "採用担当 鈴木",
       email: "company@example.com",
+      emailVerified,
       passwordHash,
       role: "COMPANY",
       companyMember: { create: { companyId: techflow.id } },
@@ -130,6 +132,7 @@ async function main() {
     data: {
       name: "採用担当 佐藤",
       email: "company2@example.com",
+      emailVerified,
       passwordHash,
       role: "COMPANY",
       companyMember: { create: { companyId: aiwork.id } },
@@ -141,6 +144,7 @@ async function main() {
     data: {
       name: "山田 太郎",
       email: "engineer@example.com",
+      emailVerified,
       passwordHash,
       role: "ENGINEER",
       engineerProfile: {
@@ -230,6 +234,7 @@ async function main() {
       data: {
         name: e.name,
         email: e.email,
+        emailVerified,
         passwordHash,
         role: "ENGINEER",
         engineerProfile: {
