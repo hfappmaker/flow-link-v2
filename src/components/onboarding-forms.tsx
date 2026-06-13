@@ -8,7 +8,7 @@ import {
 } from "@/lib/actions/onboarding";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
-import { JOB_CATEGORIES } from "@/lib/constants";
+import { JOB_CATEGORIES, PREFECTURES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 function ErrorMessage({ state }: { state: ActionState }) {
@@ -49,7 +49,14 @@ function EngineerForm({ defaultName }: { defaultName: string }) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="location">居住地</Label>
-          <Input id="location" name="location" placeholder="東京都" maxLength={100} />
+          <Select id="location" name="location" defaultValue="">
+            <option value="">指定なし</option>
+            {PREFECTURES.map((prefecture) => (
+              <option key={prefecture} value={prefecture}>
+                {prefecture}
+              </option>
+            ))}
+          </Select>
         </div>
         <div>
           <Label htmlFor="yearsOfExperience">実務経験年数</Label>

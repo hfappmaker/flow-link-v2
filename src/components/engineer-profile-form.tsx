@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
+  PREFECTURES,
   REMOTE_TYPE_LABELS,
   SKILL_CATEGORY_LABELS,
   WORK_STATUS_LABELS,
@@ -68,7 +69,14 @@ export function EngineerProfileForm({
           </div>
           <div>
             <Label htmlFor="location">居住地</Label>
-            <Input id="location" name="location" maxLength={100} defaultValue={profile.location ?? ""} placeholder="東京都" />
+            <Select id="location" name="location" defaultValue={profile.location ?? ""}>
+              <option value="">指定なし</option>
+              {PREFECTURES.map((prefecture) => (
+                <option key={prefecture} value={prefecture}>
+                  {prefecture}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label htmlFor="yearsOfExperience">実務経験年数</Label>

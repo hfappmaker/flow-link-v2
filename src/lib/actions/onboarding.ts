@@ -4,13 +4,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { PREFECTURES } from "@/lib/constants";
 
 export type ActionState = { error?: string; success?: boolean };
 
 const engineerSchema = z.object({
   displayName: z.string().min(1, "表示名を入力してください").max(50),
   title: z.string().min(1, "職種を選択してください"),
-  location: z.string().max(100).optional(),
+  location: z.enum(PREFECTURES).optional(),
   yearsOfExperience: z.coerce.number().int().min(0).max(60).optional(),
 });
 

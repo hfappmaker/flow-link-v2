@@ -6,6 +6,7 @@ import { RemoteType, WorkStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import { PREFECTURES } from "@/lib/constants";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -14,7 +15,7 @@ const engineerProfileSchema = z.object({
   displayName: z.string().min(1, "表示名を入力してください").max(50),
   title: z.string().min(1, "職種を選択してください"),
   bio: z.string().max(4000).optional(),
-  location: z.string().max(100).optional(),
+  location: z.enum(PREFECTURES).optional(),
   yearsOfExperience: z.coerce.number().int().min(0).max(60).optional(),
   desiredRateMin: z.coerce.number().int().min(0).optional(),
   desiredRateMax: z.coerce.number().int().min(0).optional(),
