@@ -4,15 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Realtime } from "ably";
 import useSWR from "swr";
-import { FileText, SendHorizontal } from "lucide-react";
+import { FileText, Paperclip, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
-import type {
-  AvailableChatDocument,
-  ChatDocumentKind,
-  MessageAttachmentPayload,
-} from "@/lib/message-attachments";
+import type { MessageAttachmentPayload } from "@/lib/message-attachments";
 
 type ChatMessage = {
   id: string;
@@ -32,6 +28,8 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const urlPattern = /https?:\/\/[^\s<>"']+/g;
 const trailingUrlPunctuationPattern = /[).,!?;:、。）」』】]+$/;
+const maxAttachmentCount = 5;
+const maxAttachmentBytes = 10 * 1024 * 1024;
 
 function splitTrailingPunctuation(value: string) {
   const match = value.match(trailingUrlPunctuationPattern);
@@ -42,6 +40,12 @@ function splitTrailingPunctuation(value: string) {
     href: value.slice(0, -trailing.length),
     trailing,
   };
+}
+
+function formatFileSize(size: number) {
+  if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)}MB`;
+  if (size >= 1024) return `${Math.ceil(size / 1024)}KB`;
+  return `${size}B`;
 }
 
 function MessageBody({ body, mine }: { body: string; mine: boolean }) {
@@ -79,18 +83,18 @@ export function ChatRoom({
   conversationId,
   currentUserId,
   isCompanyViewer,
-  availableDocuments,
 }: {
   conversationId: string;
   currentUserId: string;
   isCompanyViewer: boolean;
-  availableDocuments: AvailableChatDocument[];
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
-  const [selectedDocumentKinds, setSelectedDocumentKinds] = useState<ChatDocumentKind[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [realtimeUnavailable, setRealtimeUnavailable] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { data, mutate, isLoading } = useSWR<{ messages: ChatMessage[] }>(
     `/api/conversations/${conversationId}/messages`,
     fetcher,
@@ -166,18 +170,49 @@ export function ChatRoom({
     };
   }, [conversationId, currentUserId, isCompanyViewer, mutate, router]);
 
+  function addFiles(files: FileList | null) {
+    if (!files) return;
+    setFileError(null);
+    const nextFiles = [...selectedFiles];
+
+    for (const file of Array.from(files)) {
+      if (file.size > maxAttachmentBytes) {
+        setFileError("添付できるファイルサイズは1ファイル10MBまでです");
+        continue;
+      }
+      if (nextFiles.length >= maxAttachmentCount) {
+        setFileError("一度に添付できるファイルは5件までです");
+        break;
+      }
+      nextFiles.push(file);
+    }
+
+    setSelectedFiles(nextFiles);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+  }
+
   async function send() {
     const body = draft.trim();
-    if ((!body && selectedDocumentKinds.length === 0) || sending) return;
+    if ((!body && selectedFiles.length === 0) || sending) return;
     setSending(true);
     setDraft("");
-    const documentKinds = selectedDocumentKinds;
-    setSelectedDocumentKinds([]);
+    const files = selectedFiles;
+    setSelectedFiles([]);
+    setFileError(null);
     try {
+      const formData = new FormData();
+      formData.set("body", body);
+      for (const file of files) {
+        formData.append("attachments", file, file.name);
+      }
+
       const response = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body, documentKinds }),
+        body: formData,
       });
       if (!response.ok) throw new Error("Failed to send message");
       const result = (await response.json()) as { message?: ChatMessage };
@@ -190,15 +225,13 @@ export function ChatRoom({
       } else {
         await mutate();
       }
+    } catch {
+      setDraft(body);
+      setSelectedFiles(files);
+      setFileError("送信できませんでした。時間をおいて再度お試しください。");
     } finally {
       setSending(false);
     }
-  }
-
-  function toggleDocument(kind: ChatDocumentKind) {
-    setSelectedDocumentKinds((current) =>
-      current.includes(kind) ? current.filter((value) => value !== kind) : [...current, kind],
-    );
   }
 
   return (
@@ -259,38 +292,29 @@ export function ChatRoom({
       </div>
 
       <div className="border-t border-slate-200 bg-white p-3">
-        {!isCompanyViewer && availableDocuments.length > 0 ? (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs font-bold text-amber-900">このメッセージに添付する書類</p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-800">
-              選択した書類だけが、このチャット相手の企業に共有されます。
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {availableDocuments.map((document) => {
-                const checked = selectedDocumentKinds.includes(document.kind);
-                return (
-                  <button
-                    key={document.kind}
-                    type="button"
-                    onClick={() => toggleDocument(document.kind)}
-                    className={cn(
-                      "inline-flex max-w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold",
-                      checked
-                        ? "border-blue-500 bg-blue-600 text-white"
-                        : "border-amber-200 bg-white text-amber-900 hover:border-blue-300 hover:text-blue-700",
-                    )}
-                  >
-                    <FileText className="h-3.5 w-3.5 shrink-0" />
-                    <span>{document.label}</span>
-                    <span className={cn("min-w-0 max-w-40 truncate", checked ? "text-blue-50" : "text-amber-700")}>
-                      {document.fileName}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        {selectedFiles.length > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {selectedFiles.map((file, index) => (
+              <span
+                key={`${file.name}-${file.lastModified}-${index}`}
+                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <span className="min-w-0 max-w-56 truncate font-semibold">{file.name}</span>
+                <span className="shrink-0 text-slate-400">{formatFileSize(file.size)}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                  aria-label={`${file.name}を削除`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ))}
           </div>
         ) : null}
+        {fileError ? <p className="mb-2 text-xs font-medium text-red-600">{fileError}</p> : null}
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {
@@ -298,6 +322,22 @@ export function ChatRoom({
             void send();
           }}
         >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="sr-only"
+            onChange={(event) => addFiles(event.currentTarget.files)}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            aria-label="ファイルを添付"
+            title="ファイルを添付"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -308,10 +348,10 @@ export function ChatRoom({
               }
             }}
             rows={2}
-            placeholder="メッセージを入力（Ctrl+Enterで送信）"
+            placeholder="メッセージを入力"
             className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
-          <Button type="submit" disabled={sending || (draft.trim().length === 0 && selectedDocumentKinds.length === 0)}>
+          <Button type="submit" disabled={sending || (draft.trim().length === 0 && selectedFiles.length === 0)}>
             <SendHorizontal className="h-4 w-4" />
             送信
           </Button>

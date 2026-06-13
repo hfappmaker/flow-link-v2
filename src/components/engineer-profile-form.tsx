@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useId, useMemo, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import type { EngineerProfile, Skill } from "@prisma/client";
-import { FileSpreadsheet, FileText, FileType, Upload, X } from "lucide-react";
+import { X } from "lucide-react";
 import { updateEngineerProfile } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
@@ -11,101 +11,9 @@ import {
   PREFECTURES,
   REMOTE_TYPE_LABELS,
   SKILL_CATEGORY_LABELS,
+  WEEKLY_DAYS_OPTIONS,
   WORK_STATUS_LABELS,
 } from "@/lib/constants";
-
-function getDocumentKind(fileName: string | null | undefined) {
-  const ext = fileName?.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return { label: "PDF", tone: "bg-red-50 text-red-700 border-red-200", icon: FileText };
-  if (ext === "doc" || ext === "docx") {
-    return { label: ext.toUpperCase(), tone: "bg-blue-50 text-blue-700 border-blue-200", icon: FileType };
-  }
-  if (ext === "xls" || ext === "xlsx") {
-    return { label: ext.toUpperCase(), tone: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: FileSpreadsheet };
-  }
-  return { label: "FILE", tone: "bg-slate-100 text-slate-700 border-slate-200", icon: FileText };
-}
-
-function DocumentUploadField({
-  label,
-  inputName,
-  removeName,
-  existingFileName,
-  downloadHref,
-}: {
-  label: string;
-  inputName: string;
-  removeName: string;
-  existingFileName: string | null;
-  downloadHref: string;
-}) {
-  const inputId = useId();
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [removeExisting, setRemoveExisting] = useState(false);
-  const visibleFileName = selectedFileName ?? (removeExisting ? null : existingFileName);
-  const documentKind = useMemo(() => getDocumentKind(visibleFileName), [visibleFileName]);
-  const Icon = documentKind.icon;
-
-  return (
-    <div>
-      <Label htmlFor={inputId}>{label}</Label>
-      <input type="hidden" name={removeName} value={removeExisting ? "on" : ""} />
-      <input
-        id={inputId}
-        name={inputName}
-        type="file"
-        accept=".pdf,.doc,.docx,.xls,.xlsx"
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          setSelectedFileName(file?.name ?? null);
-          if (file) setRemoveExisting(false);
-        }}
-      />
-
-      {visibleFileName ? (
-        <div className="flex min-h-16 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
-          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${documentKind.tone}`}>
-            <Icon className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            {selectedFileName ? (
-              <p className="truncate text-sm font-semibold text-slate-800">{visibleFileName}</p>
-            ) : (
-              <a href={downloadHref} className="block truncate text-sm font-semibold text-blue-700 hover:underline">
-                {visibleFileName}
-              </a>
-            )}
-            <p className="mt-0.5 text-xs font-medium text-slate-500">{documentKind.label}</p>
-          </div>
-          <button
-            type="button"
-            aria-label={`${label}を削除`}
-            title="削除"
-            onClick={() => {
-              setSelectedFileName(null);
-              setRemoveExisting(Boolean(existingFileName));
-              const input = document.getElementById(inputId) as HTMLInputElement | null;
-              if (input) input.value = "";
-            }}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
-        <label
-          htmlFor={inputId}
-          className="flex min-h-16 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-        >
-          <Upload className="h-4 w-4" />
-          ファイルを選択
-        </label>
-      )}
-      <FieldHint>PDF、DOC、DOCX、XLS、XLSX形式。5MBまで。</FieldHint>
-    </div>
-  );
-}
 
 function CustomSkillTagsInput() {
   const inputId = useId();
@@ -191,6 +99,7 @@ export function EngineerProfileForm({
   selectedSkillIds: string[];
 }) {
   const [state, action, pending] = useActionState(updateEngineerProfile, {});
+  const [selectedWeeklyDays, setSelectedWeeklyDays] = useState<number | null>(profile.desiredWeeklyDays ?? null);
 
   const grouped = new Map<string, Skill[]>();
   for (const skill of skills) {
@@ -199,7 +108,7 @@ export function EngineerProfileForm({
   }
 
   return (
-    <form action={action} encType="multipart/form-data" className="space-y-8">
+    <form action={action} className="space-y-8">
       {state.error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
           {state.error}
@@ -228,9 +137,9 @@ export function EngineerProfileForm({
               <option value="" disabled>
                 選択してください
               </option>
-              {JOB_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {JOB_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
                 </option>
               ))}
             </Select>
@@ -273,40 +182,28 @@ export function EngineerProfileForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="githubUrl">GitHub URL</Label>
-            <Input id="githubUrl" name="githubUrl" type="url" defaultValue={profile.githubUrl ?? ""} placeholder="https://github.com/..." />
+            <Input
+              id="githubUrl"
+              name="githubUrl"
+              type="url"
+              defaultValue={profile.githubUrl ?? ""}
+              placeholder="https://github.com/..."
+            />
           </div>
           <div>
             <Label htmlFor="portfolioUrl">ポートフォリオURL</Label>
-            <Input id="portfolioUrl" name="portfolioUrl" type="url" defaultValue={profile.portfolioUrl ?? ""} placeholder="https://..." />
+            <Input
+              id="portfolioUrl"
+              name="portfolioUrl"
+              type="url"
+              defaultValue={profile.portfolioUrl ?? ""}
+              placeholder="https://..."
+            />
           </div>
         </div>
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
           GitHub URLとポートフォリオURLは、プロフィールを公開している場合に企業へ表示されます。
-          リンク先に氏名、メールアドレス、勤務先、機密情報など公開したくない情報が含まれていないか確認してください。
         </p>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">添付書類</h2>
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-          履歴書・職務経歴書は企業検索では表示されません。応募時またはチャットで送信を選んだ場合のみ相手企業へ共有されます。氏名、連絡先、勤務先、機密情報など、開示したくない情報が含まれていないか確認してください。
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DocumentUploadField
-            label="履歴書"
-            inputName="resumeFile"
-            removeName="removeResumeFile"
-            existingFileName={profile.resumeFileName}
-            downloadHref={`/api/engineer-documents/${profile.id}/resume`}
-          />
-          <DocumentUploadField
-            label="職務経歴書"
-            inputName="workHistoryFile"
-            removeName="removeWorkHistoryFile"
-            existingFileName={profile.workHistoryFileName}
-            downloadHref={`/api/engineer-documents/${profile.id}/work-history`}
-          />
-        </div>
       </section>
 
       <section className="space-y-4">
@@ -341,22 +238,48 @@ export function EngineerProfileForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="desiredRateMin">希望単価 下限（円/月）</Label>
-            <Input id="desiredRateMin" name="desiredRateMin" type="number" min={0} step={10000} defaultValue={profile.desiredRateMin ?? ""} placeholder="600000" />
+            <Input
+              id="desiredRateMin"
+              name="desiredRateMin"
+              type="number"
+              min={0}
+              step={10000}
+              defaultValue={profile.desiredRateMin ?? ""}
+              placeholder="600000"
+            />
           </div>
           <div>
             <Label htmlFor="desiredRateMax">希望単価 上限（円/月）</Label>
-            <Input id="desiredRateMax" name="desiredRateMax" type="number" min={0} step={10000} defaultValue={profile.desiredRateMax ?? ""} placeholder="1000000" />
+            <Input
+              id="desiredRateMax"
+              name="desiredRateMax"
+              type="number"
+              min={0}
+              step={10000}
+              defaultValue={profile.desiredRateMax ?? ""}
+              placeholder="1000000"
+            />
           </div>
           <div>
-            <Label htmlFor="desiredWeeklyDays">希望稼働日数</Label>
-            <Select id="desiredWeeklyDays" name="desiredWeeklyDays" defaultValue={profile.desiredWeeklyDays ?? ""}>
-              <option value="">指定なし</option>
-              {[1, 2, 3, 4, 5].map((d) => (
-                <option key={d} value={d}>
-                  週{d}日
-                </option>
+            <p className="mb-2 text-sm font-medium text-slate-700">希望稼働日数</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {WEEKLY_DAYS_OPTIONS.map((days) => (
+                <label
+                  key={days}
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition-colors has-checked:border-blue-600 has-checked:bg-blue-50 has-checked:text-blue-700"
+                >
+                  <input
+                    type="checkbox"
+                    name="desiredWeeklyDays"
+                    value={days}
+                    checked={selectedWeeklyDays === days}
+                    onChange={(event) => setSelectedWeeklyDays(event.currentTarget.checked ? days : null)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  週{days}日
+                </label>
               ))}
-            </Select>
+            </div>
           </div>
           <div>
             <Label htmlFor="remotePreference">希望リモート頻度</Label>

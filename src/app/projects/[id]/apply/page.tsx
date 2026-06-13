@@ -8,13 +8,12 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
 import { formatRateRange, formatWeeklyDays } from "@/lib/format";
-import { getAvailableChatDocuments } from "@/lib/message-attachments";
 
 export const metadata: Metadata = { title: "案件に応募" };
 
 export default async function ApplyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { user, profile } = await requireEngineer();
+  const { user } = await requireEngineer();
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -56,7 +55,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ id: stri
       <Card className="mt-6">
         <CardHeader title="応募メッセージの作成" />
         <CardBody>
-          <ApplyForm projectId={project.id} availableDocuments={getAvailableChatDocuments(profile)} />
+          <ApplyForm projectId={project.id} />
         </CardBody>
       </Card>
     </div>

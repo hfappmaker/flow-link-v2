@@ -134,12 +134,6 @@ model EngineerProfile {
   workStatus        WorkStatus  @default(OPEN_TO_OFFERS)
   githubUrl         String?
   portfolioUrl      String?
-  resumeFileName    String?
-  resumeFilePath    String?
-  resumeUploadedAt  DateTime?
-  workHistoryFileName   String?
-  workHistoryFilePath   String?
-  workHistoryUploadedAt DateTime?
   isPublic          Boolean     @default(true) // 企業からの検索・スカウトを許可
 
   skills        EngineerSkill[]

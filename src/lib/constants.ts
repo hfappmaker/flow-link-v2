@@ -136,6 +136,6 @@ export const PROJECT_FEATURES = [
   "English OK",
 ] as const;
 
-export const WEEKLY_DAYS_OPTIONS = [1, 2, 3, 4, 5] as const;
+export const WEEKLY_DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 export const PAGE_SIZE = 20;

@@ -7,32 +7,21 @@ import { ApplicationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
-import {
-  getProfileDocumentsForMessage,
-  isChatDocumentKind,
-  isProfileMessageDocument,
-  type ChatDocumentKind,
-} from "@/lib/message-attachments";
 
 const applySchema = z.object({
   projectId: z.string().min(1),
   message: z.string().min(1, "応募メッセージを入力してください").max(4000),
-  documentKinds: z.array(z.enum(["resume", "work-history"])).default([]),
 });
 
 export async function applyToProject(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { user, profile } = await requireEngineer();
-  const documentKinds = formData
-    .getAll("documentKinds")
-    .filter(isChatDocumentKind) as ChatDocumentKind[];
+  const { user } = await requireEngineer();
 
   const parsed = applySchema.safeParse({
     projectId: formData.get("projectId"),
     message: formData.get("message"),
-    documentKinds,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "入力内容に誤りがあります" };
@@ -44,12 +33,6 @@ export async function applyToProject(
   if (!project || project.status !== "OPEN") {
     return { error: "この案件は現在応募を受け付けていません" };
   }
-
-  const selectedDocuments = getProfileDocumentsForMessage(profile, parsed.data.documentKinds);
-  if (selectedDocuments.some((document) => !document)) {
-    return { error: "選択した書類が見つかりません。プロフィール設定を確認してください" };
-  }
-  const attachments = selectedDocuments.filter(isProfileMessageDocument);
 
   const existing = await prisma.application.findUnique({
     where: {
@@ -83,16 +66,6 @@ export async function applyToProject(
           create: {
             senderId: user.id,
             body: parsed.data.message,
-            attachments:
-              attachments.length > 0
-                ? {
-                    create: attachments.map((document) => ({
-                      kind: document.kind,
-                      fileName: document.fileName,
-                      filePath: document.filePath,
-                    })),
-                  }
-                : undefined,
           },
         },
       },
