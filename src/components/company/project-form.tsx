@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId, useState } from "react";
 import type { Prisma, Skill } from "@prisma/client";
+import { X } from "lucide-react";
 import { createProject, updateProject } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
@@ -13,6 +14,80 @@ import {
 } from "@/lib/constants";
 
 type ProjectWithSkills = Prisma.ProjectGetPayload<{ include: { skills: true } }>;
+
+function CustomSkillTagsInput() {
+  const inputId = useId();
+  const [inputValue, setInputValue] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+
+  const addTags = (rawValue: string) => {
+    const nextTags = rawValue
+      .split(/[\n,、]/)
+      .map((tag) => tag.trim().replace(/\s+/g, " "))
+      .filter(Boolean);
+
+    if (nextTags.length === 0) return;
+    setTags((current) => [...new Set([...current, ...nextTags])]);
+    setInputValue("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((current) => current.filter((item) => item !== tag));
+  };
+
+  return (
+    <div>
+      <Label htmlFor={inputId}>スキルを追加</Label>
+      <input type="hidden" name="customSkills" value={tags.join("\n")} />
+      <div className="rounded-lg border border-slate-300 bg-white px-2 py-2 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+        <div className="flex min-h-10 flex-wrap items-center gap-2">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700"
+            >
+              <span className="truncate">{tag}</span>
+              <button
+                type="button"
+                aria-label={`${tag}を削除`}
+                title="削除"
+                onClick={() => removeTag(tag)}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-800"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            id={inputId}
+            value={inputValue}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (/[,、\n]/.test(value)) {
+                addTags(value);
+              } else {
+                setInputValue(value);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addTags(inputValue);
+              }
+              if (event.key === "Backspace" && inputValue === "") {
+                setTags((current) => current.slice(0, -1));
+              }
+            }}
+            onBlur={() => addTags(inputValue)}
+            className="h-8 min-w-36 flex-1 border-0 bg-transparent px-1 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder={tags.length > 0 ? "追加するスキル" : "例: Go, GraphQL, BigQuery"}
+          />
+        </div>
+      </div>
+      <FieldHint>カンマ、読点、Enterでタグ化できます。</FieldHint>
+    </div>
+  );
+}
 
 export function ProjectForm({
   skills,
@@ -195,6 +270,7 @@ export function ProjectForm({
             </div>
           </div>
         ))}
+        <CustomSkillTagsInput />
       </section>
 
       <section className="space-y-4">
