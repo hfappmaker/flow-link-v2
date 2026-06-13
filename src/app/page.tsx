@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, MessageSquare, Search, Send, UserCheck, Zap } from "lucide-react";
+import { Building2, MessageSquare, Search, Send, UserCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { ProjectCard } from "@/components/project-card";
@@ -37,8 +37,7 @@ export default async function HomePage() {
       {/* ヒーロー */}
       <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 via-white to-white">
         <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6">
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-bold text-blue-700">
-            <Zap className="h-3.5 w-3.5 fill-blue-600 text-blue-600" />
+          <p className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-bold text-blue-700">
             フリーランスエンジニアと企業のマッチングプラットフォーム
           </p>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl leading-tight font-black text-slate-900 sm:text-5xl">
