@@ -69,6 +69,7 @@ async function main() {
   console.log("🌱 シードデータを投入します...");
 
   // 依存順に全削除（デモ用のリセット）
+  await prisma.messageAttachment.deleteMany();
   await prisma.message.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.scout.deleteMany();
@@ -84,6 +85,7 @@ async function main() {
   await prisma.skill.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
+  await prisma.verificationToken.deleteMany();
   await prisma.user.deleteMany();
 
   // ---- スキル ----
