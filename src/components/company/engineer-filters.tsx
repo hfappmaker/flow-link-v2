@@ -4,7 +4,7 @@ import { SkillCategory, type Skill } from "@prisma/client";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { X } from "lucide-react";
-import { FieldHint, Input, Label } from "@/components/ui/form";
+import { FieldHint, Input, Label, Select } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
   REMOTE_TYPE_LABELS,
@@ -12,6 +12,12 @@ import {
   WEEKLY_DAYS_OPTIONS,
 } from "@/lib/constants";
 import type { ParsedEngineerSearch } from "@/lib/engineer-search";
+
+const RATE_OPTIONS = Array.from({ length: 20 }, (_, index) => {
+  const unit = index + 1;
+  const amount = unit * 100000;
+  return { value: String(amount), label: `${unit * 10}万円` };
+});
 
 function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -266,6 +272,28 @@ export function EngineerFilters({
               週{day}日
             </label>
           ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="希望単価（円/月）">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+          <Select name="rateMin" defaultValue={parsed.rateMin ? String(parsed.rateMin) : ""}>
+            <option value="">下限なし</option>
+            {RATE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+          <span className="text-sm font-semibold text-slate-400">〜</span>
+          <Select name="rateMax" defaultValue={parsed.rateMax ? String(parsed.rateMax) : ""}>
+            <option value="">上限なし</option>
+            {RATE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
         </div>
       </FilterSection>
 

@@ -9,6 +9,8 @@ export type EngineerSearchParams = {
   skill?: string | string[];
   skillText?: string | string[];
   days?: string | string[];
+  rateMin?: string;
+  rateMax?: string;
   remote?: string | string[];
   availableOnly?: string;
   page?: string;
@@ -40,6 +42,8 @@ export function parseEngineerSearch(params: EngineerSearchParams) {
   const remote = toArray(params.remote).filter((r): r is RemoteType =>
     (Object.values(RemoteType) as string[]).includes(r),
   );
+  const rateMin = Number.parseInt(params.rateMin ?? "", 10) || undefined;
+  const rateMax = Number.parseInt(params.rateMax ?? "", 10) || undefined;
 
   return {
     q: params.q?.trim() || undefined,
@@ -48,6 +52,8 @@ export function parseEngineerSearch(params: EngineerSearchParams) {
     skill: toArray(params.skill).filter(Boolean),
     skillText: toTagArray(params.skillText),
     days,
+    rateMin,
+    rateMax,
     remote,
     availableOnly: params.availableOnly === "on",
     page,
@@ -92,6 +98,8 @@ export function buildEngineerWhere(parsed: ParsedEngineerSearch): Prisma.Enginee
   if (parsed.days.length > 0) {
     and.push({ desiredWeeklyDays: { hasSome: parsed.days } });
   }
+  if (parsed.rateMin) and.push({ OR: [{ desiredRateMax: null }, { desiredRateMax: { gte: parsed.rateMin } }] });
+  if (parsed.rateMax) and.push({ OR: [{ desiredRateMin: null }, { desiredRateMin: { lte: parsed.rateMax } }] });
   if (parsed.remote.length > 0) and.push({ remotePreference: { in: parsed.remote } });
   if (parsed.availableOnly) and.push({ workStatus: { in: ["AVAILABLE", "OPEN_TO_OFFERS"] } });
 
@@ -110,6 +118,8 @@ export function buildEngineerSearchQueryString(
   for (const skill of parsed.skill) sp.append("skill", skill);
   for (const skillText of parsed.skillText) sp.append("skillText", skillText);
   for (const day of parsed.days) sp.append("days", String(day));
+  if (parsed.rateMin) sp.set("rateMin", String(parsed.rateMin));
+  if (parsed.rateMax) sp.set("rateMax", String(parsed.rateMax));
   for (const remote of parsed.remote) sp.append("remote", remote);
   if (parsed.availableOnly) sp.set("availableOnly", "on");
 

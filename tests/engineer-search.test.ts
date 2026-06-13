@@ -16,6 +16,8 @@ describe("engineer search helpers", () => {
       skill: ["skill-1", ""],
       skillText: ["TypeScript, Node.js", "TypeScript"],
       days: ["0", "3", "3", "6", "5"],
+      rateMin: "600000",
+      rateMax: "bad",
       remote: [RemoteType.FULL_REMOTE, "INVALID"],
       availableOnly: "on",
       page: "-2",
@@ -28,6 +30,8 @@ describe("engineer search helpers", () => {
       skill: ["skill-1"],
       skillText: ["TypeScript", "Node.js"],
       days: [3, 6, 5],
+      rateMin: 600000,
+      rateMax: undefined,
       remote: [RemoteType.FULL_REMOTE],
       availableOnly: true,
       page: 1,
@@ -40,6 +44,8 @@ describe("engineer search helpers", () => {
       skill: "skill-1",
       skillText: "GraphQL",
       days: "4",
+      rateMin: "600000",
+      rateMax: "900000",
       remote: RemoteType.REMOTE_MAIN,
       availableOnly: "on",
     });
@@ -74,6 +80,8 @@ describe("engineer search helpers", () => {
           ],
         },
         { desiredWeeklyDays: { hasSome: [4] } },
+        { OR: [{ desiredRateMax: null }, { desiredRateMax: { gte: 600000 } }] },
+        { OR: [{ desiredRateMin: null }, { desiredRateMin: { lte: 900000 } }] },
         { remotePreference: { in: [RemoteType.REMOTE_MAIN] } },
         { workStatus: { in: ["AVAILABLE", "OPEN_TO_OFFERS"] } },
       ],
@@ -85,16 +93,17 @@ describe("engineer search helpers", () => {
       q: "React",
       job: "Backend",
       skillText: "TypeScript",
+      rateMin: "600000",
       availableOnly: "on",
     });
 
     assert.equal(
       buildEngineerSearchQueryString(parsed),
-      "?q=React&job=Backend&skillText=TypeScript&availableOnly=on",
+      "?q=React&job=Backend&skillText=TypeScript&rateMin=600000&availableOnly=on",
     );
     assert.equal(
       buildEngineerSearchQueryString(parsed, { page: 2 }),
-      "?q=React&job=Backend&skillText=TypeScript&availableOnly=on&page=2",
+      "?q=React&job=Backend&skillText=TypeScript&rateMin=600000&availableOnly=on&page=2",
     );
   });
 });

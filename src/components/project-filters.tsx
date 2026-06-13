@@ -258,7 +258,7 @@ export function ProjectFilters({
       </FilterSection>
 
       <FilterSection title="単価目安（円/月）">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
           <Select name="rateMin" defaultValue={parsed.rateMin ? String(parsed.rateMin) : ""}>
             <option value="">下限なし</option>
             {RATE_OPTIONS.map((o) => (
@@ -267,6 +267,7 @@ export function ProjectFilters({
               </option>
             ))}
           </Select>
+          <span className="text-sm font-semibold text-slate-400">〜</span>
           <Select name="rateMax" defaultValue={parsed.rateMax ? String(parsed.rateMax) : ""}>
             <option value="">上限なし</option>
             {RATE_OPTIONS.map((o) => (
