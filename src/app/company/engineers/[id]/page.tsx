@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/session";
 import { Avatar } from "@/components/ui/avatar";
@@ -50,18 +50,6 @@ export default async function EngineerDetailPage({
     profile.desiredWeeklyDays ? `希望稼働: 週${profile.desiredWeeklyDays}日` : null,
     profile.remotePreference ? `リモート: ${REMOTE_TYPE_LABELS[profile.remotePreference]}` : null,
   ].filter(Boolean);
-  const documents = [
-    profile.resumeFileName
-      ? { label: "履歴書", fileName: profile.resumeFileName, href: `/api/engineer-documents/${profile.id}/resume` }
-      : null,
-    profile.workHistoryFileName
-      ? {
-          label: "職務経歴書",
-          fileName: profile.workHistoryFileName,
-          href: `/api/engineer-documents/${profile.id}/work-history`,
-        }
-      : null,
-  ].filter(Boolean) as { label: string; fileName: string; href: string }[];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -117,21 +105,6 @@ export default async function EngineerDetailPage({
                       </a>
                     ) : null}
                   </div>
-                  {documents.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {documents.map((document) => (
-                        <a
-                          key={document.href}
-                          href={document.href}
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                        >
-                          <Download className="h-3.5 w-3.5 shrink-0" />
-                          <span>{document.label}</span>
-                          <span className="min-w-0 max-w-48 truncate text-slate-500">{document.fileName}</span>
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               </div>
 

@@ -5,6 +5,13 @@ import { getCurrentUser } from "@/lib/session";
 import { getConversationForUser } from "@/lib/messages";
 import { getAblyRest } from "@/lib/ably";
 import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
+import {
+  CHAT_DOCUMENT_LABELS,
+  getProfileDocumentsForMessage,
+  isProfileMessageDocument,
+  type ChatDocumentKind,
+  type MessageAttachmentPayload,
+} from "@/lib/message-attachments";
 
 export type ChatMessage = {
   id: string;
@@ -12,6 +19,7 @@ export type ChatMessage = {
   senderName: string;
   mine: boolean;
   createdAt: string;
+  attachments: MessageAttachmentPayload[];
 };
 
 async function loadContext(conversationId: string) {
@@ -25,6 +33,17 @@ async function loadContext(conversationId: string) {
   return { user, conversation };
 }
 
+function toAttachmentPayload(attachment: { id: string; kind: string; fileName: string }) {
+  const kind = attachment.kind as ChatDocumentKind;
+  return {
+    id: attachment.id,
+    kind,
+    label: CHAT_DOCUMENT_LABELS[kind] ?? "添付書類",
+    fileName: attachment.fileName,
+    downloadUrl: `/api/message-attachments/${attachment.id}`,
+  };
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await loadContext(id);
@@ -33,7 +52,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const isCompanyViewer = user.companyMember?.companyId === conversation.companyId;
 
-  // 相手からの未読メッセージを既読にする
   await prisma.message.updateMany({
     where: {
       conversationId: conversation.id,
@@ -48,26 +66,35 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const messages = await prisma.message.findMany({
     where: { conversationId: conversation.id },
     orderBy: { createdAt: "asc" },
-    include: { sender: { include: { companyMember: true, engineerProfile: true } } },
+    include: {
+      attachments: { orderBy: { createdAt: "asc" } },
+      sender: { include: { companyMember: true, engineerProfile: true } },
+    },
   });
 
-  const payload: ChatMessage[] = messages.map((m) => {
-    const senderIsCompany = m.sender.companyMember?.companyId === conversation.companyId;
+  const payload: ChatMessage[] = messages.map((message) => {
+    const senderIsCompany = message.sender.companyMember?.companyId === conversation.companyId;
     return {
-      id: m.id,
-      body: m.body,
+      id: message.id,
+      body: message.body,
+      attachments: message.attachments.map(toAttachmentPayload),
       senderName: senderIsCompany
         ? conversation.company.name
-        : (m.sender.engineerProfile?.displayName ?? m.sender.name ?? "ユーザー"),
-      mine: isCompanyViewer ? senderIsCompany : m.senderId === user.id,
-      createdAt: m.createdAt.toISOString(),
+        : (message.sender.engineerProfile?.displayName ?? message.sender.name ?? "ユーザー"),
+      mine: isCompanyViewer ? senderIsCompany : message.senderId === user.id,
+      createdAt: message.createdAt.toISOString(),
     };
   });
 
   return NextResponse.json({ messages: payload });
 }
 
-const postSchema = z.object({ body: z.string().min(1).max(4000) });
+const postSchema = z
+  .object({
+    body: z.string().max(4000).optional().default(""),
+    documentKinds: z.array(z.enum(["resume", "work-history"])).max(2).optional().default([]),
+  })
+  .refine((value) => value.body.trim().length > 0 || value.documentKinds.length > 0);
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -78,16 +105,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const json = await request.json().catch(() => null);
   const parsed = postSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: "メッセージを入力してください" }, { status: 400 });
+    return NextResponse.json({ error: "メッセージまたは書類を入力してください" }, { status: 400 });
   }
+  if (parsed.data.documentKinds.length > 0 && user.id !== conversation.engineerUserId) {
+    return NextResponse.json({ error: "書類を送信できるのはエンジニア本人のみです" }, { status: 403 });
+  }
+
+  const selectedDocuments = user.engineerProfile
+    ? getProfileDocumentsForMessage(user.engineerProfile, parsed.data.documentKinds)
+    : [];
+  if (selectedDocuments.some((document) => !document)) {
+    return NextResponse.json({ error: "選択した書類が見つかりません" }, { status: 400 });
+  }
+  const attachments = selectedDocuments.filter(isProfileMessageDocument);
+  const body = parsed.data.body.trim() || "書類を送付しました。";
 
   const [message] = await prisma.$transaction([
     prisma.message.create({
       data: {
         conversationId: conversation.id,
         senderId: user.id,
-        body: parsed.data.body.trim(),
+        body,
+        attachments:
+          attachments.length > 0
+            ? {
+                create: attachments.map((document) => ({
+                  kind: document.kind,
+                  fileName: document.fileName,
+                  filePath: document.filePath,
+                })),
+              }
+            : undefined,
       },
+      include: { attachments: { orderBy: { createdAt: "asc" } } },
     }),
     prisma.conversation.update({
       where: { id: conversation.id },
@@ -99,9 +149,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const payload: ChatMessage = {
     id: message.id,
     body: message.body,
+    attachments: message.attachments.map(toAttachmentPayload),
     senderName: senderIsCompany
       ? conversation.company.name
-      : (user.engineerProfile?.displayName ?? user.name ?? "繝ｦ繝ｼ繧ｶ繝ｼ"),
+      : (user.engineerProfile?.displayName ?? user.name ?? "ユーザー"),
     mine: true,
     createdAt: message.createdAt.toISOString(),
   };

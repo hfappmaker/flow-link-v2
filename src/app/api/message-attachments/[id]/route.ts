@@ -18,52 +18,41 @@ function encodeContentDisposition(fileName: string) {
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ profileId: string; kind: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profileId, kind } = await params;
-  if (kind !== "resume" && kind !== "work-history") {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const profile = await prisma.engineerProfile.findUnique({
-    where: { id: profileId },
-    select: {
-      id: true,
-      userId: true,
-      isPublic: true,
-      resumeFileName: true,
-      resumeFilePath: true,
-      workHistoryFileName: true,
-      workHistoryFilePath: true,
+  const attachment = await prisma.messageAttachment.findUnique({
+    where: { id },
+    include: {
+      message: {
+        select: {
+          conversation: {
+            select: { companyId: true, engineerUserId: true },
+          },
+        },
+      },
     },
   });
-  if (!profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!attachment) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const isOwner = user.engineerProfile?.id === profile.id;
-  if (!isOwner) {
+  const conversation = attachment.message.conversation;
+  const isEngineer = conversation.engineerUserId === user.id;
+  const isCompanyMember = user.companyMember?.companyId === conversation.companyId;
+  if (!isEngineer && !isCompanyMember) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const document =
-    kind === "resume"
-      ? { fileName: profile.resumeFileName, filePath: profile.resumeFilePath }
-      : { fileName: profile.workHistoryFileName, filePath: profile.workHistoryFilePath };
-
-  if (!document.fileName || !document.filePath) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
   try {
-    const file = await readProfileDocumentFile(document.filePath);
+    const file = await readProfileDocumentFile(attachment.filePath);
     if (!file) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    const ext = path.extname(document.fileName).toLowerCase();
+    const ext = path.extname(attachment.fileName).toLowerCase();
     return new Response(file, {
       headers: {
         "Content-Type": CONTENT_TYPES[ext] ?? "application/octet-stream",
-        "Content-Disposition": encodeContentDisposition(document.fileName),
+        "Content-Disposition": encodeContentDisposition(attachment.fileName),
         "X-Content-Type-Options": "nosniff",
       },
     });

@@ -4,10 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Realtime } from "ably";
 import useSWR from "swr";
-import { SendHorizontal } from "lucide-react";
+import { FileText, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
+import type {
+  AvailableChatDocument,
+  ChatDocumentKind,
+  MessageAttachmentPayload,
+} from "@/lib/message-attachments";
 
 type ChatMessage = {
   id: string;
@@ -15,6 +20,7 @@ type ChatMessage = {
   senderName: string;
   mine: boolean;
   createdAt: string;
+  attachments: MessageAttachmentPayload[];
 };
 
 type RealtimeChatMessage = Omit<ChatMessage, "mine"> & {
@@ -73,13 +79,16 @@ export function ChatRoom({
   conversationId,
   currentUserId,
   isCompanyViewer,
+  availableDocuments,
 }: {
   conversationId: string;
   currentUserId: string;
   isCompanyViewer: boolean;
+  availableDocuments: AvailableChatDocument[];
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
+  const [selectedDocumentKinds, setSelectedDocumentKinds] = useState<ChatDocumentKind[]>([]);
   const [sending, setSending] = useState(false);
   const [realtimeUnavailable, setRealtimeUnavailable] = useState(false);
   const { data, mutate, isLoading } = useSWR<{ messages: ChatMessage[] }>(
@@ -119,6 +128,7 @@ export function ChatRoom({
       const chatMessage: ChatMessage = {
         id: incoming.id,
         body: incoming.body,
+        attachments: incoming.attachments ?? [],
         senderName: incoming.senderName,
         createdAt: incoming.createdAt,
         mine: isCompanyViewer ? incoming.senderIsCompany : incoming.senderId === currentUserId,
@@ -158,14 +168,16 @@ export function ChatRoom({
 
   async function send() {
     const body = draft.trim();
-    if (!body || sending) return;
+    if ((!body && selectedDocumentKinds.length === 0) || sending) return;
     setSending(true);
     setDraft("");
+    const documentKinds = selectedDocumentKinds;
+    setSelectedDocumentKinds([]);
     try {
       const response = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body, documentKinds }),
       });
       if (!response.ok) throw new Error("Failed to send message");
       const result = (await response.json()) as { message?: ChatMessage };
@@ -181,6 +193,12 @@ export function ChatRoom({
     } finally {
       setSending(false);
     }
+  }
+
+  function toggleDocument(kind: ChatDocumentKind) {
+    setSelectedDocumentKinds((current) =>
+      current.includes(kind) ? current.filter((value) => value !== kind) : [...current, kind],
+    );
   }
 
   return (
@@ -211,6 +229,28 @@ export function ChatRoom({
                 )}
               >
                 <MessageBody body={m.body} mine={m.mine} />
+                {m.attachments.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {m.attachments.map((attachment) => (
+                      <a
+                        key={attachment.id}
+                        href={attachment.downloadUrl}
+                        className={cn(
+                          "flex max-w-full items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
+                          m.mine
+                            ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
+                            : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700",
+                        )}
+                      >
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span>{attachment.label}</span>
+                        <span className={cn("min-w-0 truncate", m.mine ? "text-blue-50" : "text-slate-500")}>
+                          {attachment.fileName}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           ))
@@ -219,6 +259,38 @@ export function ChatRoom({
       </div>
 
       <div className="border-t border-slate-200 bg-white p-3">
+        {!isCompanyViewer && availableDocuments.length > 0 ? (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-bold text-amber-900">このメッセージに添付する書類</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+              選択した書類だけが、このチャット相手の企業に共有されます。
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {availableDocuments.map((document) => {
+                const checked = selectedDocumentKinds.includes(document.kind);
+                return (
+                  <button
+                    key={document.kind}
+                    type="button"
+                    onClick={() => toggleDocument(document.kind)}
+                    className={cn(
+                      "inline-flex max-w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold",
+                      checked
+                        ? "border-blue-500 bg-blue-600 text-white"
+                        : "border-amber-200 bg-white text-amber-900 hover:border-blue-300 hover:text-blue-700",
+                    )}
+                  >
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                    <span>{document.label}</span>
+                    <span className={cn("min-w-0 max-w-40 truncate", checked ? "text-blue-50" : "text-amber-700")}>
+                      {document.fileName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {
@@ -239,7 +311,7 @@ export function ChatRoom({
             placeholder="メッセージを入力（Ctrl+Enterで送信）"
             className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
-          <Button type="submit" disabled={sending || draft.trim().length === 0}>
+          <Button type="submit" disabled={sending || (draft.trim().length === 0 && selectedDocumentKinds.length === 0)}>
             <SendHorizontal className="h-4 w-4" />
             送信
           </Button>

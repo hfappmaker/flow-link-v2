@@ -8,6 +8,7 @@ import { ChatRoom } from "@/components/chat/chat-room";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { APPLICATION_STATUS_LABELS, SCOUT_STATUS_LABELS } from "@/lib/constants";
+import { getAvailableChatDocuments } from "@/lib/message-attachments";
 
 export const metadata: Metadata = { title: "メッセージ" };
 
@@ -69,7 +70,14 @@ export default async function ConversationPage({
       </div>
 
       <div className="min-h-0 flex-1">
-        <ChatRoom conversationId={conversation.id} currentUserId={user.id} isCompanyViewer={isCompany} />
+        <ChatRoom
+          conversationId={conversation.id}
+          currentUserId={user.id}
+          isCompanyViewer={isCompany}
+          availableDocuments={
+            !isCompany && user.engineerProfile ? getAvailableChatDocuments(user.engineerProfile) : []
+          }
+        />
       </div>
     </div>
   );
