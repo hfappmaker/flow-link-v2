@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { getProfileDocumentsRoot } from "@/lib/profile-documents";
+import { readProfileDocumentFile } from "@/lib/profile-documents";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -57,16 +56,11 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const uploadsRoot = getProfileDocumentsRoot();
-  const documentPath = path.resolve(document.filePath);
-  if (!documentPath.startsWith(`${uploadsRoot}${path.sep}`)) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
   try {
-    const file = await readFile(documentPath);
+    const file = await readProfileDocumentFile(document.filePath);
+    if (!file) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const ext = path.extname(document.fileName).toLowerCase();
-    return new Response(new Uint8Array(file), {
+    return new Response(file, {
       headers: {
         "Content-Type": CONTENT_TYPES[ext] ?? "application/octet-stream",
         "Content-Disposition": encodeContentDisposition(document.fileName),

@@ -1,7 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,7 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
 import { PREFECTURES } from "@/lib/constants";
-import { getProfileDocumentsRoot } from "@/lib/profile-documents";
+import {
+  removeProfileDocumentFile,
+  saveProfileDocumentFile,
+} from "@/lib/profile-documents";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -60,10 +61,13 @@ async function saveProfileDocument(
     return { error: "ファイル形式と拡張子が一致していません" };
   }
 
-  const uploadDir = path.join(getProfileDocumentsRoot(), profileId);
-  await mkdir(uploadDir, { recursive: true });
-  const filePath = path.join(uploadDir, `${kind}-${Date.now()}-${randomUUID()}${ext}`);
-  await writeFile(filePath, Buffer.from(await value.arrayBuffer()));
+  const filePath = await saveProfileDocumentFile({
+    profileId,
+    kind,
+    ext,
+    file: value,
+    contentType: expectedType,
+  });
 
   return {
     fileName: originalName,
@@ -73,8 +77,7 @@ async function saveProfileDocument(
 }
 
 async function removeStoredFile(filePath: string | null | undefined) {
-  if (!filePath) return;
-  await rm(filePath, { force: true });
+  await removeProfileDocumentFile(filePath);
 }
 
 function parseCustomSkillNames(value: string | undefined) {
