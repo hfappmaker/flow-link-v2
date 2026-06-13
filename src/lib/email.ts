@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getAppUrl } from "@/lib/app-url";
 
 const from = process.env.EMAIL_FROM ?? "FlowLink <onboarding@resend.dev>";
 
@@ -23,6 +24,32 @@ function buttonHtml(href: string, label: string) {
   `;
 }
 
+function logoHtml() {
+  return `
+    <div style="margin:0 0 18px;">
+      <a href="${escapeHtml(getAppUrl())}" style="text-decoration:none;color:#0f172a;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr>
+            <td style="padding:0 8px 0 0;vertical-align:middle;">
+              <svg aria-hidden="true" width="38" height="30" viewBox="0 0 150 118" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+                <rect x="16" y="66" width="92" height="34" rx="17" transform="rotate(-28 16 66)" stroke="#0E5BEA" stroke-width="12" />
+                <rect x="55" y="66" width="92" height="34" rx="17" transform="rotate(-28 55 66)" stroke="#08B86B" stroke-width="12" />
+                <rect x="56" y="58" width="42" height="12" rx="6" transform="rotate(-28 56 58)" fill="#0E1726" fill-opacity="0.88" />
+                <circle cx="13" cy="91" r="9" fill="#0E5BEA" />
+                <circle cx="135" cy="27" r="9" fill="#08B86B" />
+                <path d="M108 38L130 47L111 62Z" fill="#0E1726" />
+              </svg>
+            </td>
+            <td style="padding:0;vertical-align:middle;font-size:20px;font-weight:900;letter-spacing:0;color:#0f172a;line-height:1;">
+              Flow<span style="color:#2563eb;">Link</span>
+            </td>
+          </tr>
+        </table>
+      </a>
+    </div>
+  `;
+}
+
 function baseEmailHtml({
   heading,
   intro,
@@ -39,7 +66,7 @@ function baseEmailHtml({
   return `
     <div style="margin:0;background:#f8fafc;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;">
       <div style="margin:0 auto;max-width:560px;border:1px solid #e2e8f0;border-radius:14px;background:#ffffff;padding:28px;">
-        <p style="margin:0 0 18px;font-size:20px;font-weight:900;color:#0f172a;">FlowLink</p>
+        ${logoHtml()}
         <h1 style="margin:0 0 12px;font-size:22px;line-height:1.35;color:#0f172a;">${escapeHtml(heading)}</h1>
         <p style="margin:0 0 22px;font-size:14px;line-height:1.8;color:#475569;">${escapeHtml(intro)}</p>
         ${buttonHtml(actionUrl, actionLabel)}
