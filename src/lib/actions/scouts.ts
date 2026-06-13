@@ -33,6 +33,9 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
   if (!engineer) {
     return { error: "このエンジニアにはスカウトを送信できません" };
   }
+  if (engineer.workStatus === "UNAVAILABLE") {
+    return { error: "現在は受け付けていないエンジニアにはスカウトを送信できません" };
+  }
 
   if (parsed.data.projectId) {
     const project = await prisma.project.findFirst({

@@ -202,6 +202,11 @@ export default async function EngineerDetailPage({
                 engineerUserId={profile.userId}
                 engineerName={profile.displayName}
                 projects={openProjects}
+                disabledReason={
+                  profile.workStatus === "UNAVAILABLE"
+                    ? "このエンジニアは現在スカウトを受け付けていません。"
+                    : undefined
+                }
               />
             </CardBody>
           </Card>
