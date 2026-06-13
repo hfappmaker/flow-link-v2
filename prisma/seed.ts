@@ -47,6 +47,11 @@ const SKILLS: Array<[string, SkillCategory]> = [
   ["機械学習", "OTHER"],
   ["LLM・生成AI", "OTHER"],
   ["データ分析", "OTHER"],
+  ["Claude Code", "OTHER"],
+  ["Devin", "OTHER"],
+  ["Cursor", "OTHER"],
+  ["GitHub Copilot", "OTHER"],
+  ["Codex", "OTHER"],
 ];
 
 async function main() {

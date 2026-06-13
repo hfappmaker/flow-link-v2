@@ -31,7 +31,7 @@ export function EngineerProfileForm({
   }
 
   return (
-    <form action={action} className="space-y-8">
+    <form action={action} encType="multipart/form-data" className="space-y-8">
       {state.error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
           {state.error}
@@ -115,6 +115,58 @@ export function EngineerProfileForm({
       </section>
 
       <section className="space-y-4">
+        <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">添付書類</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="resumeFile">履歴書</Label>
+            {profile.resumeFileName ? (
+              <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                <a
+                  href={`/api/engineer-documents/${profile.id}/resume`}
+                  className="font-semibold text-blue-700 hover:underline"
+                >
+                  {profile.resumeFileName}
+                </a>
+                <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    name="removeResumeFile"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  削除する
+                </label>
+              </div>
+            ) : null}
+            <Input id="resumeFile" name="resumeFile" type="file" accept=".pdf,.doc,.docx" />
+            <FieldHint>PDF、DOC、DOCX形式。5MBまで。</FieldHint>
+          </div>
+          <div>
+            <Label htmlFor="workHistoryFile">職務経歴書</Label>
+            {profile.workHistoryFileName ? (
+              <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                <a
+                  href={`/api/engineer-documents/${profile.id}/work-history`}
+                  className="font-semibold text-blue-700 hover:underline"
+                >
+                  {profile.workHistoryFileName}
+                </a>
+                <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    name="removeWorkHistoryFile"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  削除する
+                </label>
+              </div>
+            ) : null}
+            <Input id="workHistoryFile" name="workHistoryFile" type="file" accept=".pdf,.doc,.docx" />
+            <FieldHint>PDF、DOC、DOCX形式。5MBまで。</FieldHint>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4">
         <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">スキル</h2>
         {[...grouped.entries()].map(([categoryLabel, categorySkills]) => (
           <div key={categoryLabel}>
@@ -138,6 +190,17 @@ export function EngineerProfileForm({
             </div>
           </div>
         ))}
+        <div>
+          <Label htmlFor="customSkills">スキルを追加</Label>
+          <Textarea
+            id="customSkills"
+            name="customSkills"
+            rows={3}
+            maxLength={1000}
+            placeholder="例: Remix, Prisma, Shopify Hydrogen"
+          />
+          <FieldHint>カンマ、読点、改行で区切って複数追加できます。</FieldHint>
+        </div>
       </section>
 
       <section className="space-y-4">
