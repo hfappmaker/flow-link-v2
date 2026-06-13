@@ -107,7 +107,7 @@ export default async function HomePage() {
       {/* 使い方 */}
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-          <h2 className="text-center text-2xl font-black text-slate-900">FlowLinkの使い方</h2>
+          <h2 className="text-center text-2xl font-black text-slate-900">Flow Linkの使い方</h2>
 
           <div className="mt-10 grid gap-10 lg:grid-cols-2">
             <div>
