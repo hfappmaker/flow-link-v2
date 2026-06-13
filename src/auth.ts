@@ -56,6 +56,7 @@ providers.push(
         where: { email: parsed.data.email.toLowerCase() },
       });
       if (!user?.passwordHash) return null;
+      if (user.deletedAt) return null;
       if (!user.emailVerified) return null;
 
       const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);

@@ -4,6 +4,7 @@ import { sendNotificationEmail } from "@/lib/email";
 type NotificationRecipient = {
   email: string;
   emailNotificationsEnabled: boolean;
+  deletedAt?: Date | null;
 };
 
 type NotificationEmailInput = {
@@ -26,7 +27,7 @@ export async function sendOptionalNotificationEmail({
   const enabledRecipients = [
     ...new Map(
       recipients
-        .filter((recipient) => recipient.emailNotificationsEnabled)
+        .filter((recipient) => recipient.emailNotificationsEnabled && !recipient.deletedAt)
         .map((recipient) => [recipient.email.toLowerCase(), recipient]),
     ).values(),
   ];

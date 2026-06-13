@@ -35,7 +35,7 @@ export async function getConversationForUser(conversationId: string, user: Curre
           members: {
             include: {
               user: {
-                select: { email: true, emailNotificationsEnabled: true },
+                select: { email: true, emailNotificationsEnabled: true, deletedAt: true },
               },
             },
           },

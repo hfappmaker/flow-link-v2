@@ -24,6 +24,7 @@ model User {
   passwordHash  String?
   role          UserRole?
   emailNotificationsEnabled Boolean @default(true)
+  deletedAt     DateTime?
 
   accounts        Account[]
   sessions        Session[]

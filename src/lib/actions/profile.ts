@@ -3,9 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { RemoteType, WorkStatus } from "@prisma/client";
+import { signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { requireCompany, requireEngineer } from "@/lib/session";
+import { requireCompany, requireEngineer, requireUser } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import {
+  DELETED_COMPANY_NAME,
+  DELETED_USER_DISPLAY_NAME,
+  buildDeletedAccountEmail,
+  isDeleteAccountConfirmed,
+} from "@/lib/account-deletion";
 import { PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
@@ -250,5 +257,90 @@ export async function updateCompanyProfile(
   ]);
 
   revalidatePath("/company/settings");
+  return { success: true };
+}
+
+export async function deleteAccount(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  if (!isDeleteAccountConfirmed(formData)) {
+    return { error: "退会の確認にチェックを入れてください" };
+  }
+
+  const deletedAt = new Date();
+  const anonymizedEmail = buildDeletedAccountEmail(user.id, user.email);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.account.deleteMany({ where: { userId: user.id } });
+    await tx.session.deleteMany({ where: { userId: user.id } });
+    await tx.verificationToken.deleteMany({
+      where: {
+        identifier: {
+          in: [
+            `email-verification:${user.email.toLowerCase()}`,
+            `password-reset:${user.email.toLowerCase()}`,
+          ],
+        },
+      },
+    });
+
+    if (user.role === "ENGINEER" && user.engineerProfile) {
+      await tx.engineerSkill.deleteMany({ where: { engineerProfileId: user.engineerProfile.id } });
+      await tx.workHistory.deleteMany({ where: { engineerProfileId: user.engineerProfile.id } });
+      await tx.engineerProfile.update({
+        where: { id: user.engineerProfile.id },
+        data: {
+          displayName: DELETED_USER_DISPLAY_NAME,
+          title: [],
+          bio: null,
+          location: null,
+          yearsOfExperience: null,
+          desiredRateMin: null,
+          desiredRateMax: null,
+          desiredWeeklyDays: [],
+          remotePreference: null,
+          workStatus: "UNAVAILABLE",
+          githubUrl: null,
+          portfolioUrl: null,
+          isPublic: false,
+        },
+      });
+    }
+
+    if (user.role === "COMPANY" && user.companyMember) {
+      await tx.project.updateMany({
+        where: { companyId: user.companyMember.companyId },
+        data: { status: "CLOSED" },
+      });
+      await tx.company.update({
+        where: { id: user.companyMember.companyId },
+        data: {
+          name: DELETED_COMPANY_NAME,
+          description: null,
+          industry: null,
+          website: null,
+          location: null,
+          logoUrl: null,
+        },
+      });
+    }
+
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        name: null,
+        email: anonymizedEmail,
+        emailVerified: null,
+        image: null,
+        passwordHash: null,
+        emailNotificationsEnabled: false,
+        deletedAt,
+      },
+    });
+  });
+
+  revalidatePath("/");
+  revalidatePath("/projects");
+  revalidatePath("/company/engineers");
+  await signOut({ redirectTo: "/" });
   return { success: true };
 }

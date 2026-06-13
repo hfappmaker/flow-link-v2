@@ -36,7 +36,7 @@ export async function applyToProject(
           members: {
             include: {
               user: {
-                select: { email: true, emailNotificationsEnabled: true },
+                select: { email: true, emailNotificationsEnabled: true, deletedAt: true },
               },
             },
           },

@@ -11,8 +11,8 @@ export const getCurrentUser = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  return prisma.user.findUnique({
-    where: { id: session.user.id },
+  return prisma.user.findFirst({
+    where: { id: session.user.id, deletedAt: null },
     include: {
       engineerProfile: true,
       companyMember: { include: { company: true } },

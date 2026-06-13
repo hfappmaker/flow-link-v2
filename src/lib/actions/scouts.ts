@@ -32,7 +32,7 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
     where: { userId: parsed.data.engineerUserId, isPublic: true },
     include: {
       user: {
-        select: { email: true, emailNotificationsEnabled: true },
+        select: { email: true, emailNotificationsEnabled: true, deletedAt: true },
       },
     },
   });

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireEngineer } from "@/lib/session";
 import { EngineerProfileForm } from "@/components/engineer-profile-form";
+import { AccountDeleteForm } from "@/components/account-delete-form";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "プロフィール設定" };
@@ -35,6 +36,15 @@ export default async function ProfileSettingsPage() {
             skills={skills}
             selectedSkillIds={selected.map((s) => s.skillId)}
           />
+        </CardBody>
+      </Card>
+
+      <Card className="mt-6 border-red-200">
+        <CardBody className="p-6">
+          <h2 className="text-base font-bold text-red-700">退会</h2>
+          <div className="mt-4">
+            <AccountDeleteForm accountLabel="エンジニア" />
+          </div>
         </CardBody>
       </Card>
     </div>
