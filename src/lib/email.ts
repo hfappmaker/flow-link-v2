@@ -41,7 +41,7 @@ function logoHtml() {
               </svg>
             </td>
             <td style="padding:0;vertical-align:middle;font-size:20px;font-weight:900;letter-spacing:0;color:#0f172a;line-height:1;">
-              Flow<span style="color:#2563eb;">Link</span>
+              Flow <span style="color:#2563eb;">Link</span>
             </td>
           </tr>
         </table>

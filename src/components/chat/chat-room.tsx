@@ -187,15 +187,15 @@ export function ChatRoom({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
+      <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-4 py-5">
         {isLoading && messages.length === 0 ? (
           <p className="text-center text-sm text-slate-400">読み込み中...</p>
         ) : messages.length === 0 ? (
           <p className="text-center text-sm text-slate-400">まだメッセージはありません</p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className={cn("flex flex-col gap-1", m.mine ? "items-end" : "items-start")}>
-              <span className="px-1 text-xs text-slate-400">
+            <div key={m.id} className={cn("flex min-w-0 flex-col gap-1", m.mine ? "items-end" : "items-start")}>
+              <span className="max-w-full px-1 text-xs text-slate-400">
                 {m.senderName}・
                 {new Date(m.createdAt).toLocaleString("ja-JP", {
                   month: "numeric",
@@ -206,7 +206,7 @@ export function ChatRoom({
               </span>
               <div
                 className={cn(
-                  "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  "min-w-0 max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
                   m.mine
                     ? "rounded-br-sm bg-blue-600 text-white"
                     : "rounded-bl-sm border border-slate-200 bg-white text-slate-800",
@@ -220,14 +220,14 @@ export function ChatRoom({
                         key={attachment.id}
                         href={attachment.downloadUrl}
                         className={cn(
-                          "flex max-w-full items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
+                          "flex max-w-full min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold",
                           m.mine
                             ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
                             : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700",
                         )}
                       >
                         <FileText className="h-4 w-4 shrink-0" />
-                        <span>{attachment.label}</span>
+                        <span className="shrink-0">{attachment.label}</span>
                         <span className={cn("min-w-0 truncate", m.mine ? "text-blue-50" : "text-slate-500")}>
                           {attachment.fileName}
                         </span>
