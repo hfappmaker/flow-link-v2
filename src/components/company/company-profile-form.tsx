@@ -4,9 +4,15 @@ import { useActionState } from "react";
 import type { Company } from "@prisma/client";
 import { updateCompanyProfile } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Textarea } from "@/components/ui/form";
+import { FieldHint, Input, Label, Textarea } from "@/components/ui/form";
 
-export function CompanyProfileForm({ company }: { company: Company }) {
+export function CompanyProfileForm({
+  emailNotificationsEnabled,
+  company,
+}: {
+  emailNotificationsEnabled: boolean;
+  company: Company;
+}) {
   const [state, action, pending] = useActionState(updateCompanyProfile, {});
 
   return (
@@ -53,6 +59,24 @@ export function CompanyProfileForm({ company }: { company: Company }) {
           placeholder="事業内容、開発組織、技術スタックなどをご記入ください。案件詳細ページにも表示されます。"
         />
       </div>
+      <section className="space-y-3 border-t border-slate-200 pt-4">
+        <p className="text-base font-bold text-slate-800">通知設定</p>
+        <label className="flex items-start gap-3 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="emailNotificationsEnabled"
+            defaultChecked={emailNotificationsEnabled}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span>
+            新着通知をメールで受け取る
+            <span className="mt-0.5 block text-xs text-slate-500">
+              新しい応募やチャットメッセージが届いたときにメールで通知します。
+            </span>
+          </span>
+        </label>
+        <FieldHint>企業メンバーごとの設定です。会社全体の設定ではありません。</FieldHint>
+      </section>
       <Button type="submit" size="lg" disabled={pending}>
         {pending ? "保存中..." : "企業情報を保存"}
       </Button>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import { sendOptionalNotificationEmail } from "@/lib/notification-email";
 
 const scoutSchema = z.object({
   engineerUserId: z.string().min(1),
@@ -29,6 +30,11 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
 
   const engineer = await prisma.engineerProfile.findFirst({
     where: { userId: parsed.data.engineerUserId, isPublic: true },
+    include: {
+      user: {
+        select: { email: true, emailNotificationsEnabled: true },
+      },
+    },
   });
   if (!engineer) {
     return { error: "このエンジニアにはスカウトを送信できません" };
@@ -69,6 +75,14 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
   });
 
   revalidatePath("/company/scouts");
+  await sendOptionalNotificationEmail({
+    recipients: [engineer.user],
+    subject: "FlowLink 新しいスカウトが届きました",
+    heading: "新しいスカウトが届きました",
+    intro: `${company.name}からスカウトが届きました。内容はチャットで確認できます。`,
+    path: `/messages/${conversation.id}`,
+    actionLabel: "スカウトを確認する",
+  });
   redirect(`/messages/${conversation.id}`);
 }
 

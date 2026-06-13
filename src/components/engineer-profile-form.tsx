@@ -349,11 +349,13 @@ function WorkHistoryFields({ histories }: { histories: WorkHistory[] }) {
 }
 
 export function EngineerProfileForm({
+  emailNotificationsEnabled,
   profile,
   workHistories,
   skills,
   selectedSkillIds,
 }: {
+  emailNotificationsEnabled: boolean;
   profile: EngineerProfile;
   workHistories: WorkHistory[];
   skills: Skill[];
@@ -574,6 +576,24 @@ export function EngineerProfileForm({
             プロフィールを企業に公開し、スカウトを受け取る
             <span className="mt-0.5 block text-xs text-slate-500">
               オフにすると企業のエンジニア検索結果に表示されなくなります。
+            </span>
+          </span>
+        </label>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">通知設定</h2>
+        <label className="flex items-start gap-3 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            name="emailNotificationsEnabled"
+            defaultChecked={emailNotificationsEnabled}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span>
+            新着通知をメールで受け取る
+            <span className="mt-0.5 block text-xs text-slate-500">
+              新しいスカウトやチャットメッセージが届いたときにメールで通知します。
             </span>
           </span>
         </label>

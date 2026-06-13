@@ -7,7 +7,7 @@ import { Card, CardBody } from "@/components/ui/card";
 export const metadata: Metadata = { title: "プロフィール設定" };
 
 export default async function ProfileSettingsPage() {
-  const { profile } = await requireEngineer();
+  const { user, profile } = await requireEngineer();
 
   const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
   const selected = await prisma.engineerSkill.findMany({
@@ -29,6 +29,7 @@ export default async function ProfileSettingsPage() {
       <Card className="mt-6">
         <CardBody className="p-6">
           <EngineerProfileForm
+            emailNotificationsEnabled={user.emailNotificationsEnabled}
             profile={profile}
             workHistories={workHistories}
             skills={skills}

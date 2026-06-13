@@ -116,7 +116,7 @@ export async function updateEngineerProfile(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { profile } = await requireEngineer();
+  const { user, profile } = await requireEngineer();
 
   const parsed = engineerProfileSchema.safeParse({
     displayName: formData.get("displayName"),
@@ -175,6 +175,10 @@ export async function updateEngineerProfile(
         isPublic: formData.get("isPublic") === "on",
       },
     });
+    await tx.user.update({
+      where: { id: user.id },
+      data: { emailNotificationsEnabled: formData.get("emailNotificationsEnabled") === "on" },
+    });
     await tx.engineerSkill.deleteMany({ where: { engineerProfileId: profile.id } });
     if (skillIds.length > 0) {
       await tx.engineerSkill.createMany({
@@ -215,7 +219,7 @@ export async function updateCompanyProfile(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { company } = await requireCompany();
+  const { user, company } = await requireCompany();
 
   const parsed = companyProfileSchema.safeParse({
     name: formData.get("name"),
@@ -228,16 +232,22 @@ export async function updateCompanyProfile(
     return { error: parsed.error.issues[0]?.message ?? "入力内容に誤りがあります" };
   }
 
-  await prisma.company.update({
-    where: { id: company.id },
-    data: {
-      name: parsed.data.name,
-      industry: parsed.data.industry ?? null,
-      location: parsed.data.location ?? null,
-      website: parsed.data.website || null,
-      description: parsed.data.description ?? null,
-    },
-  });
+  await prisma.$transaction([
+    prisma.company.update({
+      where: { id: company.id },
+      data: {
+        name: parsed.data.name,
+        industry: parsed.data.industry ?? null,
+        location: parsed.data.location ?? null,
+        website: parsed.data.website || null,
+        description: parsed.data.description ?? null,
+      },
+    }),
+    prisma.user.update({
+      where: { id: user.id },
+      data: { emailNotificationsEnabled: formData.get("emailNotificationsEnabled") === "on" },
+    }),
+  ]);
 
   revalidatePath("/company/settings");
   return { success: true };

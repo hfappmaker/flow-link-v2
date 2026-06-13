@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { getConversationForUser } from "@/lib/messages";
 import { getAttachmentLabel, type MessageAttachmentPayload } from "@/lib/message-attachments";
+import { sendOptionalNotificationEmail } from "@/lib/notification-email";
 import {
   isAllowedMessageAttachmentFile,
   MESSAGE_ATTACHMENT_ALLOWED_LABEL,
@@ -190,6 +191,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       mine: true,
       createdAt: message.createdAt.toISOString(),
     };
+
+    const senderIsCompany = user.companyMember?.companyId === conversation.companyId;
+    const recipients = senderIsCompany
+      ? [conversation.engineer]
+      : conversation.company.members.map((member) => member.user);
+    await sendOptionalNotificationEmail({
+      recipients,
+      subject: "FlowLink 新しいメッセージが届きました",
+      heading: "新しいメッセージが届きました",
+      intro: `${payload.senderName}から新しいメッセージが届きました。`,
+      path: `/messages/${conversation.id}`,
+      actionLabel: "メッセージを確認する",
+    });
 
     return NextResponse.json({ message: payload }, { status: 201 });
   } catch (error) {

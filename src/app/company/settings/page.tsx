@@ -6,7 +6,7 @@ import { Card, CardBody } from "@/components/ui/card";
 export const metadata: Metadata = { title: "企業情報設定" };
 
 export default async function CompanySettingsPage() {
-  const { company } = await requireCompany();
+  const { user, company } = await requireCompany();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -17,7 +17,7 @@ export default async function CompanySettingsPage() {
 
       <Card className="mt-6">
         <CardBody className="p-6">
-          <CompanyProfileForm company={company} />
+          <CompanyProfileForm emailNotificationsEnabled={user.emailNotificationsEnabled} company={company} />
         </CardBody>
       </Card>
     </div>

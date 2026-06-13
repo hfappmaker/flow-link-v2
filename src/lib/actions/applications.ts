@@ -7,6 +7,7 @@ import { ApplicationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import { sendOptionalNotificationEmail } from "@/lib/notification-email";
 
 const applySchema = z.object({
   projectId: z.string().min(1),
@@ -29,6 +30,19 @@ export async function applyToProject(
 
   const project = await prisma.project.findUnique({
     where: { id: parsed.data.projectId },
+    include: {
+      company: {
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { email: true, emailNotificationsEnabled: true },
+              },
+            },
+          },
+        },
+      },
+    },
   });
   if (!project || project.status !== "OPEN") {
     return { error: "この案件は現在応募を受け付けていません" };
@@ -74,6 +88,14 @@ export async function applyToProject(
 
   revalidatePath(`/projects/${project.id}`);
   revalidatePath("/applications");
+  await sendOptionalNotificationEmail({
+    recipients: project.company.members.map((member) => member.user),
+    subject: "FlowLink 新しい応募が届きました",
+    heading: "新しい応募が届きました",
+    intro: `${project.title}に新しい応募がありました。応募内容はチャットで確認できます。`,
+    path: `/messages/${conversation.id}`,
+    actionLabel: "応募チャットを確認する",
+  });
   redirect(`/messages/${conversation.id}`);
 }
 

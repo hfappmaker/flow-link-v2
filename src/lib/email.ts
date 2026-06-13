@@ -53,6 +53,26 @@ function baseEmailHtml({
   `;
 }
 
+function notificationEmailHtml({
+  heading,
+  intro,
+  actionUrl,
+  actionLabel,
+}: {
+  heading: string;
+  intro: string;
+  actionUrl: string;
+  actionLabel: string;
+}) {
+  return baseEmailHtml({
+    heading,
+    intro,
+    actionUrl,
+    actionLabel,
+    note: "このメールはFlowLinkの通知設定に基づいて送信されています。通知設定はログイン後の設定画面から変更できます。",
+  });
+}
+
 async function sendTransactionalEmail({
   to,
   subject,
@@ -104,5 +124,27 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
       actionLabel: "パスワードを再設定する",
       note: "このリンクの有効期限は1時間です。心当たりがない場合、このメールは破棄してください。",
     }),
+  });
+}
+
+export async function sendNotificationEmail({
+  to,
+  subject,
+  heading,
+  intro,
+  actionUrl,
+  actionLabel,
+}: {
+  to: string;
+  subject: string;
+  heading: string;
+  intro: string;
+  actionUrl: string;
+  actionLabel: string;
+}) {
+  await sendTransactionalEmail({
+    to,
+    subject,
+    html: notificationEmailHtml({ heading, intro, actionUrl, actionLabel }),
   });
 }

@@ -23,6 +23,7 @@ model User {
   image         String?
   passwordHash  String?
   role          UserRole?
+  emailNotificationsEnabled Boolean @default(true)
 
   accounts        Account[]
   sessions        Session[]
