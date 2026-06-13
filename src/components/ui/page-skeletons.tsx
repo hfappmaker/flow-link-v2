@@ -220,13 +220,6 @@ export function ConversationSkeleton() {
         <ChatBubbleSkeleton align="end" />
       </div>
       <div className="border-t border-slate-200 bg-white p-3">
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <Skeleton className="h-3 w-44 bg-amber-200/70" />
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Skeleton className="h-8 w-40 rounded-md bg-amber-200/70" />
-            <Skeleton className="h-8 w-44 rounded-md bg-amber-200/70" />
-          </div>
-        </div>
         <div className="flex items-end gap-2">
           <Skeleton className="h-16 flex-1 rounded-lg" />
           <Skeleton className="h-10 w-20 rounded-lg" />
