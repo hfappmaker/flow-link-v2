@@ -27,7 +27,7 @@ describe("engineer search helpers", () => {
       jobText: ["PM", "Tech Lead"],
       skill: ["skill-1"],
       skillText: ["TypeScript", "Node.js"],
-      days: [3, 5],
+      days: [3, 6, 5],
       remote: [RemoteType.FULL_REMOTE],
       availableOnly: true,
       page: 1,

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { RemoteType } from "@prisma/client";
-import { PAGE_SIZE } from "@/lib/constants";
+import { PAGE_SIZE, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 export type EngineerSearchParams = {
   q?: string;
@@ -34,7 +34,7 @@ export function parseEngineerSearch(params: EngineerSearchParams) {
     ...new Set(
       toArray(params.days)
         .map((d) => Number.parseInt(d, 10))
-        .filter((d) => d >= 1 && d <= 5),
+        .filter((d) => (WEEKLY_DAYS_OPTIONS as readonly number[]).includes(d)),
     ),
   ];
   const remote = toArray(params.remote).filter((r): r is RemoteType =>

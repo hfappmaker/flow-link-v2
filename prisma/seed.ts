@@ -24,6 +24,7 @@ const SKILLS: Array<[string, SkillCategory]> = [
   ["Ruby", "LANGUAGE"],
   ["PHP", "LANGUAGE"],
   ["C#", "LANGUAGE"],
+  ["C++", "LANGUAGE"],
   ["Rust", "LANGUAGE"],
   ["React", "FRAMEWORK"],
   ["Next.js", "FRAMEWORK"],

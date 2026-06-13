@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { RemoteType, SkillCategory } from "@prisma/client";
-import { PAGE_SIZE, PREFECTURES } from "@/lib/constants";
+import { PAGE_SIZE, PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 export type ProjectSearchParams = {
   q?: string;
@@ -38,7 +38,7 @@ export function parseProjectSearch(params: ProjectSearchParams) {
   const sort = ["new", "rate", "popular"].includes(params.sort ?? "") ? params.sort! : "new";
   const days = toArray(params.days)
     .map((d) => Number.parseInt(d, 10))
-    .filter((d) => d >= 1 && d <= 5);
+    .filter((d) => (WEEKLY_DAYS_OPTIONS as readonly number[]).includes(d));
   const remote = toArray(params.remote).filter((r): r is RemoteType =>
     (Object.values(RemoteType) as string[]).includes(r),
   );

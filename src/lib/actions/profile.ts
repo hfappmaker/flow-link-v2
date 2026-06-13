@@ -1,84 +1,15 @@
 "use server";
 
-import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { RemoteType, WorkStatus, type Prisma } from "@prisma/client";
+import { RemoteType, WorkStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
 import { PREFECTURES } from "@/lib/constants";
-import {
-  removeProfileDocumentFile,
-  saveProfileDocumentFile,
-} from "@/lib/profile-documents";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
-
-const MAX_PROFILE_DOCUMENT_BYTES = 5 * 1024 * 1024;
-const PROFILE_DOCUMENT_EXTENSIONS = new Map([
-  [".pdf", "application/pdf"],
-  [".doc", "application/msword"],
-  [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-  [".xls", "application/vnd.ms-excel"],
-  [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-]);
-
-type SavedProfileDocument = {
-  fileName: string;
-  filePath: string;
-  uploadedAt: Date;
-};
-
-function isUploadedFile(value: FormDataEntryValue | null): value is File {
-  return value instanceof File && value.size > 0;
-}
-
-function sanitizeFileName(fileName: string) {
-  const baseName = path.basename(fileName).trim() || "document";
-  return baseName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").slice(0, 120);
-}
-
-async function saveProfileDocument(
-  profileId: string,
-  kind: "resume" | "work-history",
-  value: FormDataEntryValue | null,
-): Promise<SavedProfileDocument | { error: string } | null> {
-  if (!isUploadedFile(value)) return null;
-
-  if (value.size > MAX_PROFILE_DOCUMENT_BYTES) {
-    return { error: "アップロードできるファイルサイズは5MBまでです" };
-  }
-
-  const originalName = sanitizeFileName(value.name);
-  const ext = path.extname(originalName).toLowerCase();
-  const expectedType = PROFILE_DOCUMENT_EXTENSIONS.get(ext);
-  if (!expectedType) {
-    return { error: "アップロードできるファイル形式はPDF、DOC、DOCX、XLS、XLSXです" };
-  }
-  if (value.type && value.type !== expectedType && value.type !== "application/octet-stream") {
-    return { error: "ファイル形式と拡張子が一致していません" };
-  }
-
-  const filePath = await saveProfileDocumentFile({
-    profileId,
-    kind,
-    ext,
-    file: value,
-    contentType: expectedType,
-  });
-
-  return {
-    fileName: originalName,
-    filePath,
-    uploadedAt: new Date(),
-  };
-}
-
-async function removeStoredFile(filePath: string | null | undefined) {
-  await removeProfileDocumentFile(filePath);
-}
 
 function parseCustomSkillNames(value: string | undefined) {
   if (!value) return { names: [] as string[] };
@@ -111,7 +42,7 @@ const engineerProfileSchema = z.object({
   yearsOfExperience: z.coerce.number().int().min(0).max(60).optional(),
   desiredRateMin: z.coerce.number().int().min(0).optional(),
   desiredRateMax: z.coerce.number().int().min(0).optional(),
-  desiredWeeklyDays: z.coerce.number().int().min(1).max(5).optional(),
+  desiredWeeklyDays: z.coerce.number().int().min(1).max(7).optional(),
   remotePreference: z.enum(RemoteType).optional(),
   workStatus: z.enum(WorkStatus),
   githubUrl: z.union([z.url(), z.literal("")]).optional(),
@@ -147,94 +78,46 @@ export async function updateEngineerProfile(
   const customSkills = parseCustomSkillNames(parsed.data.customSkills);
   if (customSkills.error) return { error: customSkills.error };
 
-  const resumeDocument = await saveProfileDocument(profile.id, "resume", formData.get("resumeFile"));
-  if (resumeDocument && "error" in resumeDocument) return { error: resumeDocument.error };
-  const workHistoryDocument = await saveProfileDocument(profile.id, "work-history", formData.get("workHistoryFile"));
-  if (workHistoryDocument && "error" in workHistoryDocument) {
-    await removeStoredFile(resumeDocument?.filePath);
-    return { error: workHistoryDocument.error };
-  }
-
-  const removeResumeFile = formData.get("removeResumeFile") === "on";
-  const removeWorkHistoryFile = formData.get("removeWorkHistoryFile") === "on";
-  const documentData: Prisma.EngineerProfileUpdateInput = {};
-
-  if (resumeDocument) {
-    documentData.resumeFileName = resumeDocument.fileName;
-    documentData.resumeFilePath = resumeDocument.filePath;
-    documentData.resumeUploadedAt = resumeDocument.uploadedAt;
-  } else if (removeResumeFile) {
-    documentData.resumeFileName = null;
-    documentData.resumeFilePath = null;
-    documentData.resumeUploadedAt = null;
-  }
-
-  if (workHistoryDocument) {
-    documentData.workHistoryFileName = workHistoryDocument.fileName;
-    documentData.workHistoryFilePath = workHistoryDocument.filePath;
-    documentData.workHistoryUploadedAt = workHistoryDocument.uploadedAt;
-  } else if (removeWorkHistoryFile) {
-    documentData.workHistoryFileName = null;
-    documentData.workHistoryFilePath = null;
-    documentData.workHistoryUploadedAt = null;
-  }
-
   const selectedSkillIds = [...new Set(formData.getAll("skills").map(String).filter(Boolean))];
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      const customSkillIds = await Promise.all(
-        customSkills.names.map((name) =>
-          tx.skill.upsert({
-            where: { name },
-            update: {},
-            create: { name, category: "OTHER" },
-            select: { id: true },
-          }),
-        ),
-      );
-      const skillIds = [...new Set([...selectedSkillIds, ...customSkillIds.map((skill) => skill.id)])];
+  await prisma.$transaction(async (tx) => {
+    const customSkillIds = await Promise.all(
+      customSkills.names.map((name) =>
+        tx.skill.upsert({
+          where: { name },
+          update: {},
+          create: { name, category: "OTHER" },
+          select: { id: true },
+        }),
+      ),
+    );
+    const skillIds = [...new Set([...selectedSkillIds, ...customSkillIds.map((skill) => skill.id)])];
 
-      await tx.engineerProfile.update({
-        where: { id: profile.id },
-        data: {
-          displayName: parsed.data.displayName,
-          title: parsed.data.title,
-          bio: parsed.data.bio ?? null,
-          location: parsed.data.location ?? null,
-          yearsOfExperience: parsed.data.yearsOfExperience ?? null,
-          desiredRateMin: parsed.data.desiredRateMin ?? null,
-          desiredRateMax: parsed.data.desiredRateMax ?? null,
-          desiredWeeklyDays: parsed.data.desiredWeeklyDays ?? null,
-          remotePreference: parsed.data.remotePreference ?? null,
-          workStatus: parsed.data.workStatus,
-          githubUrl: parsed.data.githubUrl || null,
-          portfolioUrl: parsed.data.portfolioUrl || null,
-          isPublic: formData.get("isPublic") === "on",
-          ...documentData,
-        },
-      });
-      await tx.engineerSkill.deleteMany({ where: { engineerProfileId: profile.id } });
-      if (skillIds.length > 0) {
-        await tx.engineerSkill.createMany({
-          data: skillIds.map((skillId) => ({ engineerProfileId: profile.id, skillId })),
-        });
-      }
+    await tx.engineerProfile.update({
+      where: { id: profile.id },
+      data: {
+        displayName: parsed.data.displayName,
+        title: parsed.data.title,
+        bio: parsed.data.bio ?? null,
+        location: parsed.data.location ?? null,
+        yearsOfExperience: parsed.data.yearsOfExperience ?? null,
+        desiredRateMin: parsed.data.desiredRateMin ?? null,
+        desiredRateMax: parsed.data.desiredRateMax ?? null,
+        desiredWeeklyDays: parsed.data.desiredWeeklyDays ?? null,
+        remotePreference: parsed.data.remotePreference ?? null,
+        workStatus: parsed.data.workStatus,
+        githubUrl: parsed.data.githubUrl || null,
+        portfolioUrl: parsed.data.portfolioUrl || null,
+        isPublic: formData.get("isPublic") === "on",
+      },
     });
-  } catch (error) {
-    await Promise.all([
-      removeStoredFile(resumeDocument?.filePath),
-      removeStoredFile(workHistoryDocument?.filePath),
-    ]);
-    throw error;
-  }
-
-  await Promise.all([
-    resumeDocument || removeResumeFile ? removeStoredFile(profile.resumeFilePath) : Promise.resolve(),
-    workHistoryDocument || removeWorkHistoryFile
-      ? removeStoredFile(profile.workHistoryFilePath)
-      : Promise.resolve(),
-  ]);
+    await tx.engineerSkill.deleteMany({ where: { engineerProfileId: profile.id } });
+    if (skillIds.length > 0) {
+      await tx.engineerSkill.createMany({
+        data: skillIds.map((skillId) => ({ engineerProfileId: profile.id, skillId })),
+      });
+    }
+  });
 
   revalidatePath("/settings/profile");
   revalidatePath("/company/engineers");

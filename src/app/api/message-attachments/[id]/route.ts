@@ -2,7 +2,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { readProfileDocumentFile } from "@/lib/profile-documents";
+import { readStoredFile } from "@/lib/uploaded-files";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -46,7 +46,7 @@ export async function GET(
   }
 
   try {
-    const file = await readProfileDocumentFile(attachment.filePath);
+    const file = await readStoredFile(attachment.filePath);
     if (!file) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const ext = path.extname(attachment.fileName).toLowerCase();
     return new Response(file, {
