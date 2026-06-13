@@ -24,7 +24,6 @@ export default async function ConversationPage({
   if (!conversation) notFound();
 
   const isCompany = user.companyMember?.companyId === conversation.companyId;
-  const realtimeEnabled = Boolean(process.env.ABLY_API_KEY);
   const counterpartName = isCompany
     ? (conversation.engineer.engineerProfile?.displayName ?? conversation.engineer.name ?? "エンジニア")
     : conversation.company.name;
@@ -70,12 +69,7 @@ export default async function ConversationPage({
       </div>
 
       <div className="min-h-0 flex-1">
-        <ChatRoom
-          conversationId={conversation.id}
-          currentUserId={user.id}
-          isCompanyViewer={isCompany}
-          realtimeEnabled={realtimeEnabled}
-        />
+        <ChatRoom conversationId={conversation.id} currentUserId={user.id} isCompanyViewer={isCompany} />
       </div>
     </div>
   );
