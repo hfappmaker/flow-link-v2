@@ -158,8 +158,15 @@ export function ProjectFilters({
   parsed: ParsedProjectSearch;
   action?: string;
 }) {
+  const [searching, setSearching] = useState(false);
+  const parsedKey = JSON.stringify(parsed);
+
+  useEffect(() => {
+    setSearching(false);
+  }, [parsedKey]);
+
   return (
-    <form method="get" action={action} className="space-y-4">
+    <form method="get" action={action} onSubmit={() => setSearching(true)} className="space-y-4">
       <FilterSection title="フリーワード">
         <Input name="q" defaultValue={parsed.q ?? ""} placeholder="キーワードで検索" />
       </FilterSection>
@@ -295,9 +302,11 @@ export function ProjectFilters({
       <div className="flex items-center gap-3 pt-1">
         <button
           type="submit"
-          className="h-10 flex-1 rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          disabled={searching}
+          aria-label={searching ? "検索中" : "この条件で検索"}
+          className="h-10 flex-1 rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-blue-300"
         >
-          この条件で検索
+          {searching ? "検索中..." : "この条件で検索"}
         </button>
         <Link href={action} className="text-xs text-slate-500 hover:text-slate-700 hover:underline">
           クリア
