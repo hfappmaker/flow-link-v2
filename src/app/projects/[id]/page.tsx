@@ -101,6 +101,10 @@ export default async function ProjectDetailPage({
         <p className="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-500">
           この案件は募集を終了しました
         </p>
+      ) : user && !isEngineer ? (
+        <p className="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-500">
+          応募はエンジニアアカウントで利用できます
+        </p>
       ) : application ? (
         <>
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-sm font-semibold text-emerald-700">
@@ -120,7 +124,12 @@ export default async function ProjectDetailPage({
           この案件に応募する
         </Link>
       )}
-      <SaveButton projectId={project.id} saved={Boolean(saved)} isEngineer={isEngineer} />
+      <SaveButton
+        projectId={project.id}
+        saved={Boolean(saved)}
+        isEngineer={isEngineer}
+        isLoggedIn={Boolean(user)}
+      />
       {!user ? (
         <p className="text-center text-xs text-slate-400">応募にはログインが必要です</p>
       ) : null}
