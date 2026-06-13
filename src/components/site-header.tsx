@@ -3,8 +3,8 @@ import { MessageSquare, Zap } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { getUnreadMessageCount } from "@/lib/messages";
 import { signOut } from "@/auth";
-import { Avatar } from "@/components/ui/avatar";
 import { buttonClasses } from "@/components/ui/button";
+import { UserMenu } from "@/components/user-menu";
 
 const engineerNav = [
   { href: "/dashboard", label: "マイページ" },
@@ -74,45 +74,37 @@ export async function SiteHeader() {
                 ) : null}
               </Link>
 
-              <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100">
-                  <Avatar name={displayName ?? user.name} image={user.image} size="sm" />
-                  <span className="hidden max-w-32 truncate text-sm font-medium text-slate-700 sm:block">
-                    {displayName ?? user.name ?? "ユーザー"}
-                  </span>
-                </summary>
-                <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-                  <p className="truncate px-3 py-2 text-xs text-slate-500">{user.email}</p>
-                  {nav.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 md:hidden"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+              <UserMenu displayName={displayName} userName={user.name} image={user.image}>
+                <p className="truncate px-3 py-2 text-xs text-slate-500">{user.email}</p>
+                {nav.map((item) => (
                   <Link
-                    href={settingsHref}
-                    className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    key={item.href}
+                    href={item.href}
+                    className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 md:hidden"
                   >
-                    {user.role === "COMPANY" ? "企業情報設定" : "プロフィール設定"}
+                    {item.label}
                   </Link>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await signOut({ redirectTo: "/" });
-                    }}
+                ))}
+                <Link
+                  href={settingsHref}
+                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  {user.role === "COMPANY" ? "企業情報設定" : "プロフィール設定"}
+                </Link>
+                <form
+                  action={async () => {
+                    "use server";
+                    await signOut({ redirectTo: "/" });
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                   >
-                    <button
-                      type="submit"
-                      className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                    >
-                      ログアウト
-                    </button>
-                  </form>
-                </div>
-              </details>
+                    ログアウト
+                  </button>
+                </form>
+              </UserMenu>
             </>
           ) : (
             <>
