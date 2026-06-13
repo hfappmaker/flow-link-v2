@@ -43,7 +43,8 @@ export async function GET(
   if (!profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const isOwner = user.engineerProfile?.id === profile.id;
-  if (!isOwner) {
+  const isCompanyViewer = Boolean(user.companyMember && profile.isPublic);
+  if (!isOwner && !isCompanyViewer) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

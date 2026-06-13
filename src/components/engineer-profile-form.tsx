@@ -288,6 +288,9 @@ export function EngineerProfileForm({
 
       <section className="space-y-4">
         <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">添付書類</h2>
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+          履歴書・職務経歴書は、プロフィールを公開している場合に企業へ表示されます。氏名、連絡先、勤務先、機密情報など、開示したくない情報が含まれていないか確認してください。
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <DocumentUploadField
             label="履歴書"
