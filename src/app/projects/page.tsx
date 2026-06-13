@@ -20,7 +20,6 @@ export const metadata: Metadata = { title: "案件検索" };
 const SORT_OPTIONS = [
   { value: "new", label: "新着順" },
   { value: "rate", label: "単価順" },
-  { value: "popular", label: "人気順" },
 ];
 
 export default async function ProjectsPage({

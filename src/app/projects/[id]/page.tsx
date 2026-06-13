@@ -72,7 +72,7 @@ export default async function ProjectDetailPage({
   });
   if (!project || project.status === "DRAFT") notFound();
 
-  // 閲覧数をカウント（人気順ソートに使用）
+  // 閲覧数をカウント
   await prisma.project.update({ where: { id }, data: { viewCount: { increment: 1 } } });
 
   const isEngineer = Boolean(user?.engineerProfile);

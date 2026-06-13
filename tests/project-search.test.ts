@@ -118,14 +118,11 @@ describe("project search helpers", () => {
 
   it("builds order clauses for all supported sorts", () => {
     assert.deepEqual(buildProjectOrderBy("new"), [{ publishedAt: "desc" }]);
-    assert.deepEqual(buildProjectOrderBy("popular"), [
-      { viewCount: "desc" },
-      { publishedAt: "desc" },
-    ]);
     assert.deepEqual(buildProjectOrderBy("rate"), [
       { rateMax: { sort: "desc", nulls: "last" } },
       { publishedAt: "desc" },
     ]);
+    assert.deepEqual(buildProjectOrderBy("unknown"), [{ publishedAt: "desc" }]);
   });
 
   it("serializes parsed params, omitting default sort and page", () => {

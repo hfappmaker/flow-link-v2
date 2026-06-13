@@ -35,7 +35,7 @@ const toTagArray = (v: string | string[] | undefined): string[] => [
 
 export function parseProjectSearch(params: ProjectSearchParams) {
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
-  const sort = ["new", "rate", "popular"].includes(params.sort ?? "") ? params.sort! : "new";
+  const sort = ["new", "rate"].includes(params.sort ?? "") ? params.sort! : "new";
   const days = toArray(params.days)
     .map((d) => Number.parseInt(d, 10))
     .filter((d) => (WEEKLY_DAYS_OPTIONS as readonly number[]).includes(d));
@@ -141,9 +141,6 @@ export function buildProjectOrderBy(
 ): Prisma.ProjectOrderByWithRelationInput[] {
   if (sort === "rate") {
     return [{ rateMax: { sort: "desc", nulls: "last" } }, { publishedAt: "desc" }];
-  }
-  if (sort === "popular") {
-    return [{ viewCount: "desc" }, { publishedAt: "desc" }];
   }
   return [{ publishedAt: "desc" }];
 }
