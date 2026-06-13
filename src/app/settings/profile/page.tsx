@@ -9,13 +9,11 @@ export const metadata: Metadata = { title: "プロフィール設定" };
 export default async function ProfileSettingsPage() {
   const { profile } = await requireEngineer();
 
-  const [skills, selected] = await Promise.all([
-    prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] }),
-    prisma.engineerSkill.findMany({
-      where: { engineerProfileId: profile.id },
-      select: { skillId: true },
-    }),
-  ]);
+  const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
+  const selected = await prisma.engineerSkill.findMany({
+    where: { engineerProfileId: profile.id },
+    select: { skillId: true },
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">

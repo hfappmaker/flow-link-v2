@@ -6,24 +6,19 @@ import { ProjectCard } from "@/components/project-card";
 import { buttonClasses } from "@/components/ui/button";
 
 export default async function HomePage() {
-  const [user, latestProjects, stats] = await Promise.all([
-    getCurrentUser(),
-    prisma.project.findMany({
-      where: { status: "OPEN" },
-      orderBy: { publishedAt: "desc" },
-      take: 4,
-      include: {
-        company: { select: { name: true } },
-        skills: { include: { skill: true } },
-      },
-    }),
-    Promise.all([
-      prisma.project.count({ where: { status: "OPEN" } }),
-      prisma.engineerProfile.count({ where: { isPublic: true } }),
-      prisma.company.count(),
-    ]),
-  ]);
-  const [projectCount, engineerCount, companyCount] = stats;
+  const user = await getCurrentUser();
+  const latestProjects = await prisma.project.findMany({
+    where: { status: "OPEN" },
+    orderBy: { publishedAt: "desc" },
+    take: 4,
+    include: {
+      company: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
+  });
+  const projectCount = await prisma.project.count({ where: { status: "OPEN" } });
+  const engineerCount = await prisma.engineerProfile.count({ where: { isPublic: true } });
+  const companyCount = await prisma.company.count();
 
   const engineerSteps = [
     { icon: Search, title: "案件を探す", body: "スキル・単価・稼働日数・リモート頻度などの条件で、あなたに合う案件を検索。" },

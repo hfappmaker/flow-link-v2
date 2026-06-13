@@ -44,17 +44,15 @@ export default async function EngineerSearchPage({
   const parsed = parseEngineerSearch(params);
   const where = buildEngineerWhere(parsed);
 
-  const [total, engineers, skills] = await Promise.all([
-    prisma.engineerProfile.count({ where }),
-    prisma.engineerProfile.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      skip: (parsed.page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: { skills: { include: { skill: true } } },
-    }),
-    prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] }),
-  ]);
+  const total = await prisma.engineerProfile.count({ where });
+  const engineers = await prisma.engineerProfile.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+    skip: (parsed.page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+    include: { skills: { include: { skill: true } } },
+  });
+  const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 

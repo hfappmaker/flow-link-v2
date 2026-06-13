@@ -21,33 +21,30 @@ export default async function DashboardPage() {
     })
   ).map((s) => s.skillId);
 
-  const [activeApplications, pendingScouts, savedCount, unread, recentScouts, recommended] =
-    await Promise.all([
-      prisma.application.count({
-        where: { engineerUserId: user.id, status: { in: ["APPLIED", "SCREENING", "INTERVIEW", "OFFERED"] } },
-      }),
-      prisma.scout.count({ where: { engineerUserId: user.id, status: "SENT" } }),
-      prisma.savedProject.count({ where: { userId: user.id } }),
-      getUnreadMessageCount(user),
-      prisma.scout.findMany({
-        where: { engineerUserId: user.id },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-        include: { company: true },
-      }),
-      prisma.project.findMany({
-        where: {
-          status: "OPEN",
-          ...(skillIds.length > 0 ? { skills: { some: { skillId: { in: skillIds } } } } : {}),
-        },
-        orderBy: { publishedAt: "desc" },
-        take: 4,
-        include: {
-          company: { select: { name: true } },
-          skills: { include: { skill: true } },
-        },
-      }),
-    ]);
+  const activeApplications = await prisma.application.count({
+    where: { engineerUserId: user.id, status: { in: ["APPLIED", "SCREENING", "INTERVIEW", "OFFERED"] } },
+  });
+  const pendingScouts = await prisma.scout.count({ where: { engineerUserId: user.id, status: "SENT" } });
+  const savedCount = await prisma.savedProject.count({ where: { userId: user.id } });
+  const unread = await getUnreadMessageCount(user);
+  const recentScouts = await prisma.scout.findMany({
+    where: { engineerUserId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    include: { company: true },
+  });
+  const recommended = await prisma.project.findMany({
+    where: {
+      status: "OPEN",
+      ...(skillIds.length > 0 ? { skills: { some: { skillId: { in: skillIds } } } } : {}),
+    },
+    orderBy: { publishedAt: "desc" },
+    take: 4,
+    include: {
+      company: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
+  });
 
   const stats = [
     { label: "選考中の応募", value: activeApplications, href: "/applications", icon: FileText },

@@ -76,17 +76,17 @@ export default async function ProjectDetailPage({
   await prisma.project.update({ where: { id }, data: { viewCount: { increment: 1 } } });
 
   const isEngineer = Boolean(user?.engineerProfile);
-  const [application, saved] = isEngineer
-    ? await Promise.all([
-        prisma.application.findUnique({
-          where: { projectId_engineerUserId: { projectId: id, engineerUserId: user!.id } },
-          include: { conversation: { select: { id: true } } },
-        }),
-        prisma.savedProject.findUnique({
-          where: { userId_projectId: { userId: user!.id, projectId: id } },
-        }),
-      ])
-    : [null, null];
+  const application = isEngineer
+    ? await prisma.application.findUnique({
+        where: { projectId_engineerUserId: { projectId: id, engineerUserId: user!.id } },
+        include: { conversation: { select: { id: true } } },
+      })
+    : null;
+  const saved = isEngineer
+    ? await prisma.savedProject.findUnique({
+        where: { userId_projectId: { userId: user!.id, projectId: id } },
+      })
+    : null;
 
   const isOpen = project.status === "OPEN";
   const locationLabel = formatProjectLocation(project.location, project.prefecture);

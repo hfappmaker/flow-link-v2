@@ -32,21 +32,19 @@ export default async function ProjectsPage({
   const parsed = parseProjectSearch(params);
   const where = buildProjectWhere(parsed);
 
-  const [total, projects, languages, otherSkills] = await Promise.all([
-    prisma.project.count({ where }),
-    prisma.project.findMany({
-      where,
-      orderBy: buildProjectOrderBy(parsed.sort),
-      skip: (parsed.page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: {
-        company: { select: { name: true } },
-        skills: { include: { skill: true } },
-      },
-    }),
-    prisma.skill.findMany({ where: { category: "LANGUAGE" }, orderBy: { name: "asc" } }),
-    prisma.skill.findMany({ where: { category: { not: "LANGUAGE" } }, orderBy: { name: "asc" } }),
-  ]);
+  const total = await prisma.project.count({ where });
+  const projects = await prisma.project.findMany({
+    where,
+    orderBy: buildProjectOrderBy(parsed.sort),
+    skip: (parsed.page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+    include: {
+      company: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
+  });
+  const languages = await prisma.skill.findMany({ where: { category: "LANGUAGE" }, orderBy: { name: "asc" } });
+  const otherSkills = await prisma.skill.findMany({ where: { category: { not: "LANGUAGE" } }, orderBy: { name: "asc" } });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const skillHighlight = {

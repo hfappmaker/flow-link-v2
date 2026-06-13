@@ -32,18 +32,16 @@ export default async function EngineerDetailPage({
   });
   if (!profile) notFound();
 
-  const [openProjects, previousScouts] = await Promise.all([
-    prisma.project.findMany({
-      where: { companyId: company.id, status: "OPEN" },
-      select: { id: true, title: true },
-      orderBy: { publishedAt: "desc" },
-    }),
-    prisma.scout.findMany({
-      where: { companyId: company.id, engineerUserId: profile.userId },
-      orderBy: { createdAt: "desc" },
-      include: { conversation: { select: { id: true } } },
-    }),
-  ]);
+  const openProjects = await prisma.project.findMany({
+    where: { companyId: company.id, status: "OPEN" },
+    select: { id: true, title: true },
+    orderBy: { publishedAt: "desc" },
+  });
+  const previousScouts = await prisma.scout.findMany({
+    where: { companyId: company.id, engineerUserId: profile.userId },
+    orderBy: { createdAt: "desc" },
+    include: { conversation: { select: { id: true } } },
+  });
 
   const conditions = [
     profile.desiredRateMin || profile.desiredRateMax
