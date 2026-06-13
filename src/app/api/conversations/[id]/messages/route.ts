@@ -3,8 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { getConversationForUser } from "@/lib/messages";
-import { getAblyRest } from "@/lib/ably";
-import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
 import { getAttachmentLabel, type MessageAttachmentPayload } from "@/lib/message-attachments";
 import {
   isAllowedMessageAttachmentFile,
@@ -182,31 +180,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }),
     ]);
 
-    const senderIsCompany = user.companyMember?.companyId === conversation.companyId;
     const payload: ChatMessage = {
       id: message.id,
       body: message.body,
       attachments: message.attachments.map(toAttachmentPayload),
-      senderName: senderIsCompany
+      senderName: user.companyMember?.companyId === conversation.companyId
         ? conversation.company.name
         : (user.engineerProfile?.displayName ?? user.name ?? "ユーザー"),
       mine: true,
       createdAt: message.createdAt.toISOString(),
     };
-
-    const ably = getAblyRest();
-    if (ably) {
-      const channel = ably.channels.get(getConversationChannelName(conversation.id));
-      try {
-        await channel.publish(CHAT_MESSAGE_CREATED_EVENT, {
-          ...payload,
-          senderId: user.id,
-          senderIsCompany,
-        });
-      } catch (error) {
-        console.error("Failed to publish chat message to Ably", error);
-      }
-    }
 
     return NextResponse.json({ message: payload }, { status: 201 });
   } catch (error) {

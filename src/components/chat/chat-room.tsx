@@ -2,12 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Realtime } from "ably";
 import useSWR from "swr";
 import { FileText, Paperclip, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
 import type { MessageAttachmentPayload } from "@/lib/message-attachments";
 import {
   MESSAGE_ATTACHMENT_ACCEPT,
@@ -22,11 +20,6 @@ type ChatMessage = {
   mine: boolean;
   createdAt: string;
   attachments: MessageAttachmentPayload[];
-};
-
-type RealtimeChatMessage = Omit<ChatMessage, "mine"> & {
-  senderId: string;
-  senderIsCompany: boolean;
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -86,8 +79,6 @@ function MessageBody({ body, mine }: { body: string; mine: boolean }) {
 
 export function ChatRoom({
   conversationId,
-  currentUserId,
-  isCompanyViewer,
 }: {
   conversationId: string;
   currentUserId: string;
@@ -98,12 +89,11 @@ export function ChatRoom({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [realtimeUnavailable, setRealtimeUnavailable] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data, mutate, isLoading } = useSWR<{ messages: ChatMessage[] }>(
     `/api/conversations/${conversationId}/messages`,
     fetcher,
-    { refreshInterval: realtimeUnavailable ? 4000 : 0 },
+    { refreshInterval: 4000 },
   );
   const bottomRef = useRef<HTMLDivElement>(null);
   const refreshedConversationRef = useRef<string | null>(null);
@@ -122,58 +112,9 @@ export function ChatRoom({
   }, [conversationId, data, isLoading, router]);
 
   useEffect(() => {
-    setRealtimeUnavailable(false);
     refreshedConversationRef.current = null;
-
-    const ably = new Realtime({
-      authUrl: `/api/ably/auth?conversationId=${encodeURIComponent(conversationId)}`,
-      authMethod: "GET",
-    });
-    const channel = ably.channels.get(getConversationChannelName(conversationId));
-    let closed = false;
-
-    void channel.subscribe(CHAT_MESSAGE_CREATED_EVENT, (message) => {
-      const incoming = message.data as RealtimeChatMessage;
-      const chatMessage: ChatMessage = {
-        id: incoming.id,
-        body: incoming.body,
-        attachments: incoming.attachments ?? [],
-        senderName: incoming.senderName,
-        createdAt: incoming.createdAt,
-        mine: isCompanyViewer ? incoming.senderIsCompany : incoming.senderId === currentUserId,
-      };
-
-      void mutate((current) => {
-        const existing = current?.messages ?? [];
-        if (existing.some((m) => m.id === chatMessage.id)) return current;
-        return { messages: [...existing, chatMessage] };
-      }, { revalidate: false });
-
-      if (!chatMessage.mine) {
-        void mutate().then(() => {
-          router.refresh();
-        });
-      }
-    }).catch(() => {
-      if (!closed) {
-        setRealtimeUnavailable(true);
-        void mutate();
-      }
-    });
-
-    ably.connection.on("failed", () => {
-      if (!closed) {
-        setRealtimeUnavailable(true);
-        void mutate();
-      }
-    });
-
-    return () => {
-      closed = true;
-      channel.unsubscribe();
-      ably.close();
-    };
-  }, [conversationId, currentUserId, isCompanyViewer, mutate, router]);
+    void mutate();
+  }, [conversationId, mutate]);
 
   function addFiles(files: FileList | null) {
     if (!files) return;
@@ -234,6 +175,7 @@ export function ChatRoom({
       } else {
         await mutate();
       }
+      router.refresh();
     } catch {
       setDraft(body);
       setSelectedFiles(files);
