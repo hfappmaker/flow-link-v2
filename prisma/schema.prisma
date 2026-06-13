@@ -136,7 +136,7 @@ model EngineerProfile {
   workStatus        WorkStatus  @default(OPEN_TO_OFFERS)
   githubUrl         String?
   portfolioUrl      String?
-  isPublic          Boolean     @default(true) // 企業からの検索・スカウトを許可
+  isPublic          Boolean     @default(false) // 企業からの検索・スカウトを許可
 
   skills        EngineerSkill[]
   workHistories WorkHistory[]

@@ -47,6 +47,7 @@ export async function completeEngineerOnboarding(
         title: parsed.data.title,
         location: parsed.data.location,
         yearsOfExperience: parsed.data.yearsOfExperience,
+        isPublic: false,
         skills: { create: skillIds.map((skillId) => ({ skillId })) },
       },
     }),
