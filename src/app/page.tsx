@@ -17,7 +17,11 @@ export default async function HomePage() {
     },
   });
   const projectCount = await prisma.project.count({ where: { status: "OPEN" } });
-  const engineerCount = await prisma.engineerProfile.count({ where: { isPublic: true } });
+  const engineerCount = await prisma.engineerProfile.count({
+    where: {
+      user: { deletedAt: null },
+    },
+  });
   const companyCount = await prisma.company.count({
     where: {
       members: {
