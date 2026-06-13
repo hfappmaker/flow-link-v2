@@ -1,0 +1,116 @@
+
+> flow-link@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.5.19 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.120.86:3000
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1202ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.3s
+ GET / 200 in 4412ms
+ GET / 200 in 510ms
+ ✓ Compiled in 136ms
+ ✓ Compiled / in 86ms
+ GET / 200 in 656ms
+ ✓ Compiled /projects in 420ms
+ GET /projects 200 in 968ms
+ ✓ Compiled /login in 421ms
+ GET /login 200 in 624ms
+ ✓ Compiled /register in 397ms
+ GET /register 200 in 583ms
+ ✓ Compiled /forgot-password in 372ms
+ GET /forgot-password 200 in 622ms
+ ✓ Compiled /reset-password in 444ms
+ GET /reset-password 200 in 649ms
+ ✓ Compiled /verify-email in 224ms
+ GET /verify-email?token=bad 307 in 527ms
+ GET /login?verified=invalid 200 in 208ms
+ ✓ Compiled /dashboard in 418ms
+ GET /dashboard 200 in 619ms
+ GET /login 200 in 243ms
+ ✓ Compiled /applications in 465ms
+ GET /applications 200 in 678ms
+ GET /login 200 in 239ms
+ ✓ Compiled /saved in 360ms
+ GET /saved 200 in 566ms
+ GET /login 200 in 221ms
+ ✓ Compiled /scouts in 385ms
+ GET /scouts 200 in 583ms
+ GET /login 200 in 233ms
+ ○ Compiling /settings/profile ...
+ ✓ Compiled /settings/profile in 635ms
+ GET /settings/profile 200 in 901ms
+ GET /login 200 in 512ms
+ ○ Compiling /company ...
+ ✓ Compiled /company in 674ms
+ GET /company 200 in 1070ms
+ GET /login 200 in 366ms
+ ○ Compiling /company/projects ...
+ ✓ Compiled /company/projects in 625ms
+ GET /company/projects 200 in 980ms
+ GET /login 200 in 341ms
+ ○ Compiling /company/projects/new ...
+ ✓ Compiled /company/projects/new in 757ms
+ GET /company/projects/new 200 in 1048ms
+ GET /login 200 in 294ms
+ ✓ Compiled /company/engineers in 438ms
+ GET /company/engineers 200 in 664ms
+ GET /login 200 in 231ms
+ ✓ Compiled /company/scouts in 327ms
+ GET /company/scouts 200 in 534ms
+ GET /login 200 in 244ms
+ ○ Compiling /company/settings ...
+ ✓ Compiled /company/settings in 800ms
+ GET /company/settings 200 in 1147ms
+ GET /login 200 in 401ms
+ ✓ Compiled /messages in 416ms
+ GET /messages 200 in 633ms
+ GET /login 200 in 258ms
+ ✓ Compiled /onboarding in 418ms
+ GET /onboarding 200 in 649ms
+ GET /login 200 in 223ms
+ ✓ Compiled in 247ms
+ GET /login 200 in 179ms
+ GET /login 200 in 142ms
+ GET /login 200 in 216ms
+ GET /login 200 in 214ms
+ GET /login 200 in 175ms
+ GET /login 200 in 161ms
+ GET /login 200 in 159ms
+ GET /login 200 in 156ms
+ GET /login 200 in 161ms
+ GET /login 200 in 161ms
+ GET /login 200 in 142ms
+ GET /login 200 in 158ms
+ GET /login 200 in 216ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 562ms
+ ✓ Compiled /dashboard in 103ms
+ GET /api/auth/providers 200 in 1644ms
+ GET /dashboard 200 in 494ms
+ GET /login 200 in 284ms
+ ✓ Compiled /projects in 113ms
+ GET /projects?langText=TypeScript&skillText=AWS 200 in 496ms
+ ✓ Compiled /saved in 59ms
+ GET /saved 200 in 342ms
+ GET /login 200 in 220ms
+ ✓ Compiled /applications in 81ms
+ GET /applications 200 in 359ms
+ GET /login 200 in 210ms
+ ✓ Compiled /scouts in 71ms
+ GET /scouts 200 in 424ms
+ GET /login 200 in 202ms
+ ✓ Compiled /messages in 60ms
+ GET /messages 200 in 322ms
+ GET /login 200 in 218ms
+ GET /settings/profile 200 in 226ms
+ GET /login 200 in 198ms
+ ✓ Compiled /projects/[id] in 343ms
+ GET /projects/cmqb19ple001t7k3oo20bcptd 200 in 1222ms
+ ✓ Compiled /projects/[id]/apply in 414ms
+ GET /projects/cmqb19ple001t7k3oo20bcptd/apply 200 in 1127ms
+ GET /login 200 in 236ms
