@@ -23,7 +23,7 @@ export function SiteFooter() {
             プライバシーポリシー
           </Link>
         </nav>
-        <p className="text-xs">© 2026 FlowLink</p>
+        <p className="text-xs">© 2026 Flow Link</p>
       </div>
     </footer>
   );
