@@ -73,10 +73,12 @@ export function ChatRoom({
   conversationId,
   currentUserId,
   isCompanyViewer,
+  realtimeEnabled,
 }: {
   conversationId: string;
   currentUserId: string;
   isCompanyViewer: boolean;
+  realtimeEnabled: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
@@ -85,7 +87,7 @@ export function ChatRoom({
   const { data, mutate, isLoading } = useSWR<{ messages: ChatMessage[] }>(
     `/api/conversations/${conversationId}/messages`,
     fetcher,
-    { refreshInterval: realtimeUnavailable ? 4000 : 0 },
+    { refreshInterval: !realtimeEnabled || realtimeUnavailable ? 4000 : 0 },
   );
   const bottomRef = useRef<HTMLDivElement>(null);
   const refreshedConversationRef = useRef<string | null>(null);
@@ -104,8 +106,13 @@ export function ChatRoom({
   }, [conversationId, data, isLoading, router]);
 
   useEffect(() => {
-    setRealtimeUnavailable(false);
+    setRealtimeUnavailable(!realtimeEnabled);
     refreshedConversationRef.current = null;
+
+    if (!realtimeEnabled) {
+      void mutate();
+      return;
+    }
 
     const ably = new Realtime({
       authUrl: `/api/ably/auth?conversationId=${encodeURIComponent(conversationId)}`,
@@ -154,7 +161,7 @@ export function ChatRoom({
       channel.unsubscribe();
       ably.close();
     };
-  }, [conversationId, currentUserId, isCompanyViewer, mutate, router]);
+  }, [conversationId, currentUserId, isCompanyViewer, mutate, realtimeEnabled, router]);
 
   async function send() {
     const body = draft.trim();
