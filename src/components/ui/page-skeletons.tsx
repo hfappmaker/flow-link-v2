@@ -1,0 +1,332 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
+export function PageHeaderSkeleton({ action = false }: { action?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <Skeleton className="h-8 w-48 max-w-full" />
+        <Skeleton className="mt-3 h-4 w-80 max-w-full" />
+      </div>
+      {action ? <Skeleton className="h-10 w-36 rounded-lg" /> : null}
+    </div>
+  );
+}
+
+export function StatGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="mt-3 h-8 w-14" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SearchFilterSkeleton() {
+  return (
+    <aside className="w-full shrink-0 lg:w-72">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
+        <Skeleton className="h-5 w-28" />
+        <div className="mt-5 space-y-4">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-7 w-16 rounded-full" />
+            <Skeleton className="h-7 w-20 rounded-full" />
+            <Skeleton className="h-7 w-14 rounded-full" />
+          </div>
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export function ProjectCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <Skeleton className="h-5 w-12 rounded-full" />
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-5 w-20 rounded-full" />
+      </div>
+      <Skeleton className="mt-4 h-5 w-4/5" />
+      <Skeleton className="mt-2 h-5 w-2/3" />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-5 w-20 rounded-full" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-20 rounded-full" />
+        <Skeleton className="h-5 w-14 rounded-full" />
+      </div>
+      <Skeleton className="mt-4 h-4 w-full" />
+      <Skeleton className="mt-2 h-4 w-3/4" />
+      <Skeleton className="mt-5 h-9 w-36 rounded-lg" />
+    </div>
+  );
+}
+
+export function ProjectListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: count }).map((_, index) => (
+        <ProjectCardSkeleton key={index} />
+      ))}
+    </div>
+  );
+}
+
+export function EngineerCardSkeleton() {
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start gap-4">
+        <Skeleton className="h-14 w-14 shrink-0 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <Skeleton className="mt-2 h-3 w-4/5" />
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-5 w-14 rounded-full" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+          </div>
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-2/3" />
+          <Skeleton className="mt-4 h-8 w-40 rounded-lg" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function EngineerListSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: count }).map((_, index) => (
+        <EngineerCardSkeleton key={index} />
+      ))}
+    </div>
+  );
+}
+
+export function DashboardSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <PageHeaderSkeleton />
+      <div className="mt-6">
+        <StatGridSkeleton />
+      </div>
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
+        <section>
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+          <div className="mt-4">
+            <ProjectListSkeleton count={3} />
+          </div>
+        </section>
+        <aside className="space-y-6">
+          <PanelSkeleton rows={3} />
+          <PanelSkeleton rows={4} />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+export function SearchPageSkeleton({ kind }: { kind: "project" | "engineer" }) {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <PageHeaderSkeleton />
+      <div className="mt-6 flex flex-col gap-8 lg:flex-row">
+        <SearchFilterSkeleton />
+        <section className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Skeleton className="h-7 w-32" />
+            {kind === "project" ? <Skeleton className="h-10 w-52 rounded-lg" /> : null}
+          </div>
+          <div className="mt-4">
+            {kind === "project" ? <ProjectListSkeleton /> : <EngineerListSkeleton />}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export function MessageListSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <PageHeaderSkeleton />
+      <div className="mt-6 space-y-2">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-14 rounded-full" />
+              </div>
+              <Skeleton className="mt-2 h-3 w-4/5" />
+              <Skeleton className="mt-2 h-3 w-2/3" />
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-5 w-5 rounded-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ConversationSkeleton() {
+  return (
+    <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-3xl flex-col px-4 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <div className="flex items-center gap-3 border-b border-slate-200 py-3">
+        <Skeleton className="h-9 w-9 rounded-lg" />
+        <Skeleton className="h-10 w-10 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="mt-2 h-3 w-56 max-w-full" />
+        </div>
+        <Skeleton className="h-4 w-24" />
+      </div>
+      <div className="flex-1 space-y-4 overflow-hidden px-4 py-5">
+        <ChatBubbleSkeleton align="start" />
+        <ChatBubbleSkeleton align="end" short />
+        <ChatBubbleSkeleton align="start" withAttachment />
+        <ChatBubbleSkeleton align="end" />
+      </div>
+      <div className="border-t border-slate-200 bg-white p-3">
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <Skeleton className="h-3 w-44 bg-amber-200/70" />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Skeleton className="h-8 w-40 rounded-md bg-amber-200/70" />
+            <Skeleton className="h-8 w-44 rounded-md bg-amber-200/70" />
+          </div>
+        </div>
+        <div className="flex items-end gap-2">
+          <Skeleton className="h-16 flex-1 rounded-lg" />
+          <Skeleton className="h-10 w-20 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatBubbleSkeleton({
+  align,
+  short = false,
+  withAttachment = false,
+}: {
+  align: "start" | "end";
+  short?: boolean;
+  withAttachment?: boolean;
+}) {
+  return (
+    <div className={align === "end" ? "flex flex-col items-end gap-1" : "flex flex-col items-start gap-1"}>
+      <Skeleton className="h-3 w-24" />
+      <div className="w-[75%] max-w-md rounded-2xl border border-slate-200 bg-white px-4 py-3">
+        <Skeleton className={short ? "h-4 w-2/3" : "h-4 w-full"} />
+        {!short ? <Skeleton className="mt-2 h-4 w-4/5" /> : null}
+        {withAttachment ? <Skeleton className="mt-3 h-10 w-full rounded-lg" /> : null}
+      </div>
+    </div>
+  );
+}
+
+export function FormPageSkeleton({ columns = 2 }: { columns?: 1 | 2 }) {
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <PageHeaderSkeleton />
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className={columns === 2 ? "grid gap-4 sm:grid-cols-2" : "space-y-4"}>
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index}>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-10 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="mt-5 h-24 w-full rounded-lg" />
+        <div className="mt-5 flex justify-end">
+          <Skeleton className="h-10 w-32 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function PanelSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <Skeleton className="h-5 w-36" />
+      <div className="mt-4 space-y-3">
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="flex items-center gap-3">
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="mt-2 h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ListPageSkeleton({ variant = "panel" }: { variant?: "panel" | "project" }) {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <PageHeaderSkeleton action={variant === "panel"} />
+      <div className="mt-6">
+        {variant === "project" ? (
+          <ProjectListSkeleton count={4} />
+        ) : (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Skeleton className="h-5 w-48 max-w-full" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <Skeleton className="mt-3 h-4 w-4/5" />
+                    <Skeleton className="mt-2 h-4 w-2/3" />
+                  </div>
+                  <Skeleton className="h-9 w-28 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
