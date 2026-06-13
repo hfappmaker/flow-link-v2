@@ -1,6 +1,10 @@
+"use client";
+
 import type { Skill } from "@prisma/client";
 import Link from "next/link";
-import { Input, Select } from "@/components/ui/form";
+import { useEffect, useId, useState } from "react";
+import { X } from "lucide-react";
+import { FieldHint, Input, Label, Select } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
   PREFECTURES,
@@ -52,6 +56,97 @@ function CheckboxGroup({
   );
 }
 
+function SearchTagInput({
+  name,
+  label,
+  initialTags,
+  placeholder,
+}: {
+  name: string;
+  label: string;
+  initialTags: string[];
+  placeholder: string;
+}) {
+  const inputId = useId();
+  const [inputValue, setInputValue] = useState("");
+  const [tags, setTags] = useState(initialTags);
+  const initialTagsKey = initialTags.join("\n");
+
+  useEffect(() => {
+    setTags(initialTags);
+  }, [initialTagsKey, initialTags]);
+
+  const addTags = (rawValue: string) => {
+    const nextTags = rawValue
+      .split(/[\n,、]/)
+      .map((tag) => tag.trim().replace(/\s+/g, " "))
+      .filter(Boolean);
+
+    if (nextTags.length === 0) return;
+    setTags((current) => [...new Set([...current, ...nextTags])]);
+    setInputValue("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((current) => current.filter((item) => item !== tag));
+  };
+
+  return (
+    <div>
+      <Label htmlFor={inputId}>{label}</Label>
+      {tags.map((tag) => (
+        <input key={tag} type="hidden" name={name} value={tag} />
+      ))}
+      <div className="rounded-lg border border-slate-300 bg-white px-2 py-2 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+        <div className="flex min-h-10 flex-wrap items-center gap-2">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700"
+            >
+              <span className="truncate">{tag}</span>
+              <button
+                type="button"
+                aria-label={`${tag}を削除`}
+                title="削除"
+                onClick={() => removeTag(tag)}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-800"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            id={inputId}
+            value={inputValue}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (/[,、\n]/.test(value)) {
+                addTags(value);
+              } else {
+                setInputValue(value);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addTags(inputValue);
+              }
+              if (event.key === "Backspace" && inputValue === "") {
+                setTags((current) => current.slice(0, -1));
+              }
+            }}
+            onBlur={() => addTags(inputValue)}
+            className="h-8 min-w-24 flex-1 border-0 bg-transparent px-1 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder={tags.length > 0 ? "追加" : placeholder}
+          />
+        </div>
+      </div>
+      <FieldHint>カンマ、読点、Enterでタグ化できます。</FieldHint>
+    </div>
+  );
+}
+
 export function ProjectFilters({
   languages,
   otherSkills,
@@ -79,10 +174,11 @@ export function ProjectFilters({
 
       <FilterSection title="開発言語">
         <div className="space-y-3">
-          <Input
+          <SearchTagInput
             name="langText"
-            defaultValue={parsed.langText ?? ""}
-            placeholder="手入力で検索（例: TypeScript）"
+            label="手入力で検索"
+            initialTags={parsed.langText}
+            placeholder="例: TypeScript, Go"
           />
           <CheckboxGroup
             name="lang"
@@ -94,10 +190,11 @@ export function ProjectFilters({
 
       <FilterSection title="開発スキル">
         <div className="space-y-3">
-          <Input
+          <SearchTagInput
             name="skillText"
-            defaultValue={parsed.skillText ?? ""}
-            placeholder="手入力で検索（例: GraphQL）"
+            label="手入力で検索"
+            initialTags={parsed.skillText}
+            placeholder="例: GraphQL, BigQuery"
           />
           <CheckboxGroup
             name="skill"

@@ -6,9 +6,9 @@ export type ProjectSearchParams = {
   q?: string;
   job?: string | string[];
   lang?: string | string[];
-  langText?: string;
+  langText?: string | string[];
   skill?: string | string[];
-  skillText?: string;
+  skillText?: string | string[];
   prefecture?: string | string[];
   rateMin?: string;
   rateMax?: string;
@@ -23,6 +23,15 @@ export type ParsedProjectSearch = ReturnType<typeof parseProjectSearch>;
 
 const toArray = (v: string | string[] | undefined): string[] =>
   v === undefined ? [] : Array.isArray(v) ? v : [v];
+
+const toTagArray = (v: string | string[] | undefined): string[] => [
+  ...new Set(
+    toArray(v)
+      .flatMap((value) => value.split(/[\n,、]/))
+      .map((value) => value.trim().replace(/\s+/g, " "))
+      .filter(Boolean),
+  ),
+];
 
 export function parseProjectSearch(params: ProjectSearchParams) {
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
@@ -44,9 +53,9 @@ export function parseProjectSearch(params: ProjectSearchParams) {
     q: params.q?.trim() || undefined,
     job: toArray(params.job).filter(Boolean),
     lang: toArray(params.lang).filter(Boolean),
-    langText: params.langText?.trim() || undefined,
+    langText: toTagArray(params.langText),
     skill: toArray(params.skill).filter(Boolean),
-    skillText: params.skillText?.trim() || undefined,
+    skillText: toTagArray(params.skillText),
     prefecture,
     rateMin,
     rateMax,
@@ -77,13 +86,13 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
   if (parsed.lang.length > 0) {
     languageFilters.push({ skills: { some: { skillId: { in: parsed.lang } } } });
   }
-  if (parsed.langText) {
+  for (const langText of parsed.langText) {
     languageFilters.push({
       skills: {
         some: {
           skill: {
             category: SkillCategory.LANGUAGE,
-            name: { contains: parsed.langText, mode: "insensitive" },
+            name: { contains: langText, mode: "insensitive" },
           },
         },
       },
@@ -95,13 +104,13 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
   if (parsed.skill.length > 0) {
     skillFilters.push({ skills: { some: { skillId: { in: parsed.skill } } } });
   }
-  if (parsed.skillText) {
+  for (const skillText of parsed.skillText) {
     skillFilters.push({
       skills: {
         some: {
           skill: {
             category: { not: SkillCategory.LANGUAGE },
-            name: { contains: parsed.skillText, mode: "insensitive" },
+            name: { contains: skillText, mode: "insensitive" },
           },
         },
       },
@@ -147,9 +156,9 @@ export function buildSearchQueryString(
   if (parsed.q) sp.set("q", parsed.q);
   for (const job of parsed.job) sp.append("job", job);
   for (const lang of parsed.lang) sp.append("lang", lang);
-  if (parsed.langText) sp.set("langText", parsed.langText);
+  for (const langText of parsed.langText) sp.append("langText", langText);
   for (const skill of parsed.skill) sp.append("skill", skill);
-  if (parsed.skillText) sp.set("skillText", parsed.skillText);
+  for (const skillText of parsed.skillText) sp.append("skillText", skillText);
   for (const prefecture of parsed.prefecture) sp.append("prefecture", prefecture);
   if (parsed.rateMin) sp.set("rateMin", String(parsed.rateMin));
   if (parsed.rateMax) sp.set("rateMax", String(parsed.rateMax));
