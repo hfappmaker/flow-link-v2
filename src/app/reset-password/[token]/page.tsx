@@ -3,11 +3,11 @@ import { ResetPasswordContent } from "@/components/auth/reset-password-content";
 
 export const metadata: Metadata = { title: "新しいパスワードを設定" };
 
-export default async function ResetPasswordPage({
-  searchParams,
+export default async function ResetPasswordTokenPage({
+  params,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  params: Promise<{ token: string }>;
 }) {
-  const { token } = await searchParams;
-  return <ResetPasswordContent token={token} />;
+  const { token } = await params;
+  return <ResetPasswordContent token={decodeURIComponent(token)} />;
 }
