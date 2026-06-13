@@ -7,32 +7,29 @@ import { getUnreadMessageCount } from "@/lib/messages";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ApplicationStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
-import { formatRelative } from "@/lib/format";
+import { formatEngineerTitles, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "採用ダッシュボード" };
 
 export default async function CompanyDashboardPage() {
   const { user, company } = await requireCompany();
 
-  const [openProjects, newApplications, pendingScouts, unread, recentApplications] =
-    await Promise.all([
-      prisma.project.count({ where: { companyId: company.id, status: "OPEN" } }),
-      prisma.application.count({
-        where: { project: { companyId: company.id }, status: "APPLIED" },
-      }),
-      prisma.scout.count({ where: { companyId: company.id, status: "SENT" } }),
-      getUnreadMessageCount(user),
-      prisma.application.findMany({
-        where: { project: { companyId: company.id } },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: {
-          engineer: { include: { engineerProfile: true } },
-          project: { select: { id: true, title: true } },
-          conversation: { select: { id: true } },
-        },
-      }),
-    ]);
+  const openProjects = await prisma.project.count({ where: { companyId: company.id, status: "OPEN" } });
+  const newApplications = await prisma.application.count({
+    where: { project: { companyId: company.id }, status: "APPLIED" },
+  });
+  const pendingScouts = await prisma.scout.count({ where: { companyId: company.id, status: "SENT" } });
+  const unread = await getUnreadMessageCount(user);
+  const recentApplications = await prisma.application.findMany({
+    where: { project: { companyId: company.id } },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    include: {
+      engineer: { include: { engineerProfile: true } },
+      project: { select: { id: true, title: true } },
+      conversation: { select: { id: true } },
+    },
+  });
 
   const stats = [
     { label: "公開中の案件", value: openProjects, href: "/company/projects", icon: FileText },
@@ -89,7 +86,7 @@ export default async function CompanyDashboardPage() {
                     <p className="text-sm font-bold text-slate-800">
                       {a.engineer.engineerProfile?.displayName ?? a.engineer.name}
                       <span className="ml-2 text-xs font-normal text-slate-500">
-                        {a.engineer.engineerProfile?.title}
+                        {formatEngineerTitles(a.engineer.engineerProfile?.title)}
                       </span>
                     </p>
                     <p className="mt-0.5 truncate text-xs text-slate-500">{a.project.title}</p>

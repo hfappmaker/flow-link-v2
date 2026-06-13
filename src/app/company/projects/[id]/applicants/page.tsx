@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClasses } from "@/components/ui/button";
 import { ApplicationStatusBadge } from "@/components/status-badges";
-import { APPLICATION_STATUS_LABELS } from "@/lib/constants";
-import { formatRelative } from "@/lib/format";
+import { ApplicationStatusForm } from "@/components/company/application-status-form";
+import { formatEngineerTitles, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "応募者管理" };
 
@@ -75,7 +75,7 @@ export default async function ApplicantsPage({
                       <p className="text-sm font-bold text-slate-800">
                         {profile?.displayName ?? a.engineer.name ?? "エンジニア"}
                       </p>
-                      <span className="text-xs text-slate-500">{profile?.title}</span>
+                      <span className="text-xs text-slate-500">{formatEngineerTitles(profile?.title)}</span>
                       <ApplicationStatusBadge status={a.status} />
                       <span className="ml-auto text-xs text-slate-400">
                         {formatRelative(a.createdAt)}に応募
@@ -113,23 +113,7 @@ export default async function ApplicantsPage({
                           チャットを開く
                         </Link>
                       ) : null}
-                      <form action={updateApplicationStatus} className="ml-auto flex items-center gap-2">
-                        <input type="hidden" name="applicationId" value={a.id} />
-                        <select
-                          name="status"
-                          defaultValue={a.status}
-                          className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
-                        >
-                          {Object.entries(APPLICATION_STATUS_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className={buttonClasses("secondary", "sm")}>
-                          ステータス更新
-                        </button>
-                      </form>
+                      <ApplicationStatusForm action={updateApplicationStatus} applicationId={a.id} status={a.status} />
                     </div>
                   </div>
                 </div>

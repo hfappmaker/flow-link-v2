@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireEngineer } from "@/lib/session";
-import { respondToScout } from "@/lib/actions/scouts";
-import { ScoutStatusBadge } from "@/components/status-badges";
 import { EmptyState } from "@/components/ui/empty-state";
 import { buttonClasses } from "@/components/ui/button";
 import { formatRelative } from "@/lib/format";
@@ -27,7 +25,7 @@ export default async function ScoutsPage() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-black text-slate-900">受け取ったスカウト</h1>
       <p className="mt-1 text-sm text-slate-500">
-        企業からのスカウトに「興味あり」で返答するか、チャットで直接やり取りできます。
+        企業からのスカウトにチャットで直接返信できます。
       </p>
 
       <div className="mt-6 space-y-3">
@@ -45,10 +43,7 @@ export default async function ScoutsPage() {
           scouts.map((s) => (
             <div key={s.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <ScoutStatusBadge status={s.status} />
-                  <span className="text-xs text-slate-400">{formatRelative(s.createdAt)}</span>
-                </div>
+                <span className="text-xs text-slate-400">{formatRelative(s.createdAt)}</span>
                 <p className="text-sm font-bold text-slate-700">{s.company.name}</p>
               </div>
 
@@ -71,24 +66,6 @@ export default async function ScoutsPage() {
                   <Link href={`/messages/${s.conversation.id}`} className={buttonClasses("primary", "sm")}>
                     チャットを開く
                   </Link>
-                ) : null}
-                {s.status === "SENT" ? (
-                  <>
-                    <form action={respondToScout}>
-                      <input type="hidden" name="scoutId" value={s.id} />
-                      <input type="hidden" name="response" value="ACCEPTED" />
-                      <button type="submit" className={buttonClasses("outline", "sm")}>
-                        興味あり
-                      </button>
-                    </form>
-                    <form action={respondToScout}>
-                      <input type="hidden" name="scoutId" value={s.id} />
-                      <input type="hidden" name="response" value="DECLINED" />
-                      <button type="submit" className={buttonClasses("danger", "sm")}>
-                        辞退する
-                      </button>
-                    </form>
-                  </>
                 ) : null}
               </div>
             </div>

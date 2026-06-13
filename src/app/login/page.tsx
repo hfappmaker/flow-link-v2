@@ -9,18 +9,31 @@ import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "ログイン" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ registered?: string; verified?: string; reset?: string; email?: string }>;
+}) {
   const user = await getCurrentUser();
   if (user) redirect("/post-login");
+
+  const params = await searchParams;
+  const notice =
+    params.registered === "1"
+      ? "registered"
+      : params.verified === "1"
+        ? "verified"
+        : params.verified === "invalid"
+          ? "invalid-verification"
+          : params.reset === "1"
+            ? "reset"
+            : undefined;
 
   return (
     <div className="mx-auto max-w-md px-4 py-12 sm:px-6">
       <h1 className="text-center text-2xl font-black text-slate-900">ログイン</h1>
-      <p className="mt-2 text-center text-sm text-slate-500">
-        FlowLinkへおかえりなさい
-      </p>
 
-      <Card className="mt-8">
+      <Card className="mt-6">
         <CardBody className="p-6">
           <OAuthButtons
             availability={{
@@ -29,7 +42,7 @@ export default async function LoginPage() {
               microsoft: oauthProviderAvailability["microsoft-entra-id"],
             }}
           />
-          <LoginForm />
+          <LoginForm notice={notice} initialEmail={params.email ?? ""} />
         </CardBody>
       </Card>
 

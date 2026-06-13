@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 
-export function RegisterForm({ defaultRole }: { defaultRole: "ENGINEER" | "COMPANY" }) {
+export function RegisterForm({
+  defaultRole,
+  agreedToTerms,
+}: {
+  defaultRole: "ENGINEER" | "COMPANY";
+  agreedToTerms: boolean;
+}) {
   const router = useRouter();
   const [role, setRole] = useState<"ENGINEER" | "COMPANY">(defaultRole);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +29,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: "ENGINEER" | "COMPA
       email: String(form.get("email") ?? ""),
       password: String(form.get("password") ?? ""),
       role,
+      agreedToTerms,
     };
 
     const res = await fetch("/api/register", {
@@ -39,17 +45,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: "ENGINEER" | "COMPA
       return;
     }
 
-    const result = await signIn("credentials", {
-      email: payload.email,
-      password: payload.password,
-      redirect: false,
-    });
-    if (result?.error) {
-      router.push("/login");
-      return;
-    }
-    router.push("/onboarding");
-    router.refresh();
+    router.push(`/login?registered=1&email=${encodeURIComponent(payload.email)}`);
   }
 
   const tab = (value: "ENGINEER" | "COMPANY", label: string, description: string) => (
@@ -103,7 +99,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: "ENGINEER" | "COMPA
           placeholder="8文字以上"
         />
       </div>
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending || !agreedToTerms}>
         {pending ? "登録中..." : "無料で登録する"}
       </Button>
     </form>

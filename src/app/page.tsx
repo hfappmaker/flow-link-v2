@@ -1,29 +1,32 @@
 import Link from "next/link";
-import { Building2, MessageSquare, Search, Send, UserCheck, Zap } from "lucide-react";
+import { Building2, MessageSquare, Search, Send, UserCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { ProjectCard } from "@/components/project-card";
 import { buttonClasses } from "@/components/ui/button";
 
 export default async function HomePage() {
-  const [user, latestProjects, stats] = await Promise.all([
-    getCurrentUser(),
-    prisma.project.findMany({
-      where: { status: "OPEN" },
-      orderBy: { publishedAt: "desc" },
-      take: 4,
-      include: {
-        company: { select: { name: true } },
-        skills: { include: { skill: true } },
+  const user = await getCurrentUser();
+  const latestProjects = await prisma.project.findMany({
+    where: { status: "OPEN" },
+    orderBy: { publishedAt: "desc" },
+    take: 4,
+    include: {
+      company: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
+  });
+  const projectCount = await prisma.project.count({ where: { status: "OPEN" } });
+  const engineerCount = await prisma.engineerProfile.count({ where: { isPublic: true } });
+  const companyCount = await prisma.company.count({
+    where: {
+      members: {
+        some: {
+          user: { deletedAt: null },
+        },
       },
-    }),
-    Promise.all([
-      prisma.project.count({ where: { status: "OPEN" } }),
-      prisma.engineerProfile.count({ where: { isPublic: true } }),
-      prisma.company.count(),
-    ]),
-  ]);
-  const [projectCount, engineerCount, companyCount] = stats;
+    },
+  });
 
   const engineerSteps = [
     { icon: Search, title: "案件を探す", body: "スキル・単価・稼働日数・リモート頻度などの条件で、あなたに合う案件を検索。" },
@@ -42,8 +45,7 @@ export default async function HomePage() {
       {/* ヒーロー */}
       <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 via-white to-white">
         <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6">
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-bold text-blue-700">
-            <Zap className="h-3.5 w-3.5 fill-blue-600 text-blue-600" />
+          <p className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-bold text-blue-700">
             フリーランスエンジニアと企業のマッチングプラットフォーム
           </p>
           <h1 className="mx-auto mt-6 max-w-3xl text-4xl leading-tight font-black text-slate-900 sm:text-5xl">

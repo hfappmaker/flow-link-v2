@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { requireCompany } from "@/lib/session";
+import { AccountDeleteForm } from "@/components/account-delete-form";
 import { CompanyProfileForm } from "@/components/company/company-profile-form";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "企業情報設定" };
 
 export default async function CompanySettingsPage() {
-  const { company } = await requireCompany();
+  const { user, company } = await requireCompany();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -17,7 +18,16 @@ export default async function CompanySettingsPage() {
 
       <Card className="mt-6">
         <CardBody className="p-6">
-          <CompanyProfileForm company={company} />
+          <CompanyProfileForm emailNotificationsEnabled={user.emailNotificationsEnabled} company={company} />
+        </CardBody>
+      </Card>
+
+      <Card className="mt-6 border-red-200">
+        <CardBody className="p-6">
+          <h2 className="text-base font-bold text-red-700">退会</h2>
+          <div className="mt-4">
+            <AccountDeleteForm accountLabel="企業" />
+          </div>
         </CardBody>
       </Card>
     </div>

@@ -3,6 +3,17 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { getConversationForUser } from "@/lib/messages";
+import { getAttachmentLabel, type MessageAttachmentPayload } from "@/lib/message-attachments";
+import { sendOptionalNotificationEmail } from "@/lib/notification-email";
+import {
+  isAllowedMessageAttachmentFile,
+  MESSAGE_ATTACHMENT_ALLOWED_LABEL,
+  MESSAGE_ATTACHMENT_MAX_BYTES,
+  MESSAGE_ATTACHMENT_MAX_COUNT,
+  removeStoredFile,
+  sanitizeUploadFileName,
+  saveMessageAttachmentFile,
+} from "@/lib/uploaded-files";
 
 export type ChatMessage = {
   id: string;
@@ -10,17 +21,28 @@ export type ChatMessage = {
   senderName: string;
   mine: boolean;
   createdAt: string;
+  attachments: MessageAttachmentPayload[];
 };
 
 async function loadContext(conversationId: string) {
   const user = await getCurrentUser();
-  if (!user) return { error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
+  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
 
   const conversation = await getConversationForUser(conversationId, user);
   if (!conversation) {
-    return { error: NextResponse.json({ error: "not found" }, { status: 404 }) };
+    return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   }
   return { user, conversation };
+}
+
+function toAttachmentPayload(attachment: { id: string; kind: string; fileName: string }) {
+  return {
+    id: attachment.id,
+    kind: attachment.kind,
+    label: getAttachmentLabel(),
+    fileName: attachment.fileName,
+    downloadUrl: `/api/message-attachments/${attachment.id}`,
+  };
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -31,7 +53,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const isCompanyViewer = user.companyMember?.companyId === conversation.companyId;
 
-  // 相手からの未読メッセージを既読にする
   await prisma.message.updateMany({
     where: {
       conversationId: conversation.id,
@@ -46,26 +67,39 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const messages = await prisma.message.findMany({
     where: { conversationId: conversation.id },
     orderBy: { createdAt: "asc" },
-    include: { sender: { include: { companyMember: true, engineerProfile: true } } },
+    include: {
+      attachments: { orderBy: { createdAt: "asc" } },
+      sender: { include: { companyMember: true, engineerProfile: true } },
+    },
   });
 
-  const payload: ChatMessage[] = messages.map((m) => {
-    const senderIsCompany = m.sender.companyMember?.companyId === conversation.companyId;
+  const payload: ChatMessage[] = messages.map((message) => {
+    const senderIsCompany = message.sender.companyMember?.companyId === conversation.companyId;
     return {
-      id: m.id,
-      body: m.body,
+      id: message.id,
+      body: message.body,
+      attachments: message.attachments.map(toAttachmentPayload),
       senderName: senderIsCompany
         ? conversation.company.name
-        : (m.sender.engineerProfile?.displayName ?? m.sender.name ?? "ユーザー"),
-      mine: isCompanyViewer ? senderIsCompany : m.senderId === user.id,
-      createdAt: m.createdAt.toISOString(),
+        : (message.sender.engineerProfile?.displayName ?? message.sender.name ?? "ユーザー"),
+      mine: isCompanyViewer ? senderIsCompany : message.senderId === user.id,
+      createdAt: message.createdAt.toISOString(),
     };
   });
 
   return NextResponse.json({ messages: payload });
 }
 
-const postSchema = z.object({ body: z.string().min(1).max(4000) });
+const postSchema = z
+  .object({
+    body: z.string().max(4000).optional().default(""),
+    attachmentCount: z.number().int().min(0).max(MESSAGE_ATTACHMENT_MAX_COUNT).default(0),
+  })
+  .refine((value) => value.body.trim().length > 0 || value.attachmentCount > 0);
+
+function isUploadedFile(value: FormDataEntryValue): value is File {
+  return value instanceof File && value.size > 0;
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -73,25 +107,107 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if ("error" in ctx) return ctx.error;
   const { user, conversation } = ctx;
 
-  const json = await request.json().catch(() => null);
-  const parsed = postSchema.safeParse(json);
+  const contentType = request.headers.get("content-type") ?? "";
+  const formData = contentType.includes("multipart/form-data")
+    ? await request.formData().catch(() => null)
+    : null;
+  const json = formData ? null : await request.json().catch(() => null);
+  const uploadedFiles = formData
+    ? formData.getAll("attachments").filter(isUploadedFile)
+    : [];
+
+  const parsed = postSchema.safeParse({
+    body: formData ? formData.get("body") : json?.body,
+    attachmentCount: uploadedFiles.length,
+  });
   if (!parsed.success) {
-    return NextResponse.json({ error: "メッセージを入力してください" }, { status: 400 });
+    return NextResponse.json(
+      { error: "メッセージまたは添付ファイルを入力してください" },
+      { status: 400 },
+    );
   }
 
-  await prisma.$transaction([
-    prisma.message.create({
-      data: {
-        conversationId: conversation.id,
-        senderId: user.id,
-        body: parsed.data.body.trim(),
-      },
-    }),
-    prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { updatedAt: new Date() },
-    }),
-  ]);
+  const oversized = uploadedFiles.find((file) => file.size > MESSAGE_ATTACHMENT_MAX_BYTES);
+  if (oversized) {
+    return NextResponse.json(
+      { error: "添付できるファイルサイズは1ファイル10MBまでです" },
+      { status: 400 },
+    );
+  }
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  const disallowed = uploadedFiles.find((file) => !isAllowedMessageAttachmentFile(file.name));
+  if (disallowed) {
+    return NextResponse.json(
+      { error: `添付できるファイル形式は${MESSAGE_ATTACHMENT_ALLOWED_LABEL}のみです` },
+      { status: 400 },
+    );
+  }
+
+  const savedAttachments: Array<{ fileName: string; filePath: string }> = [];
+  try {
+    for (const file of uploadedFiles) {
+      const fileName = sanitizeUploadFileName(file.name);
+      const filePath = await saveMessageAttachmentFile({
+        conversationId: conversation.id,
+        file,
+        fileName,
+      });
+      savedAttachments.push({ fileName, filePath });
+    }
+
+    const body = parsed.data.body.trim() || "ファイルを添付しました。";
+    const [message] = await prisma.$transaction([
+      prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: user.id,
+          body,
+          attachments:
+            savedAttachments.length > 0
+              ? {
+                  create: savedAttachments.map((attachment) => ({
+                    kind: "file",
+                    fileName: attachment.fileName,
+                    filePath: attachment.filePath,
+                  })),
+                }
+              : undefined,
+        },
+        include: { attachments: { orderBy: { createdAt: "asc" } } },
+      }),
+      prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { updatedAt: new Date() },
+      }),
+    ]);
+
+    const payload: ChatMessage = {
+      id: message.id,
+      body: message.body,
+      attachments: message.attachments.map(toAttachmentPayload),
+      senderName: user.companyMember?.companyId === conversation.companyId
+        ? conversation.company.name
+        : (user.engineerProfile?.displayName ?? user.name ?? "ユーザー"),
+      mine: true,
+      createdAt: message.createdAt.toISOString(),
+    };
+
+    const senderIsCompany = user.companyMember?.companyId === conversation.companyId;
+    const recipients = senderIsCompany
+      ? [conversation.engineer]
+      : conversation.company.members.map((member) => member.user);
+    await sendOptionalNotificationEmail({
+      recipients,
+      subject: "FlowLink 新しいメッセージが届きました",
+      heading: "新しいメッセージが届きました",
+      intro: `${payload.senderName}から新しいメッセージが届きました。`,
+      path: `/messages/${conversation.id}`,
+      actionLabel: "メッセージを確認する",
+    });
+
+    return NextResponse.json({ message: payload }, { status: 201 });
+  } catch (error) {
+    await Promise.all(savedAttachments.map((attachment) => removeStoredFile(attachment.filePath)));
+    throw error;
+  }
 }

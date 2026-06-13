@@ -2,20 +2,23 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireEngineer } from "@/lib/session";
 import { EngineerProfileForm } from "@/components/engineer-profile-form";
+import { AccountDeleteForm } from "@/components/account-delete-form";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "プロフィール設定" };
 
 export default async function ProfileSettingsPage() {
-  const { profile } = await requireEngineer();
+  const { user, profile } = await requireEngineer();
 
-  const [skills, selected] = await Promise.all([
-    prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] }),
-    prisma.engineerSkill.findMany({
-      where: { engineerProfileId: profile.id },
-      select: { skillId: true },
-    }),
-  ]);
+  const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
+  const selected = await prisma.engineerSkill.findMany({
+    where: { engineerProfileId: profile.id },
+    select: { skillId: true },
+  });
+  const workHistories = await prisma.workHistory.findMany({
+    where: { engineerProfileId: profile.id },
+    orderBy: { startYearMonth: "desc" },
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -27,10 +30,21 @@ export default async function ProfileSettingsPage() {
       <Card className="mt-6">
         <CardBody className="p-6">
           <EngineerProfileForm
+            emailNotificationsEnabled={user.emailNotificationsEnabled}
             profile={profile}
+            workHistories={workHistories}
             skills={skills}
             selectedSkillIds={selected.map((s) => s.skillId)}
           />
+        </CardBody>
+      </Card>
+
+      <Card className="mt-6 border-red-200">
+        <CardBody className="p-6">
+          <h2 className="text-base font-bold text-red-700">退会</h2>
+          <div className="mt-4">
+            <AccountDeleteForm accountLabel="エンジニア" />
+          </div>
         </CardBody>
       </Card>
     </div>

@@ -2,12 +2,18 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { createAuthToken } from "@/lib/auth-tokens";
+import { getAppUrl } from "@/lib/app-url";
+import { sendVerificationEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().min(1, "お名前を入力してください").max(100),
   email: z.email("メールアドレスの形式が正しくありません"),
   password: z.string().min(8, "パスワードは8文字以上で入力してください").max(100),
   role: z.enum(["ENGINEER", "COMPANY"]),
+  agreedToTerms: z.literal(true, {
+    error: "利用規約およびプライバシーポリシーへの同意が必要です",
+  }),
 });
 
 export async function POST(request: Request) {
@@ -23,6 +29,13 @@ export async function POST(request: Request) {
   const email = parsed.data.email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
+    if (!existing.emailVerified) {
+      const token = await createAuthToken("email-verification", email, 24 * 60);
+      const verifyUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, getAppUrl());
+      await sendVerificationEmail(email, verifyUrl.toString());
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
     return NextResponse.json(
       { error: "このメールアドレスは既に登録されています" },
       { status: 409 },
@@ -38,6 +51,10 @@ export async function POST(request: Request) {
       role: parsed.data.role,
     },
   });
+
+  const token = await createAuthToken("email-verification", email, 24 * 60);
+  const verifyUrl = new URL(`/verify-email?token=${encodeURIComponent(token)}`, getAppUrl());
+  await sendVerificationEmail(email, verifyUrl.toString());
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { type FormEvent, useActionState } from "react";
 import { sendScout } from "@/lib/actions/scouts";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
@@ -9,25 +9,42 @@ export function ScoutForm({
   engineerUserId,
   engineerName,
   projects,
+  disabledReason,
 }: {
   engineerUserId: string;
   engineerName: string;
   projects: { id: string; title: string }[];
+  disabledReason?: string;
 }) {
   const [state, action, pending] = useActionState(sendScout, {});
+  const isDisabled = pending || Boolean(disabledReason);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (disabledReason) {
+      event.preventDefault();
+      return;
+    }
+    const confirmed = window.confirm(`${engineerName}様にスカウトを送信します。よろしいですか？`);
+    if (!confirmed) event.preventDefault();
+  };
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={handleSubmit} className="space-y-4">
       <input type="hidden" name="engineerUserId" value={engineerUserId} />
       {state.error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
           {state.error}
         </p>
       ) : null}
+      {disabledReason ? (
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          {disabledReason}
+        </p>
+      ) : null}
 
       <div>
         <Label htmlFor="projectId">対象案件（任意）</Label>
-        <Select id="projectId" name="projectId" defaultValue="">
+        <Select id="projectId" name="projectId" defaultValue="" disabled={isDisabled}>
           <option value="">案件を指定しない</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
@@ -46,6 +63,7 @@ export function ScoutForm({
           id="title"
           name="title"
           required
+          disabled={isDisabled}
           maxLength={200}
           placeholder={`例: ${engineerName}様のご経験を活かせる案件のご相談`}
         />
@@ -60,6 +78,7 @@ export function ScoutForm({
           name="message"
           rows={8}
           required
+          disabled={isDisabled}
           maxLength={4000}
           defaultValue={`${engineerName}様
 
@@ -76,7 +95,7 @@ export function ScoutForm({
         <FieldHint>送信と同時にチャットが開始され、エンジニアに通知されます。</FieldHint>
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={isDisabled}>
         {pending ? "送信中..." : "スカウトを送信する"}
       </Button>
     </form>

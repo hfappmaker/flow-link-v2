@@ -3,7 +3,13 @@ import { Building2, CalendarDays, MapPin } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
-import { formatDate, formatRateRange, formatWeeklyDays, isNew } from "@/lib/format";
+import {
+  formatDate,
+  formatProjectLocation,
+  formatRateRange,
+  formatWeeklyDays,
+  isNew,
+} from "@/lib/format";
 
 export type ProjectCardData = Prisma.ProjectGetPayload<{
   include: {
@@ -12,7 +18,35 @@ export type ProjectCardData = Prisma.ProjectGetPayload<{
   };
 }>;
 
-export function ProjectCard({ project }: { project: ProjectCardData }) {
+export type ProjectSkillHighlight = {
+  skillIds?: string[];
+  skillTexts?: string[];
+};
+
+function includesText(name: string, texts: string[] | undefined) {
+  if (!texts || texts.length === 0) return false;
+  const normalizedName = name.toLowerCase();
+  return texts.some((text) => normalizedName.includes(text.toLowerCase()));
+}
+
+function isProjectSkillMatched(
+  skill: ProjectCardData["skills"][number]["skill"],
+  highlight?: ProjectSkillHighlight,
+) {
+  if (!highlight) return false;
+  if (highlight.skillIds?.includes(skill.id)) return true;
+  return includesText(skill.name, highlight.skillTexts);
+}
+
+export function ProjectCard({
+  project,
+  skillHighlight,
+}: {
+  project: ProjectCardData;
+  skillHighlight?: ProjectSkillHighlight;
+}) {
+  const locationLabel = formatProjectLocation(project.location, project.prefecture);
+
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -37,10 +71,10 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
           {formatWeeklyDays(project.weeklyDaysMin, project.weeklyDaysMax)}
         </span>
         <Badge tone="blue">{REMOTE_TYPE_LABELS[project.remoteType]}</Badge>
-        {project.location ? (
+        {locationLabel ? (
           <span className="inline-flex items-center gap-1 text-slate-600">
             <MapPin className="h-4 w-4 text-slate-400" />
-            {project.location}
+            {locationLabel}
           </span>
         ) : null}
         <span className="inline-flex items-center gap-1 text-slate-500">
@@ -52,7 +86,7 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
       {project.skills.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {project.skills.map(({ skill }) => (
-            <Badge key={skill.id} tone="gray">
+            <Badge key={skill.id} tone={isProjectSkillMatched(skill, skillHighlight) ? "blue" : "gray"}>
               {skill.name}
             </Badge>
           ))}

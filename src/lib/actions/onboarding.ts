@@ -4,13 +4,18 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
+import { PREFECTURES } from "@/lib/constants";
 
 export type ActionState = { error?: string; success?: boolean };
 
 const engineerSchema = z.object({
   displayName: z.string().min(1, "表示名を入力してください").max(50),
-  title: z.string().min(1, "職種を選択してください"),
-  location: z.string().max(100).optional(),
+  title: z
+    .array(z.string().trim().min(1).max(50))
+    .min(1, "職種を1つ以上選択または入力してください")
+    .max(20, "職種は20個まで選択できます")
+    .transform((titles) => [...new Set(titles.map((title) => title.replace(/\s+/g, " ")))].sort()),
+  location: z.enum(PREFECTURES).optional(),
   yearsOfExperience: z.coerce.number().int().min(0).max(60).optional(),
 });
 
@@ -23,7 +28,7 @@ export async function completeEngineerOnboarding(
 
   const parsed = engineerSchema.safeParse({
     displayName: formData.get("displayName"),
-    title: formData.get("title"),
+    title: formData.getAll("title"),
     location: formData.get("location") || undefined,
     yearsOfExperience: formData.get("yearsOfExperience") || undefined,
   });

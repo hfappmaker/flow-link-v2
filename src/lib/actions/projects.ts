@@ -7,6 +7,7 @@ import { RemoteType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import { PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -18,10 +19,11 @@ const projectSchema = z
     jobCategory: z.string().min(1, "募集職種を選択してください"),
     rateMin: z.coerce.number().int().min(0).optional(),
     rateMax: z.coerce.number().int().min(0).optional(),
-    weeklyDaysMin: z.coerce.number().int().min(1).max(5),
-    weeklyDaysMax: z.coerce.number().int().min(1).max(5),
+    weeklyDaysMin: z.coerce.number().int().min(1).max(WEEKLY_DAYS_OPTIONS.at(-1) ?? 7),
+    weeklyDaysMax: z.coerce.number().int().min(1).max(WEEKLY_DAYS_OPTIONS.at(-1) ?? 7),
     remoteType: z.enum(RemoteType),
     location: z.string().max(100).optional(),
+    prefecture: z.enum(PREFECTURES).optional(),
     industry: z.string().max(100).optional(),
     contractType: z.string().max(50).optional(),
     merits: z.string().max(4000).optional(),
@@ -31,6 +33,7 @@ const projectSchema = z
     preferredSkillsText: z.string().max(4000).optional(),
     idealCandidate: z.string().max(4000).optional(),
     devEnvironment: z.string().max(4000).optional(),
+    customSkills: z.string().max(1000).optional(),
     publish: z.enum(["draft", "open"]),
   })
   .refine((d) => d.weeklyDaysMin <= d.weeklyDaysMax, {
@@ -51,6 +54,7 @@ function parseProjectForm(formData: FormData) {
     weeklyDaysMax: formData.get("weeklyDaysMax"),
     remoteType: formData.get("remoteType"),
     location: emptyToUndefined(formData.get("location")),
+    prefecture: emptyToUndefined(formData.get("prefecture")),
     industry: emptyToUndefined(formData.get("industry")),
     contractType: emptyToUndefined(formData.get("contractType")),
     merits: emptyToUndefined(formData.get("merits")),
@@ -60,8 +64,32 @@ function parseProjectForm(formData: FormData) {
     preferredSkillsText: emptyToUndefined(formData.get("preferredSkillsText")),
     idealCandidate: emptyToUndefined(formData.get("idealCandidate")),
     devEnvironment: emptyToUndefined(formData.get("devEnvironment")),
+    customSkills: emptyToUndefined(formData.get("customSkills")),
     publish: formData.get("publish") ?? "open",
   });
+}
+
+function parseCustomSkillNames(value: string | undefined) {
+  if (!value) return { names: [] as string[] };
+
+  const names = [
+    ...new Set(
+      value
+        .split(/[\n,、]/)
+        .map((name) => name.trim().replace(/\s+/g, " "))
+        .filter(Boolean),
+    ),
+  ];
+
+  const tooLong = names.find((name) => name.length > 50);
+  if (tooLong) {
+    return { names: [] as string[], error: `スキル名は50文字以内で入力してください: ${tooLong}` };
+  }
+  if (names.length > 20) {
+    return { names: [] as string[], error: "追加できるスキルは一度に20個までです" };
+  }
+
+  return { names };
 }
 
 export async function createProject(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -72,9 +100,25 @@ export async function createProject(_prev: ActionState, formData: FormData): Pro
     return { error: parsed.error.issues[0]?.message ?? "入力内容に誤りがあります" };
   }
 
+  const customSkills = parseCustomSkillNames(parsed.data.customSkills);
+  if (customSkills.error) return { error: customSkills.error };
+
   const skillIds = [...new Set(formData.getAll("skills").map(String).filter(Boolean))];
   const features = formData.getAll("features").map(String).filter(Boolean);
   const { publish, ...data } = parsed.data;
+  delete data.customSkills;
+
+  const customSkillIds = await Promise.all(
+    customSkills.names.map((name) =>
+      prisma.skill.upsert({
+        where: { name },
+        update: {},
+        create: { name, category: "OTHER" },
+        select: { id: true },
+      }),
+    ),
+  );
+  const projectSkillIds = [...new Set([...skillIds, ...customSkillIds.map((skill) => skill.id)])];
 
   const project = await prisma.project.create({
     data: {
@@ -84,7 +128,7 @@ export async function createProject(_prev: ActionState, formData: FormData): Pro
       status: publish === "open" ? "OPEN" : "DRAFT",
       publishedAt: publish === "open" ? new Date() : null,
       features,
-      skills: { create: skillIds.map((skillId) => ({ skillId })) },
+      skills: { create: projectSkillIds.map((skillId) => ({ skillId })) },
     },
   });
 
@@ -107,15 +151,31 @@ export async function updateProject(_prev: ActionState, formData: FormData): Pro
     return { error: parsed.error.issues[0]?.message ?? "入力内容に誤りがあります" };
   }
 
+  const customSkills = parseCustomSkillNames(parsed.data.customSkills);
+  if (customSkills.error) return { error: customSkills.error };
+
   const skillIds = [...new Set(formData.getAll("skills").map(String).filter(Boolean))];
   const features = formData.getAll("features").map(String).filter(Boolean);
   const { publish, ...data } = parsed.data;
+  delete data.customSkills;
 
   const becomesOpen = publish === "open";
 
-  await prisma.$transaction([
-    prisma.projectSkill.deleteMany({ where: { projectId } }),
-    prisma.project.update({
+  await prisma.$transaction(async (tx) => {
+    const customSkillIds = await Promise.all(
+      customSkills.names.map((name) =>
+        tx.skill.upsert({
+          where: { name },
+          update: {},
+          create: { name, category: "OTHER" },
+          select: { id: true },
+        }),
+      ),
+    );
+    const projectSkillIds = [...new Set([...skillIds, ...customSkillIds.map((skill) => skill.id)])];
+
+    await tx.projectSkill.deleteMany({ where: { projectId } });
+    await tx.project.update({
       where: { id: projectId },
       data: {
         ...data,
@@ -123,10 +183,10 @@ export async function updateProject(_prev: ActionState, formData: FormData): Pro
         status: becomesOpen ? "OPEN" : existing.status === "CLOSED" ? "CLOSED" : "DRAFT",
         publishedAt: becomesOpen ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
         features,
-        skills: { create: skillIds.map((skillId) => ({ skillId })) },
+        skills: { create: projectSkillIds.map((skillId) => ({ skillId })) },
       },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath("/company/projects");
   revalidatePath(`/projects/${projectId}`);

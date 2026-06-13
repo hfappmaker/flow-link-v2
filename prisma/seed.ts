@@ -1,7 +1,17 @@
+import "dotenv/config";
 import { PrismaClient, SkillCategory, RemoteType } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required to seed the database");
+}
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const prisma = new PrismaClient({ adapter });
 
 const SKILLS: Array<[string, SkillCategory]> = [
   ["TypeScript", "LANGUAGE"],
@@ -14,6 +24,7 @@ const SKILLS: Array<[string, SkillCategory]> = [
   ["Ruby", "LANGUAGE"],
   ["PHP", "LANGUAGE"],
   ["C#", "LANGUAGE"],
+  ["C++", "LANGUAGE"],
   ["Rust", "LANGUAGE"],
   ["React", "FRAMEWORK"],
   ["Next.js", "FRAMEWORK"],
@@ -27,6 +38,8 @@ const SKILLS: Array<[string, SkillCategory]> = [
   ["FastAPI", "FRAMEWORK"],
   ["Ruby on Rails", "FRAMEWORK"],
   ["Laravel", "FRAMEWORK"],
+  ["ASP.NET Core", "FRAMEWORK"],
+  [".NET Framework", "FRAMEWORK"],
   ["Spring Boot", "FRAMEWORK"],
   ["Flutter", "FRAMEWORK"],
   ["React Native", "FRAMEWORK"],
@@ -47,12 +60,18 @@ const SKILLS: Array<[string, SkillCategory]> = [
   ["機械学習", "OTHER"],
   ["LLM・生成AI", "OTHER"],
   ["データ分析", "OTHER"],
+  ["Claude Code", "OTHER"],
+  ["Devin", "OTHER"],
+  ["Cursor", "OTHER"],
+  ["GitHub Copilot", "OTHER"],
+  ["Codex", "OTHER"],
 ];
 
 async function main() {
   console.log("🌱 シードデータを投入します...");
 
   // 依存順に全削除（デモ用のリセット）
+  await prisma.messageAttachment.deleteMany();
   await prisma.message.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.scout.deleteMany();
@@ -68,6 +87,7 @@ async function main() {
   await prisma.skill.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
+  await prisma.verificationToken.deleteMany();
   await prisma.user.deleteMany();
 
   // ---- スキル ----
@@ -84,6 +104,7 @@ async function main() {
     });
 
   const passwordHash = await bcrypt.hash("password123", 10);
+  const emailVerified = new Date();
 
   // ---- 企業 ----
   const techflow = await prisma.company.create({
@@ -121,6 +142,7 @@ async function main() {
     data: {
       name: "採用担当 鈴木",
       email: "company@example.com",
+      emailVerified,
       passwordHash,
       role: "COMPANY",
       companyMember: { create: { companyId: techflow.id } },
@@ -130,6 +152,7 @@ async function main() {
     data: {
       name: "採用担当 佐藤",
       email: "company2@example.com",
+      emailVerified,
       passwordHash,
       role: "COMPANY",
       companyMember: { create: { companyId: aiwork.id } },
@@ -141,18 +164,19 @@ async function main() {
     data: {
       name: "山田 太郎",
       email: "engineer@example.com",
+      emailVerified,
       passwordHash,
       role: "ENGINEER",
       engineerProfile: {
         create: {
           displayName: "山田 太郎",
-          title: "フルスタックエンジニア",
+          title: ["フルスタックエンジニア"],
           bio: "Web系の受託・自社開発で10年の経験があります。直近3年はTypeScript/Next.js/NestJSでのSaaS開発がメインで、要件定義から設計・実装・運用まで一貫して担当してきました。少人数チームでの0→1開発が得意です。",
           location: "東京都",
           yearsOfExperience: 10,
           desiredRateMin: 800000,
           desiredRateMax: 1200000,
-          desiredWeeklyDays: 4,
+          desiredWeeklyDays: [4],
           remotePreference: "FULL_REMOTE",
           workStatus: "AVAILABLE",
           githubUrl: "https://github.com/example",
@@ -230,18 +254,19 @@ async function main() {
       data: {
         name: e.name,
         email: e.email,
+        emailVerified,
         passwordHash,
         role: "ENGINEER",
         engineerProfile: {
           create: {
             displayName: e.name,
-            title: e.title,
+            title: [e.title],
             bio: e.bio,
             location: e.location,
             yearsOfExperience: e.years,
             desiredRateMin: e.rateMin,
             desiredRateMax: e.rateMax,
-            desiredWeeklyDays: e.days,
+            desiredWeeklyDays: [e.days],
             remotePreference: e.remote,
             workStatus: "OPEN_TO_OFFERS",
             skills: { create: skillIds(e.skills) },
@@ -684,6 +709,7 @@ async function main() {
   console.log("✅ シード完了");
   console.log("デモアカウント:");
   console.log("  エンジニア: engineer@example.com / password123");
+  console.log("  エンジニア（スカウト受信済み）: sato@example.com / password123");
   console.log("  企業:       company@example.com / password123 (株式会社テックフロー)");
   console.log("  企業2:      company2@example.com / password123 (AIワークス株式会社)");
 }

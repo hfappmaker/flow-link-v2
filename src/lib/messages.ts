@@ -30,7 +30,17 @@ export async function getConversationForUser(conversationId: string, user: Curre
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: {
-      company: true,
+      company: {
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { email: true, emailNotificationsEnabled: true, deletedAt: true },
+              },
+            },
+          },
+        },
+      },
       engineer: { include: { engineerProfile: true } },
       project: { select: { id: true, title: true, status: true } },
       application: { select: { id: true, status: true } },

@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------------------------
@@ -24,6 +23,8 @@ model User {
   image         String?
   passwordHash  String?
   role          UserRole?
+  emailNotificationsEnabled Boolean @default(true)
+  deletedAt     DateTime?
 
   accounts        Account[]
   sessions        Session[]
@@ -124,13 +125,13 @@ model EngineerProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   displayName       String
-  title             String? // 職種（例: バックエンドエンジニア）
+  title             String[] @default([]) // 職種（複数可）
   bio               String? // 自己紹介・経歴サマリ
   location          String?
   yearsOfExperience Int?
   desiredRateMin    Int? // 希望単価 下限（円/月）
   desiredRateMax    Int? // 希望単価 上限（円/月）
-  desiredWeeklyDays Int? // 希望稼働日数（週N日）
+  desiredWeeklyDays Int[] @default([]) // 希望稼働日数（週N日・複数可）
   remotePreference  RemoteType?
   workStatus        WorkStatus  @default(OPEN_TO_OFFERS)
   githubUrl         String?
@@ -231,6 +232,7 @@ model Project {
   weeklyDaysMax Int  @default(5)
   remoteType    RemoteType @default(FULL_REMOTE)
   location      String?
+  prefecture    String?
   contractType  String     @default("業務委託")
   industry      String?
 
@@ -374,8 +376,23 @@ model Message {
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments  MessageAttachment[]
 
   createdAt DateTime @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+model MessageAttachment {
+  id        String @id @default(cuid())
+  messageId String
+  kind      String
+  fileName  String
+  filePath  String
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
 }

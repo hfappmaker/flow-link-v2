@@ -3,8 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { oauthProviderAvailability } from "@/auth";
 import { getCurrentUser } from "@/lib/session";
-import { OAuthButtons } from "@/components/auth/oauth-buttons";
-import { RegisterForm } from "@/components/auth/register-form";
+import { RegisterPanel } from "@/components/auth/register-panel";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "無料登録" };
@@ -29,14 +28,14 @@ export default async function RegisterPage({
 
       <Card className="mt-8">
         <CardBody className="p-6">
-          <OAuthButtons
+          <RegisterPanel
             availability={{
               google: oauthProviderAvailability.google,
               github: oauthProviderAvailability.github,
               microsoft: oauthProviderAvailability["microsoft-entra-id"],
             }}
+            defaultRole={defaultRole}
           />
-          <RegisterForm defaultRole={defaultRole} />
         </CardBody>
       </Card>
 

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
+import { sendOptionalNotificationEmail } from "@/lib/notification-email";
 
 const scoutSchema = z.object({
   engineerUserId: z.string().min(1),
@@ -29,9 +30,17 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
 
   const engineer = await prisma.engineerProfile.findFirst({
     where: { userId: parsed.data.engineerUserId, isPublic: true },
+    include: {
+      user: {
+        select: { email: true, emailNotificationsEnabled: true, deletedAt: true },
+      },
+    },
   });
   if (!engineer) {
     return { error: "このエンジニアにはスカウトを送信できません" };
+  }
+  if (engineer.workStatus === "UNAVAILABLE") {
+    return { error: "現在は受け付けていないエンジニアにはスカウトを送信できません" };
   }
 
   if (parsed.data.projectId) {
@@ -66,28 +75,18 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
   });
 
   revalidatePath("/company/scouts");
+  await sendOptionalNotificationEmail({
+    recipients: [engineer.user],
+    subject: "FlowLink 新しいスカウトが届きました",
+    heading: "新しいスカウトが届きました",
+    intro: `${company.name}からスカウトが届きました。内容はチャットで確認できます。`,
+    path: `/messages/${conversation.id}`,
+    actionLabel: "スカウトを確認する",
+  });
   redirect(`/messages/${conversation.id}`);
 }
 
-const respondSchema = z.object({
-  scoutId: z.string().min(1),
-  response: z.enum(["ACCEPTED", "DECLINED"]),
-});
-
 export async function respondToScout(formData: FormData) {
-  const { user } = await requireEngineer();
-
-  const parsed = respondSchema.safeParse({
-    scoutId: formData.get("scoutId"),
-    response: formData.get("response"),
-  });
-  if (!parsed.success) return;
-
-  await prisma.scout.updateMany({
-    where: { id: parsed.data.scoutId, engineerUserId: user.id, status: "SENT" },
-    data: { status: parsed.data.response },
-  });
-
-  revalidatePath("/scouts");
-  revalidatePath("/company/scouts");
+  await requireEngineer();
+  void formData;
 }

@@ -11,7 +11,7 @@ import { ScoutForm } from "@/components/company/scout-form";
 import { ScoutStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
 import { REMOTE_TYPE_LABELS, WORK_STATUS_LABELS } from "@/lib/constants";
-import { formatRateRange, formatRelative } from "@/lib/format";
+import { formatDesiredWeeklyDays, formatEngineerTitles, formatRateRange, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニアプロフィール" };
 
@@ -32,24 +32,24 @@ export default async function EngineerDetailPage({
   });
   if (!profile) notFound();
 
-  const [openProjects, previousScouts] = await Promise.all([
-    prisma.project.findMany({
-      where: { companyId: company.id, status: "OPEN" },
-      select: { id: true, title: true },
-      orderBy: { publishedAt: "desc" },
-    }),
-    prisma.scout.findMany({
-      where: { companyId: company.id, engineerUserId: profile.userId },
-      orderBy: { createdAt: "desc" },
-      include: { conversation: { select: { id: true } } },
-    }),
-  ]);
+  const openProjects = await prisma.project.findMany({
+    where: { companyId: company.id, status: "OPEN" },
+    select: { id: true, title: true },
+    orderBy: { publishedAt: "desc" },
+  });
+  const previousScouts = await prisma.scout.findMany({
+    where: { companyId: company.id, engineerUserId: profile.userId },
+    orderBy: { createdAt: "desc" },
+    include: { conversation: { select: { id: true } } },
+  });
 
   const conditions = [
     profile.desiredRateMin || profile.desiredRateMax
       ? `希望単価: ${formatRateRange(profile.desiredRateMin, profile.desiredRateMax)}`
       : null,
-    profile.desiredWeeklyDays ? `希望稼働: 週${profile.desiredWeeklyDays}日` : null,
+    formatDesiredWeeklyDays(profile.desiredWeeklyDays)
+      ? `希望稼働: ${formatDesiredWeeklyDays(profile.desiredWeeklyDays)}`
+      : null,
     profile.remotePreference ? `リモート: ${REMOTE_TYPE_LABELS[profile.remotePreference]}` : null,
   ].filter(Boolean);
 
@@ -78,7 +78,7 @@ export default async function EngineerDetailPage({
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
                     {[
-                      profile.title,
+                      formatEngineerTitles(profile.title),
                       profile.yearsOfExperience ? `実務${profile.yearsOfExperience}年` : null,
                       profile.location,
                     ]
@@ -202,6 +202,11 @@ export default async function EngineerDetailPage({
                 engineerUserId={profile.userId}
                 engineerName={profile.displayName}
                 projects={openProjects}
+                disabledReason={
+                  profile.workStatus === "UNAVAILABLE"
+                    ? "このエンジニアは現在スカウトを受け付けていません。"
+                    : undefined
+                }
               />
             </CardBody>
           </Card>

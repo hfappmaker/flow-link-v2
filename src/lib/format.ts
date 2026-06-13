@@ -10,15 +10,31 @@ export function formatRateRange(min: number | null, max: number | null): string 
   return "応相談";
 }
 
-/** 月額単価から時間単価の目安（160h/月換算） */
-export function hourlyFromMonthly(monthly: number): number {
-  return Math.round(monthly / 160 / 10) * 10;
-}
-
 /** 例: 「週2日〜週4日」「週5日」 */
 export function formatWeeklyDays(min: number, max: number): string {
   if (min === max) return `週${min}日`;
   return `週${min}日〜週${max}日`;
+}
+
+export function formatDesiredWeeklyDays(days: readonly number[] | null | undefined): string | null {
+  if (!days || days.length === 0) return null;
+  return [...days]
+    .sort((a, b) => a - b)
+    .map((day) => `週${day}日`)
+    .join("・");
+}
+
+export function formatEngineerTitles(titles: readonly string[] | null | undefined): string | null {
+  if (!titles || titles.length === 0) return null;
+  return titles.join(" / ");
+}
+
+export function formatProjectLocation(
+  location: string | null,
+  prefecture: string | null,
+): string | null {
+  if (location && prefecture) return `${location}（${prefecture}）`;
+  return location || prefecture || null;
 }
 
 export function formatDate(date: Date): string {

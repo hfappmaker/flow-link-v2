@@ -12,10 +12,13 @@
 
 # testing
 /coverage
+/.codex-test-logs/
+/codex-test-logs/
 
 # next.js
 /.next/
 /out/
+/.uploads/
 
 # production
 /build
@@ -44,3 +47,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*

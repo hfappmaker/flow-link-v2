@@ -1,18 +1,95 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId, useState } from "react";
 import type { Prisma, Skill } from "@prisma/client";
+import { X } from "lucide-react";
 import { createProject, updateProject } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
+  PREFECTURES,
   PROJECT_FEATURES,
   REMOTE_TYPE_LABELS,
   SKILL_CATEGORY_LABELS,
+  WEEKLY_DAYS_OPTIONS,
 } from "@/lib/constants";
 
 type ProjectWithSkills = Prisma.ProjectGetPayload<{ include: { skills: true } }>;
+
+function CustomSkillTagsInput() {
+  const inputId = useId();
+  const [inputValue, setInputValue] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+
+  const addTags = (rawValue: string) => {
+    const nextTags = rawValue
+      .split(/[\n,、]/)
+      .map((tag) => tag.trim().replace(/\s+/g, " "))
+      .filter(Boolean);
+
+    if (nextTags.length === 0) return;
+    setTags((current) => [...new Set([...current, ...nextTags])]);
+    setInputValue("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((current) => current.filter((item) => item !== tag));
+  };
+
+  return (
+    <div>
+      <Label htmlFor={inputId}>スキルを追加</Label>
+      <input type="hidden" name="customSkills" value={tags.join("\n")} />
+      <div className="rounded-lg border border-slate-300 bg-white px-2 py-2 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+        <div className="flex min-h-10 flex-wrap items-center gap-2">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700"
+            >
+              <span className="truncate">{tag}</span>
+              <button
+                type="button"
+                aria-label={`${tag}を削除`}
+                title="削除"
+                onClick={() => removeTag(tag)}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-800"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            id={inputId}
+            value={inputValue}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (/[,、\n]/.test(value)) {
+                addTags(value);
+              } else {
+                setInputValue(value);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addTags(inputValue);
+              }
+              if (event.key === "Backspace" && inputValue === "") {
+                setTags((current) => current.slice(0, -1));
+              }
+            }}
+            onBlur={() => addTags(inputValue)}
+            className="h-8 min-w-36 flex-1 border-0 bg-transparent px-1 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder={tags.length > 0 ? "追加するスキル" : "例: Go, GraphQL, BigQuery"}
+          />
+        </div>
+      </div>
+      <FieldHint>カンマ、読点、Enterでタグ化できます。</FieldHint>
+    </div>
+  );
+}
 
 export function ProjectForm({
   skills,
@@ -106,7 +183,7 @@ export function ProjectForm({
               稼働日数 下限
             </Label>
             <Select id="weeklyDaysMin" name="weeklyDaysMin" required defaultValue={project?.weeklyDaysMin ?? 3}>
-              {[1, 2, 3, 4, 5].map((d) => (
+              {WEEKLY_DAYS_OPTIONS.map((d) => (
                 <option key={d} value={d}>
                   週{d}日
                 </option>
@@ -118,7 +195,7 @@ export function ProjectForm({
               稼働日数 上限
             </Label>
             <Select id="weeklyDaysMax" name="weeklyDaysMax" required defaultValue={project?.weeklyDaysMax ?? 5}>
-              {[1, 2, 3, 4, 5].map((d) => (
+              {WEEKLY_DAYS_OPTIONS.map((d) => (
                 <option key={d} value={d}>
                   週{d}日
                 </option>
@@ -139,7 +216,18 @@ export function ProjectForm({
           </div>
           <div>
             <Label htmlFor="location">場所</Label>
-            <Input id="location" name="location" maxLength={100} defaultValue={project?.location ?? ""} placeholder="例: 渋谷（東京都）" />
+            <Input id="location" name="location" maxLength={100} defaultValue={project?.location ?? ""} placeholder="例: 渋谷 / 六本木 / フルリモート" />
+          </div>
+          <div>
+            <Label htmlFor="prefecture">都道府県</Label>
+            <Select id="prefecture" name="prefecture" defaultValue={project?.prefecture ?? ""}>
+              <option value="">選択しない</option>
+              {PREFECTURES.map((prefecture) => (
+                <option key={prefecture} value={prefecture}>
+                  {prefecture}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label htmlFor="contractType">契約形態</Label>
@@ -195,6 +283,7 @@ export function ProjectForm({
             </div>
           </div>
         ))}
+        <CustomSkillTagsInput />
       </section>
 
       <section className="space-y-4">

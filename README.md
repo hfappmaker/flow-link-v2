@@ -23,7 +23,7 @@ Findy Freelance / レバテックを参考に、案件検索・応募・スカ�
 - **スカウト管理** — 返答状況の確認
 
 ### 共通
-- **チャット** — 応募・スカウト単位の1対1チャット（4秒ポーリング、未読バッジ、既読管理）
+- **チャット** — 応募・スカウト単位の1対1チャット（未読バッジ、既読管理、定期更新）
 - **認証** — Google / GitHub / Microsoftアカウント / メールアドレス＆パスワード
 
 ## 技術スタック
@@ -34,6 +34,7 @@ Findy Freelance / レバテックを参考に、案件検索・応募・スカ�
 | スタイリング | Tailwind CSS v4 |
 | DB / ORM | PostgreSQL (Prisma Postgres) / Prisma 6 |
 | 認証 | Auth.js (NextAuth v5) + Prisma Adapter (JWTセッション) |
+| メール送信 | Resend |
 | デプロイ | Vercel |
 
 ## ローカル開発
@@ -59,8 +60,27 @@ docker run -d --name flowlink-pg \
 ### 3. 環境変数
 
 `.env.example` をコピーして `.env` を作成し、値を設定します。
-最低限 `DATABASE_URL` と `AUTH_SECRET`（`npx auth secret` で生成可）があれば、メール＆パスワードログインで動作します。
+最低限 `DATABASE_URL` と `AUTH_SECRET`（`npx auth secret` で生成可）が必要です。
+メール認証・パスワードリセットを使うには Resend の `RESEND_API_KEY` も設定してください。
 OAuth（Google / GitHub / Microsoft）は設定したプロバイダのボタンだけが自動的に表示されます。
+
+#### Resend（メール認証・パスワードリセット）
+
+登録時のメール認証、認証メール再送、パスワードリセットメールの送信に Resend を使います。
+
+ローカル開発では `.env` または `.env.local` に以下を設定します。
+
+```env
+RESEND_API_KEY="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+EMAIL_FROM="FlowLink <onboarding@resend.dev>"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+- `RESEND_API_KEY`: [Resend API Keys](https://resend.com/api-keys) で発行
+- `EMAIL_FROM`: 送信元。独自ドメインを検証するまでは `FlowLink <onboarding@resend.dev>` で動作確認できます
+- `NEXT_PUBLIC_APP_URL`: メール本文の認証リンク・再設定リンク生成に使うアプリURL
+
+本番では独自ドメインを Resend に追加し、DNS（SPF / DKIM / MX）を設定してから `EMAIL_FROM` を `FlowLink <no-reply@your-domain.example>` のような検証済みドメインに変更してください。
 
 ### 4. スキーマ反映とシード投入
 
@@ -91,8 +111,9 @@ http://localhost:3000 で起動します。
 1. このリポジトリを GitHub に push
 2. Vercel で New Project → リポジトリをインポート（Framework: Next.js、設定はデフォルトでOK）
 3. **Storage → Marketplace → Prisma Postgres** を追加（`DATABASE_URL` が自動で設定されます）
-4. 環境変数を設定（下記「人間がやるべき作業」参照）
-5. デプロイ後、ローカルから本番DBへスキーマ反映とシード投入:
+4. **Storage → Marketplace → Resend** を追加、または Resend ダッシュボードで API key を作成
+5. 環境変数を設定（下記「人間がやるべき作業」参照）
+6. デプロイ後、ローカルから本番DBへスキーマ反映とシード投入:
 
 ```bash
 # Vercelの環境変数からDATABASE_URLを取得して実行
@@ -113,6 +134,9 @@ npx dotenv -e .env.production.local -- npx prisma db seed   # 任意
 - [ ] **Vercel プロジェクト作成** — リポジトリをインポート
 - [ ] **Prisma Postgres 作成** — Vercel Marketplace（Storage タブ）から追加。`DATABASE_URL` が自動設定される
 - [ ] **AUTH_SECRET の設定** — `npx auth secret` で生成し、Vercelの環境変数に設定
+- [ ] **Resend の設定** — Vercel Marketplace から Resend を追加、または Resend で API key を作成して `RESEND_API_KEY` を設定
+- [ ] **メール送信元の設定** — `EMAIL_FROM` を設定。独自ドメイン運用時は Resend でドメイン検証（SPF / DKIM / MX）を完了する
+- [ ] **アプリURLの設定** — `NEXT_PUBLIC_APP_URL` に本番URL（例: `https://flow-link-v2-xi.vercel.app` または独自ドメイン）を設定
 - [ ] **本番DBへのスキーマ反映** — `prisma db push`（または `prisma migrate deploy`）
 
 ### OAuthログインを有効にする場合（プロバイダごとに任意）
@@ -121,25 +145,48 @@ npx dotenv -e .env.production.local -- npx prisma db seed   # 任意
 コールバックURLの `{ORIGIN}` は `https://<your-app>.vercel.app` とローカル開発用の `http://localhost:3000` の両方を登録してください。
 
 - [ ] **Google** — [Google Cloud Console](https://console.cloud.google.com/apis/credentials) で OAuth クライアントID作成
+  - OAuth同意画面でアプリ名、ユーザーサポートメール、デベロッパー連絡先を設定
+  - 公開ステータスを本番用にする前に、テストユーザーでログイン確認
+  - 承認済みドメインに本番ドメインを追加（独自ドメイン利用時はそのドメインも追加）
+  - アプリのホームページURL: `{ORIGIN}`
+  - プライバシーポリシーURL: `{ORIGIN}/privacy`
+  - 利用規約URL: `{ORIGIN}/terms`
+  - アプリケーションの種類: Webアプリケーション
+  - 承認済みのJavaScript生成元: `{ORIGIN}`
   - コールバックURL: `{ORIGIN}/api/auth/callback/google`
   - 環境変数: `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
 - [ ] **GitHub** — [Developer settings](https://github.com/settings/developers) で OAuth App 作成
+  - Application name: `FlowLink`
+  - Homepage URL: `{ORIGIN}`
+  - Application description: フリーランスエンジニアと企業のマッチングサービス
   - コールバックURL: `{ORIGIN}/api/auth/callback/github`
+  - 本番URLとローカルURLはGitHub OAuth Appを分けて作る（GitHub OAuth AppはコールバックURLを1つだけ設定する前提）
   - 環境変数: `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`
 - [ ] **Microsoft** — [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → アプリの登録
+  - アプリ名: `FlowLink`
   - サポートされるアカウントの種類: 「個人用 Microsoft アカウントを含む」を推奨
   - リダイレクトURI(Web): `{ORIGIN}/api/auth/callback/microsoft-entra-id`
-  - 証明書とシークレットでクライアントシークレットを発行
+  - ブランド設定にホームページURL `{ORIGIN}`、プライバシーポリシーURL `{ORIGIN}/privacy`、利用規約URL `{ORIGIN}/terms` を設定
+  - 証明書とシークレットでクライアントシークレットを発行し、期限を社内で管理する
+  - APIのアクセス許可で `openid` / `profile` / `email` が利用できる状態になっていることを確認
   - 環境変数: `AUTH_MICROSOFT_ENTRA_ID_ID` / `AUTH_MICROSOFT_ENTRA_ID_SECRET` / `AUTH_MICROSOFT_ENTRA_ID_ISSUER`（個人アカウント許可なら `https://login.microsoftonline.com/common/v2.0` のまま）
 
 ### 運用開始前に検討すべきこと
 
 - [ ] **独自ドメインの設定**（Vercel → Domains）。設定後はOAuth各社のコールバックURLにも追加
-- [ ] **メール送信の導入** — 現状パスワードリセット・メール認証は未実装。Resend等の導入を推奨
-- [ ] **利用規約・プライバシーポリシーの作成**（フッターへのリンク追加）
-- [ ] **チャットのリアルタイム化** — 現在は4秒ポーリング。規模拡大時は Pusher / Ably 等への移行を検討
+- [ ] **利用規約・プライバシーポリシーの公開前確認** — `/terms` と `/privacy` のドラフトを弁護士または法務担当者が確認
+- [ ] **チャットの動作確認** — エンジニア側・企業側の2アカウントで同じ会話を開き、送信・定期更新・未読管理が動作することを確認
 - [ ] **画像アップロード** — アバター・企業ロゴは現状OAuthのプロフィール画像のみ。Vercel Blob等の導入を検討
 - [ ] **シードデータの削除** — 本番公開時はデモアカウントを削除（`prisma db seed` を本番で実行しない）
+
+### 利用規約・プライバシーポリシー公開前に人間がやること
+
+- [ ] 利用規約・プライバシーポリシーの本文を弁護士または法務担当者が確認する
+- [ ] 会社名、住所、代表者名、問い合わせメール、制定日が最新で正しいことを確認する
+- [ ] 実際に利用する外部サービス、保存先、委託先、OAuthプロバイダ、メール配信サービス、ファイル保存サービスが本文と一致していることを確認する
+- [ ] 個人情報の開示・訂正・削除等の問い合わせ対応フローを社内で決める
+- [ ] 規約・ポリシーを改定した場合の告知方法と改定日更新の運用を決める
+- [ ] 必要に応じて、同意日時や同意バージョンをDBに保存する追加対応を検討する
 
 ## スクリプト
 

@@ -11,10 +11,9 @@ import { buttonClasses } from "@/components/ui/button";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
 import {
   formatDate,
+  formatProjectLocation,
   formatRateRange,
   formatWeeklyDays,
-  formatYen,
-  hourlyFromMonthly,
   isNew,
 } from "@/lib/format";
 
@@ -71,23 +70,24 @@ export default async function ProjectDetailPage({
   });
   if (!project || project.status === "DRAFT") notFound();
 
-  // 閲覧数をカウント（人気順ソートに使用）
+  // 閲覧数をカウント
   await prisma.project.update({ where: { id }, data: { viewCount: { increment: 1 } } });
 
   const isEngineer = Boolean(user?.engineerProfile);
-  const [application, saved] = isEngineer
-    ? await Promise.all([
-        prisma.application.findUnique({
-          where: { projectId_engineerUserId: { projectId: id, engineerUserId: user!.id } },
-          include: { conversation: { select: { id: true } } },
-        }),
-        prisma.savedProject.findUnique({
-          where: { userId_projectId: { userId: user!.id, projectId: id } },
-        }),
-      ])
-    : [null, null];
+  const application = isEngineer
+    ? await prisma.application.findUnique({
+        where: { projectId_engineerUserId: { projectId: id, engineerUserId: user!.id } },
+        include: { conversation: { select: { id: true } } },
+      })
+    : null;
+  const saved = isEngineer
+    ? await prisma.savedProject.findUnique({
+        where: { userId_projectId: { userId: user!.id, projectId: id } },
+      })
+    : null;
 
   const isOpen = project.status === "OPEN";
+  const locationLabel = formatProjectLocation(project.location, project.prefecture);
 
   const applyArea = (
     <div className="space-y-3">
@@ -98,6 +98,10 @@ export default async function ProjectDetailPage({
       {!isOpen ? (
         <p className="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-500">
           この案件は募集を終了しました
+        </p>
+      ) : user && !isEngineer ? (
+        <p className="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-500">
+          応募はエンジニアアカウントで利用できます
         </p>
       ) : application ? (
         <>
@@ -118,7 +122,12 @@ export default async function ProjectDetailPage({
           この案件に応募する
         </Link>
       )}
-      <SaveButton projectId={project.id} saved={Boolean(saved)} isEngineer={isEngineer} />
+      <SaveButton
+        projectId={project.id}
+        saved={Boolean(saved)}
+        isEngineer={isEngineer}
+        isLoggedIn={Boolean(user)}
+      />
       {!user ? (
         <p className="text-center text-xs text-slate-400">応募にはログインが必要です</p>
       ) : null}
@@ -167,11 +176,6 @@ export default async function ProjectDetailPage({
                   <span className="font-bold text-slate-900">
                     {formatRateRange(project.rateMin, project.rateMax)}
                   </span>
-                  {project.rateMax ? (
-                    <span className="ml-2 text-xs text-slate-500">
-                      （〜{formatYen(hourlyFromMonthly(project.rateMax))}円/1h換算）
-                    </span>
-                  ) : null}
                 </InfoRow>
                 <InfoRow label="職種">{project.jobCategory}</InfoRow>
                 {project.skills.length > 0 ? (
@@ -187,12 +191,9 @@ export default async function ProjectDetailPage({
                 ) : null}
                 <InfoRow label="稼働日数">
                   {formatWeeklyDays(project.weeklyDaysMin, project.weeklyDaysMax)}
-                  <span className="ml-2 text-xs text-slate-500">
-                    （週{project.weeklyDaysMin * 8}時間〜週{project.weeklyDaysMax * 8}時間）
-                  </span>
                 </InfoRow>
                 <InfoRow label="リモート頻度">{REMOTE_TYPE_LABELS[project.remoteType]}</InfoRow>
-                {project.location ? <InfoRow label="場所">{project.location}</InfoRow> : null}
+                {locationLabel ? <InfoRow label="場所">{locationLabel}</InfoRow> : null}
                 <InfoRow label="契約形態">{project.contractType}</InfoRow>
                 {project.industry ? <InfoRow label="業界">{project.industry}</InfoRow> : null}
                 {project.features.length > 0 ? (

@@ -20,7 +20,6 @@ export const metadata: Metadata = { title: "案件検索" };
 const SORT_OPTIONS = [
   { value: "new", label: "新着順" },
   { value: "rate", label: "単価順" },
-  { value: "popular", label: "人気順" },
 ];
 
 export default async function ProjectsPage({
@@ -32,23 +31,24 @@ export default async function ProjectsPage({
   const parsed = parseProjectSearch(params);
   const where = buildProjectWhere(parsed);
 
-  const [total, projects, languages, otherSkills] = await Promise.all([
-    prisma.project.count({ where }),
-    prisma.project.findMany({
-      where,
-      orderBy: buildProjectOrderBy(parsed.sort),
-      skip: (parsed.page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: {
-        company: { select: { name: true } },
-        skills: { include: { skill: true } },
-      },
-    }),
-    prisma.skill.findMany({ where: { category: "LANGUAGE" }, orderBy: { name: "asc" } }),
-    prisma.skill.findMany({ where: { category: { not: "LANGUAGE" } }, orderBy: { name: "asc" } }),
-  ]);
+  const total = await prisma.project.count({ where });
+  const projects = await prisma.project.findMany({
+    where,
+    orderBy: buildProjectOrderBy(parsed.sort),
+    skip: (parsed.page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+    include: {
+      company: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
+  });
+  const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const skillHighlight = {
+    skillIds: parsed.skill,
+    skillTexts: parsed.skillText,
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -60,7 +60,7 @@ export default async function ProjectsPage({
       <div className="mt-6 flex flex-col gap-8 lg:flex-row">
         <aside className="w-full shrink-0 lg:w-72">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
-            <ProjectFilters languages={languages} otherSkills={otherSkills} parsed={parsed} />
+            <ProjectFilters skills={skills} parsed={parsed} />
           </div>
         </aside>
 
@@ -94,7 +94,7 @@ export default async function ProjectsPage({
                 description="検索条件を変更してお試しください。"
               />
             ) : (
-              projects.map((p) => <ProjectCard key={p.id} project={p} />)
+              projects.map((p) => <ProjectCard key={p.id} project={p} skillHighlight={skillHighlight} />)
             )}
           </div>
 

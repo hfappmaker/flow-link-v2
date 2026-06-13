@@ -15,13 +15,11 @@ export default async function EditProjectPage({
   const { id } = await params;
   const { company } = await requireCompany();
 
-  const [project, skills] = await Promise.all([
-    prisma.project.findFirst({
-      where: { id, companyId: company.id },
-      include: { skills: true },
-    }),
-    prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] }),
-  ]);
+  const project = await prisma.project.findFirst({
+    where: { id, companyId: company.id },
+    include: { skills: true },
+  });
+  const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
   if (!project) notFound();
 
   return (

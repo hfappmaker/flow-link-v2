@@ -7,10 +7,12 @@ export function SaveButton({
   projectId,
   saved,
   isEngineer,
+  isLoggedIn,
 }: {
   projectId: string;
   saved: boolean;
   isEngineer: boolean;
+  isLoggedIn: boolean;
 }) {
   const className = cn(
     "flex h-11 w-full items-center justify-center gap-2 rounded-lg border text-sm font-semibold transition-colors",
@@ -20,6 +22,14 @@ export function SaveButton({
   );
 
   if (!isEngineer) {
+    if (isLoggedIn) {
+      return (
+        <p className="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-500">
+          保存はエンジニアアカウントで利用できます
+        </p>
+      );
+    }
+
     return (
       <Link href="/login" className={className}>
         <Bookmark className="h-4 w-4" />

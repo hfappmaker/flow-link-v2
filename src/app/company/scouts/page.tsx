@@ -6,7 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScoutStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
-import { formatRelative } from "@/lib/format";
+import { formatEngineerTitles, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "スカウト管理" };
 
@@ -58,7 +58,7 @@ export default async function CompanyScoutsPage() {
                       <p className="text-sm font-bold text-slate-800">
                         {profile?.displayName ?? s.engineer.name ?? "エンジニア"}
                       </p>
-                      <span className="text-xs text-slate-500">{profile?.title}</span>
+                      <span className="text-xs text-slate-500">{formatEngineerTitles(profile?.title)}</span>
                       <ScoutStatusBadge status={s.status} />
                       <span className="ml-auto text-xs text-slate-400">
                         {formatRelative(s.createdAt)}に送信

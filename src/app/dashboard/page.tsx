@@ -6,7 +6,6 @@ import { requireEngineer } from "@/lib/session";
 import { getUnreadMessageCount } from "@/lib/messages";
 import { ProjectCard } from "@/components/project-card";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { ScoutStatusBadge } from "@/components/status-badges";
 import { formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "マイページ" };
@@ -21,37 +20,32 @@ export default async function DashboardPage() {
     })
   ).map((s) => s.skillId);
 
-  const [activeApplications, pendingScouts, savedCount, unread, recentScouts, recommended] =
-    await Promise.all([
-      prisma.application.count({
-        where: { engineerUserId: user.id, status: { in: ["APPLIED", "SCREENING", "INTERVIEW", "OFFERED"] } },
-      }),
-      prisma.scout.count({ where: { engineerUserId: user.id, status: "SENT" } }),
-      prisma.savedProject.count({ where: { userId: user.id } }),
-      getUnreadMessageCount(user),
-      prisma.scout.findMany({
-        where: { engineerUserId: user.id },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-        include: { company: true },
-      }),
-      prisma.project.findMany({
-        where: {
-          status: "OPEN",
-          ...(skillIds.length > 0 ? { skills: { some: { skillId: { in: skillIds } } } } : {}),
-        },
-        orderBy: { publishedAt: "desc" },
-        take: 4,
-        include: {
-          company: { select: { name: true } },
-          skills: { include: { skill: true } },
-        },
-      }),
-    ]);
+  const applicationCount = await prisma.application.count({ where: { engineerUserId: user.id } });
+  const scoutCount = await prisma.scout.count({ where: { engineerUserId: user.id } });
+  const savedCount = await prisma.savedProject.count({ where: { userId: user.id } });
+  const unread = await getUnreadMessageCount(user);
+  const recentScouts = await prisma.scout.findMany({
+    where: { engineerUserId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    include: { company: true },
+  });
+  const recommended = await prisma.project.findMany({
+    where: {
+      status: "OPEN",
+      ...(skillIds.length > 0 ? { skills: { some: { skillId: { in: skillIds } } } } : {}),
+    },
+    orderBy: { publishedAt: "desc" },
+    take: 4,
+    include: {
+      company: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
+  });
 
   const stats = [
-    { label: "選考中の応募", value: activeApplications, href: "/applications", icon: FileText },
-    { label: "未対応スカウト", value: pendingScouts, href: "/scouts", icon: Mail },
+    { label: "応募した案件", value: applicationCount, href: "/applications", icon: FileText },
+    { label: "受け取ったスカウト", value: scoutCount, href: "/scouts", icon: Mail },
     { label: "未読メッセージ", value: unread, href: "/messages", icon: MessageSquare },
     { label: "保存した案件", value: savedCount, href: "/saved", icon: Bookmark },
   ];
@@ -126,7 +120,6 @@ export default async function DashboardPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-bold text-slate-800">{s.company.name}</p>
-                      <ScoutStatusBadge status={s.status} />
                     </div>
                     <p className="mt-1 truncate text-xs text-slate-500">{s.title ?? s.message}</p>
                     <p className="mt-1 text-xs text-slate-400">{formatRelative(s.createdAt)}</p>
