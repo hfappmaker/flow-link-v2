@@ -145,15 +145,30 @@ npx dotenv -e .env.production.local -- npx prisma db seed   # 任意
 コールバックURLの `{ORIGIN}` は `https://<your-app>.vercel.app` とローカル開発用の `http://localhost:3000` の両方を登録してください。
 
 - [ ] **Google** — [Google Cloud Console](https://console.cloud.google.com/apis/credentials) で OAuth クライアントID作成
+  - OAuth同意画面でアプリ名、ユーザーサポートメール、デベロッパー連絡先を設定
+  - 公開ステータスを本番用にする前に、テストユーザーでログイン確認
+  - 承認済みドメインに本番ドメインを追加（独自ドメイン利用時はそのドメインも追加）
+  - アプリのホームページURL: `{ORIGIN}`
+  - プライバシーポリシーURL: `{ORIGIN}/privacy`
+  - 利用規約URL: `{ORIGIN}/terms`
+  - アプリケーションの種類: Webアプリケーション
+  - 承認済みのJavaScript生成元: `{ORIGIN}`
   - コールバックURL: `{ORIGIN}/api/auth/callback/google`
   - 環境変数: `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
 - [ ] **GitHub** — [Developer settings](https://github.com/settings/developers) で OAuth App 作成
+  - Application name: `FlowLink`
+  - Homepage URL: `{ORIGIN}`
+  - Application description: フリーランスエンジニアと企業のマッチングサービス
   - コールバックURL: `{ORIGIN}/api/auth/callback/github`
+  - 本番URLとローカルURLはGitHub OAuth Appを分けて作る（GitHub OAuth AppはコールバックURLを1つだけ設定する前提）
   - 環境変数: `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`
 - [ ] **Microsoft** — [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → アプリの登録
+  - アプリ名: `FlowLink`
   - サポートされるアカウントの種類: 「個人用 Microsoft アカウントを含む」を推奨
   - リダイレクトURI(Web): `{ORIGIN}/api/auth/callback/microsoft-entra-id`
-  - 証明書とシークレットでクライアントシークレットを発行
+  - ブランド設定にホームページURL `{ORIGIN}`、プライバシーポリシーURL `{ORIGIN}/privacy`、利用規約URL `{ORIGIN}/terms` を設定
+  - 証明書とシークレットでクライアントシークレットを発行し、期限を社内で管理する
+  - APIのアクセス許可で `openid` / `profile` / `email` が利用できる状態になっていることを確認
   - 環境変数: `AUTH_MICROSOFT_ENTRA_ID_ID` / `AUTH_MICROSOFT_ENTRA_ID_SECRET` / `AUTH_MICROSOFT_ENTRA_ID_ISSUER`（個人アカウント許可なら `https://login.microsoftonline.com/common/v2.0` のまま）
 
 ### 運用開始前に検討すべきこと
