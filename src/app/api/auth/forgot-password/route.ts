@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   if (user?.passwordHash) {
     const token = await createAuthToken("password-reset", email, 60);
-    const resetUrl = new URL(`/reset-password/${encodeURIComponent(token)}`, getAppUrl());
+    const resetUrl = new URL(`/reset-password?token=${encodeURIComponent(token)}`, getAppUrl());
     await sendPasswordResetEmail(email, resetUrl.toString());
   }
 
