@@ -106,22 +106,6 @@ export default async function EngineerDetailPage({
                         ポートフォリオ <ExternalLink className="h-3 w-3" />
                       </a>
                     ) : null}
-                    {profile.resumeFileName ? (
-                      <a
-                        href={`/api/engineer-documents/${profile.id}/resume`}
-                        className="inline-flex items-center gap-1 text-blue-600 hover:underline"
-                      >
-                        履歴書 <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : null}
-                    {profile.workHistoryFileName ? (
-                      <a
-                        href={`/api/engineer-documents/${profile.id}/work-history`}
-                        className="inline-flex items-center gap-1 text-blue-600 hover:underline"
-                      >
-                        職務経歴書 <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : null}
                   </div>
                 </div>
               </div>

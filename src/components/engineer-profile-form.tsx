@@ -280,6 +280,10 @@ export function EngineerProfileForm({
             <Input id="portfolioUrl" name="portfolioUrl" type="url" defaultValue={profile.portfolioUrl ?? ""} placeholder="https://..." />
           </div>
         </div>
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+          GitHub URLとポートフォリオURLは、プロフィールを公開している場合に企業へ表示されます。
+          リンク先に氏名、メールアドレス、勤務先、機密情報など公開したくない情報が含まれていないか確認してください。
+        </p>
       </section>
 
       <section className="space-y-4">
