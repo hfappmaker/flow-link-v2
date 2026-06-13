@@ -90,9 +90,7 @@ export function buildEngineerWhere(parsed: ParsedEngineerSearch): Prisma.Enginee
   if (skillFilters.length > 0) and.push({ OR: skillFilters });
 
   if (parsed.days.length > 0) {
-    and.push({
-      OR: [{ desiredWeeklyDays: { isEmpty: true } }, { desiredWeeklyDays: { hasSome: parsed.days } }],
-    });
+    and.push({ desiredWeeklyDays: { hasSome: parsed.days } });
   }
   if (parsed.remote.length > 0) and.push({ remotePreference: { in: parsed.remote } });
   if (parsed.availableOnly) and.push({ workStatus: { in: ["AVAILABLE", "OPEN_TO_OFFERS"] } });

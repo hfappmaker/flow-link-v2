@@ -209,7 +209,7 @@ export function EngineerFilters({
                 defaultChecked={parsed.days.includes(day)}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              週{day}日以上
+              週{day}日
             </label>
           ))}
         </div>

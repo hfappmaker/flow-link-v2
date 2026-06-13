@@ -73,12 +73,7 @@ describe("engineer search helpers", () => {
             },
           ],
         },
-        {
-          OR: [
-            { desiredWeeklyDays: { isEmpty: true } },
-            { desiredWeeklyDays: { hasSome: [4] } },
-          ],
-        },
+        { desiredWeeklyDays: { hasSome: [4] } },
         { remotePreference: { in: [RemoteType.REMOTE_MAIN] } },
         { workStatus: { in: ["AVAILABLE", "OPEN_TO_OFFERS"] } },
       ],
