@@ -216,7 +216,7 @@ export function ProjectForm({
           </div>
           <div>
             <Label htmlFor="location">場所</Label>
-            <Input id="location" name="location" maxLength={100} defaultValue={project?.location ?? ""} placeholder="例: 渋谷 / 六本木 / フルリモート補足" />
+            <Input id="location" name="location" maxLength={100} defaultValue={project?.location ?? ""} placeholder="例: 渋谷 / 六本木 / フルリモート" />
           </div>
           <div>
             <Label htmlFor="prefecture">都道府県</Label>
