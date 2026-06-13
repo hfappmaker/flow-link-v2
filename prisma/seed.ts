@@ -166,7 +166,7 @@ async function main() {
       engineerProfile: {
         create: {
           displayName: "山田 太郎",
-          title: "フルスタックエンジニア",
+          title: ["フルスタックエンジニア"],
           bio: "Web系の受託・自社開発で10年の経験があります。直近3年はTypeScript/Next.js/NestJSでのSaaS開発がメインで、要件定義から設計・実装・運用まで一貫して担当してきました。少人数チームでの0→1開発が得意です。",
           location: "東京都",
           yearsOfExperience: 10,
@@ -256,7 +256,7 @@ async function main() {
         engineerProfile: {
           create: {
             displayName: e.name,
-            title: e.title,
+            title: [e.title],
             bio: e.bio,
             location: e.location,
             yearsOfExperience: e.years,

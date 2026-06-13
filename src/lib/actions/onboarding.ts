@@ -40,7 +40,7 @@ export async function completeEngineerOnboarding(
       data: {
         userId: user.id,
         displayName: parsed.data.displayName,
-        title: parsed.data.title,
+        title: [parsed.data.title],
         location: parsed.data.location,
         yearsOfExperience: parsed.data.yearsOfExperience,
         skills: { create: skillIds.map((skillId) => ({ skillId })) },

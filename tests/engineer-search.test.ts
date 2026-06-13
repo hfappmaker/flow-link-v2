@@ -51,7 +51,7 @@ describe("engineer search helpers", () => {
           OR: [
             { displayName: { contains: "React", mode: "insensitive" } },
             { bio: { contains: "React", mode: "insensitive" } },
-            { title: { contains: "React", mode: "insensitive" } },
+            { title: { has: "React" } },
             {
               skills: {
                 some: {
