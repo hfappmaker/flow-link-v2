@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId, useMemo, useState } from "react";
 import type { EngineerProfile, Skill } from "@prisma/client";
+import { FileText, FileType, Upload, X } from "lucide-react";
 import { updateEngineerProfile } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
@@ -12,6 +13,96 @@ import {
   SKILL_CATEGORY_LABELS,
   WORK_STATUS_LABELS,
 } from "@/lib/constants";
+
+function getDocumentKind(fileName: string | null | undefined) {
+  const ext = fileName?.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return { label: "PDF", tone: "bg-red-50 text-red-700 border-red-200", icon: FileText };
+  if (ext === "doc" || ext === "docx") {
+    return { label: ext.toUpperCase(), tone: "bg-blue-50 text-blue-700 border-blue-200", icon: FileType };
+  }
+  return { label: "FILE", tone: "bg-slate-100 text-slate-700 border-slate-200", icon: FileText };
+}
+
+function DocumentUploadField({
+  label,
+  inputName,
+  removeName,
+  existingFileName,
+  downloadHref,
+}: {
+  label: string;
+  inputName: string;
+  removeName: string;
+  existingFileName: string | null;
+  downloadHref: string;
+}) {
+  const inputId = useId();
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [removeExisting, setRemoveExisting] = useState(false);
+  const visibleFileName = selectedFileName ?? (removeExisting ? null : existingFileName);
+  const documentKind = useMemo(() => getDocumentKind(visibleFileName), [visibleFileName]);
+  const Icon = documentKind.icon;
+
+  return (
+    <div>
+      <Label htmlFor={inputId}>{label}</Label>
+      <input type="hidden" name={removeName} value={removeExisting ? "on" : ""} />
+      <input
+        id={inputId}
+        name={inputName}
+        type="file"
+        accept=".pdf,.doc,.docx"
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          setSelectedFileName(file?.name ?? null);
+          if (file) setRemoveExisting(false);
+        }}
+      />
+
+      {visibleFileName ? (
+        <div className="flex min-h-16 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+          <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${documentKind.tone}`}>
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            {selectedFileName ? (
+              <p className="truncate text-sm font-semibold text-slate-800">{visibleFileName}</p>
+            ) : (
+              <a href={downloadHref} className="block truncate text-sm font-semibold text-blue-700 hover:underline">
+                {visibleFileName}
+              </a>
+            )}
+            <p className="mt-0.5 text-xs font-medium text-slate-500">{documentKind.label}</p>
+          </div>
+          <button
+            type="button"
+            aria-label={`${label}を削除`}
+            title="削除"
+            onClick={() => {
+              setSelectedFileName(null);
+              setRemoveExisting(Boolean(existingFileName));
+              const input = document.getElementById(inputId) as HTMLInputElement | null;
+              if (input) input.value = "";
+            }}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <label
+          htmlFor={inputId}
+          className="flex min-h-16 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+        >
+          <Upload className="h-4 w-4" />
+          ファイルを選択
+        </label>
+      )}
+      <FieldHint>PDF、DOC、DOCX形式。5MBまで。</FieldHint>
+    </div>
+  );
+}
 
 export function EngineerProfileForm({
   profile,
@@ -117,52 +208,20 @@ export function EngineerProfileForm({
       <section className="space-y-4">
         <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">添付書類</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="resumeFile">履歴書</Label>
-            {profile.resumeFileName ? (
-              <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                <a
-                  href={`/api/engineer-documents/${profile.id}/resume`}
-                  className="font-semibold text-blue-700 hover:underline"
-                >
-                  {profile.resumeFileName}
-                </a>
-                <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                  <input
-                    type="checkbox"
-                    name="removeResumeFile"
-                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  削除する
-                </label>
-              </div>
-            ) : null}
-            <Input id="resumeFile" name="resumeFile" type="file" accept=".pdf,.doc,.docx" />
-            <FieldHint>PDF、DOC、DOCX形式。5MBまで。</FieldHint>
-          </div>
-          <div>
-            <Label htmlFor="workHistoryFile">職務経歴書</Label>
-            {profile.workHistoryFileName ? (
-              <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                <a
-                  href={`/api/engineer-documents/${profile.id}/work-history`}
-                  className="font-semibold text-blue-700 hover:underline"
-                >
-                  {profile.workHistoryFileName}
-                </a>
-                <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                  <input
-                    type="checkbox"
-                    name="removeWorkHistoryFile"
-                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  削除する
-                </label>
-              </div>
-            ) : null}
-            <Input id="workHistoryFile" name="workHistoryFile" type="file" accept=".pdf,.doc,.docx" />
-            <FieldHint>PDF、DOC、DOCX形式。5MBまで。</FieldHint>
-          </div>
+          <DocumentUploadField
+            label="履歴書"
+            inputName="resumeFile"
+            removeName="removeResumeFile"
+            existingFileName={profile.resumeFileName}
+            downloadHref={`/api/engineer-documents/${profile.id}/resume`}
+          />
+          <DocumentUploadField
+            label="職務経歴書"
+            inputName="workHistoryFile"
+            removeName="removeWorkHistoryFile"
+            existingFileName={profile.workHistoryFileName}
+            downloadHref={`/api/engineer-documents/${profile.id}/work-history`}
+          />
         </div>
       </section>
 
