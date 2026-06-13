@@ -2,7 +2,7 @@
 
 import { useActionState, useId, useMemo, useState } from "react";
 import type { EngineerProfile, Skill } from "@prisma/client";
-import { FileText, FileType, Upload, X } from "lucide-react";
+import { FileSpreadsheet, FileText, FileType, Upload, X } from "lucide-react";
 import { updateEngineerProfile } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
@@ -19,6 +19,9 @@ function getDocumentKind(fileName: string | null | undefined) {
   if (ext === "pdf") return { label: "PDF", tone: "bg-red-50 text-red-700 border-red-200", icon: FileText };
   if (ext === "doc" || ext === "docx") {
     return { label: ext.toUpperCase(), tone: "bg-blue-50 text-blue-700 border-blue-200", icon: FileType };
+  }
+  if (ext === "xls" || ext === "xlsx") {
+    return { label: ext.toUpperCase(), tone: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: FileSpreadsheet };
   }
   return { label: "FILE", tone: "bg-slate-100 text-slate-700 border-slate-200", icon: FileText };
 }
@@ -51,7 +54,7 @@ function DocumentUploadField({
         id={inputId}
         name={inputName}
         type="file"
-        accept=".pdf,.doc,.docx"
+        accept=".pdf,.doc,.docx,.xls,.xlsx"
         className="sr-only"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -99,7 +102,7 @@ function DocumentUploadField({
           ファイルを選択
         </label>
       )}
-      <FieldHint>PDF、DOC、DOCX形式。5MBまで。</FieldHint>
+      <FieldHint>PDF、DOC、DOCX、XLS、XLSX形式。5MBまで。</FieldHint>
     </div>
   );
 }

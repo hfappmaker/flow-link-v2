@@ -19,6 +19,8 @@ const PROFILE_DOCUMENT_EXTENSIONS = new Map([
   [".pdf", "application/pdf"],
   [".doc", "application/msword"],
   [".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  [".xls", "application/vnd.ms-excel"],
+  [".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
 ]);
 
 type SavedProfileDocument = {
@@ -51,7 +53,7 @@ async function saveProfileDocument(
   const ext = path.extname(originalName).toLowerCase();
   const expectedType = PROFILE_DOCUMENT_EXTENSIONS.get(ext);
   if (!expectedType) {
-    return { error: "アップロードできるファイル形式はPDF、DOC、DOCXです" };
+    return { error: "アップロードできるファイル形式はPDF、DOC、DOCX、XLS、XLSXです" };
   }
   if (value.type && value.type !== expectedType && value.type !== "application/octet-stream") {
     return { error: "ファイル形式と拡張子が一致していません" };
