@@ -42,14 +42,11 @@ export default async function ProjectsPage({
       skills: { include: { skill: true } },
     },
   });
-  const languages = await prisma.skill.findMany({ where: { category: "LANGUAGE" }, orderBy: { name: "asc" } });
-  const otherSkills = await prisma.skill.findMany({ where: { category: { not: "LANGUAGE" } }, orderBy: { name: "asc" } });
+  const skills = await prisma.skill.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const skillHighlight = {
-    languageIds: parsed.lang,
     skillIds: parsed.skill,
-    languageTexts: parsed.langText,
     skillTexts: parsed.skillText,
   };
 
@@ -63,7 +60,7 @@ export default async function ProjectsPage({
       <div className="mt-6 flex flex-col gap-8 lg:flex-row">
         <aside className="w-full shrink-0 lg:w-72">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
-            <ProjectFilters languages={languages} otherSkills={otherSkills} parsed={parsed} />
+            <ProjectFilters skills={skills} parsed={parsed} />
           </div>
         </aside>
 

@@ -206,13 +206,11 @@ function SearchTagInput({
 }
 
 export function ProjectFilters({
-  languages,
-  otherSkills,
+  skills,
   parsed,
   action = "/projects",
 }: {
-  languages: Skill[];
-  otherSkills: Skill[];
+  skills: Skill[];
   parsed: ParsedProjectSearch;
   action?: string;
 }) {
@@ -245,27 +243,15 @@ export function ProjectFilters({
         </div>
       </FilterSection>
 
-      <FilterSection title="開発言語">
-        <div className="space-y-3">
-          <SearchTagInput
-            name="langText"
-            label="手入力で検索"
-            initialTags={parsed.langText}
-            placeholder="例: TypeScript, Go"
-          />
-          <SkillCheckboxGroups name="lang" skills={languages} selected={parsed.lang} />
-        </div>
-      </FilterSection>
-
-      <FilterSection title="開発スキル">
+      <FilterSection title="スキル">
         <div className="space-y-3">
           <SearchTagInput
             name="skillText"
             label="手入力で検索"
             initialTags={parsed.skillText}
-            placeholder="例: GraphQL, BigQuery"
+            placeholder="例: TypeScript, GraphQL"
           />
-          <SkillCheckboxGroups name="skill" skills={otherSkills} selected={parsed.skill} />
+          <SkillCheckboxGroups name="skill" skills={skills} selected={parsed.skill} />
         </div>
       </FilterSection>
 

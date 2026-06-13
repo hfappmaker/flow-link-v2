@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { RemoteType, SkillCategory } from "@prisma/client";
+import { RemoteType } from "@prisma/client";
 import { PREFECTURES } from "../src/lib/constants";
 import {
   buildProjectOrderBy,
@@ -31,10 +31,8 @@ describe("project search helpers", () => {
       q: "Next.js",
       job: ["Frontend"],
       jobText: ["PM", "Tech Lead"],
-      lang: [],
-      langText: ["TypeScript", "React"],
       skill: [],
-      skillText: ["AWS", "Docker"],
+      skillText: ["TypeScript", "React", "AWS", "Docker"],
       prefecture: [PREFECTURES[0]],
       rateMin: 700000,
       rateMax: undefined,
@@ -87,27 +85,20 @@ describe("project search helpers", () => {
         },
         {
           OR: [
-            { skills: { some: { skillId: { in: ["lang-1"] } } } },
+            { skills: { some: { skillId: { in: ["lang-1", "skill-1"] } } } },
             {
               skills: {
                 some: {
                   skill: {
-                    category: SkillCategory.LANGUAGE,
                     name: { contains: "TypeScript", mode: "insensitive" },
                   },
                 },
               },
             },
-          ],
-        },
-        {
-          OR: [
-            { skills: { some: { skillId: { in: ["skill-1"] } } } },
             {
               skills: {
                 some: {
                   skill: {
-                    category: { not: SkillCategory.LANGUAGE },
                     name: { contains: "AWS", mode: "insensitive" },
                   },
                 },
@@ -147,11 +138,11 @@ describe("project search helpers", () => {
 
     assert.equal(
       buildSearchQueryString(parsed),
-      "?q=Next&jobText=PM&lang=lang-1&skillText=AWS&sort=rate",
+      "?q=Next&jobText=PM&skill=lang-1&skillText=AWS&sort=rate",
     );
     assert.equal(
       buildSearchQueryString(parsed, { sort: "new", page: 3 }),
-      "?q=Next&jobText=PM&lang=lang-1&skillText=AWS&page=3",
+      "?q=Next&jobText=PM&skill=lang-1&skillText=AWS&page=3",
     );
   });
 });

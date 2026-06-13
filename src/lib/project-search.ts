@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { RemoteType, SkillCategory } from "@prisma/client";
+import { RemoteType } from "@prisma/client";
 import { PAGE_SIZE, PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 export type ProjectSearchParams = {
@@ -54,10 +54,8 @@ export function parseProjectSearch(params: ProjectSearchParams) {
     q: params.q?.trim() || undefined,
     job: toArray(params.job).filter(Boolean),
     jobText: toTagArray(params.jobText),
-    lang: toArray(params.lang).filter(Boolean),
-    langText: toTagArray(params.langText),
-    skill: toArray(params.skill).filter(Boolean),
-    skillText: toTagArray(params.skillText),
+    skill: [...new Set([...toArray(params.lang), ...toArray(params.skill)].filter(Boolean))],
+    skillText: toTagArray([...toArray(params.langText), ...toArray(params.skillText)]),
     prefecture,
     rateMin,
     rateMax,
@@ -90,24 +88,6 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
   }
   if (jobFilters.length > 0) and.push({ OR: jobFilters });
 
-  const languageFilters: Prisma.ProjectWhereInput[] = [];
-  if (parsed.lang.length > 0) {
-    languageFilters.push({ skills: { some: { skillId: { in: parsed.lang } } } });
-  }
-  for (const langText of parsed.langText) {
-    languageFilters.push({
-      skills: {
-        some: {
-          skill: {
-            category: SkillCategory.LANGUAGE,
-            name: { contains: langText, mode: "insensitive" },
-          },
-        },
-      },
-    });
-  }
-  if (languageFilters.length > 0) and.push({ OR: languageFilters });
-
   const skillFilters: Prisma.ProjectWhereInput[] = [];
   if (parsed.skill.length > 0) {
     skillFilters.push({ skills: { some: { skillId: { in: parsed.skill } } } });
@@ -117,7 +97,6 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
       skills: {
         some: {
           skill: {
-            category: { not: SkillCategory.LANGUAGE },
             name: { contains: skillText, mode: "insensitive" },
           },
         },
@@ -161,8 +140,6 @@ export function buildSearchQueryString(
   if (parsed.q) sp.set("q", parsed.q);
   for (const job of parsed.job) sp.append("job", job);
   for (const jobText of parsed.jobText) sp.append("jobText", jobText);
-  for (const lang of parsed.lang) sp.append("lang", lang);
-  for (const langText of parsed.langText) sp.append("langText", langText);
   for (const skill of parsed.skill) sp.append("skill", skill);
   for (const skillText of parsed.skillText) sp.append("skillText", skillText);
   for (const prefecture of parsed.prefecture) sp.append("prefecture", prefecture);

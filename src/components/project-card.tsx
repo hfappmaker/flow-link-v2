@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin } from "lucide-react";
-import { SkillCategory, type Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
 import {
@@ -19,9 +19,7 @@ export type ProjectCardData = Prisma.ProjectGetPayload<{
 }>;
 
 export type ProjectSkillHighlight = {
-  languageIds?: string[];
   skillIds?: string[];
-  languageTexts?: string[];
   skillTexts?: string[];
 };
 
@@ -36,8 +34,7 @@ function isProjectSkillMatched(
   highlight?: ProjectSkillHighlight,
 ) {
   if (!highlight) return false;
-  if (highlight.languageIds?.includes(skill.id) || highlight.skillIds?.includes(skill.id)) return true;
-  if (skill.category === SkillCategory.LANGUAGE) return includesText(skill.name, highlight.languageTexts);
+  if (highlight.skillIds?.includes(skill.id)) return true;
   return includesText(skill.name, highlight.skillTexts);
 }
 
