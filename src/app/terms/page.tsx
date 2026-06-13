@@ -117,9 +117,6 @@ export default function TermsPage() {
         <p className="text-sm font-bold text-blue-600">FlowLink</p>
         <h1 className="mt-2 text-3xl font-black text-slate-900">利用規約</h1>
         <p className="mt-3 text-sm text-slate-500">制定日: 2026年6月13日</p>
-        <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
-          本規約はサービス運営のためのドラフトです。公開前に弁護士または法務担当者による確認を行ってください。
-        </p>
 
         <div className="mt-10 space-y-8">
           {sections.map((section) => (
