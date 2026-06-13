@@ -89,6 +89,107 @@ function CustomSkillTagsInput() {
   );
 }
 
+function JobTitleTagsInput({ initialTitles }: { initialTitles: string[] }) {
+  const inputId = useId();
+  const [inputValue, setInputValue] = useState("");
+  const [titles, setTitles] = useState<string[]>(initialTitles);
+
+  const addTitles = (rawValue: string) => {
+    const nextTitles = rawValue
+      .split(/[\n,、]/)
+      .map((title) => title.trim().replace(/\s+/g, " "))
+      .filter(Boolean);
+
+    if (nextTitles.length === 0) return;
+    setTitles((current) => [...new Set([...current, ...nextTitles])]);
+    setInputValue("");
+  };
+
+  const toggleTitle = (title: string, checked: boolean) => {
+    setTitles((current) => {
+      if (checked) return [...new Set([...current, title])];
+      return current.filter((item) => item !== title);
+    });
+  };
+
+  const removeTitle = (title: string) => {
+    setTitles((current) => current.filter((item) => item !== title));
+  };
+
+  return (
+    <div className="space-y-3 sm:col-span-2">
+      <p className="text-sm font-medium text-slate-700">職種</p>
+      {titles.map((title) => (
+        <input key={title} type="hidden" name="title" value={title} />
+      ))}
+      <div className="flex flex-wrap gap-2">
+        {JOB_CATEGORIES.map((category) => (
+          <label
+            key={category}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition-colors has-checked:border-blue-600 has-checked:bg-blue-50 has-checked:text-blue-700"
+          >
+            <input
+              type="checkbox"
+              checked={titles.includes(category)}
+              onChange={(event) => toggleTitle(category, event.currentTarget.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            {category}
+          </label>
+        ))}
+      </div>
+      <div className="rounded-lg border border-slate-300 bg-white px-2 py-2 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+        <div className="flex min-h-10 flex-wrap items-center gap-2">
+          {titles
+            .filter((title) => !(JOB_CATEGORIES as readonly string[]).includes(title))
+            .map((title) => (
+              <span
+                key={title}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700"
+              >
+                <span className="truncate">{title}</span>
+                <button
+                  type="button"
+                  aria-label={`${title}を削除`}
+                  title="削除"
+                  onClick={() => removeTitle(title)}
+                  className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-800"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          <input
+            id={inputId}
+            value={inputValue}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (/[,、\n]/.test(value)) {
+                addTitles(value);
+              } else {
+                setInputValue(value);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addTitles(inputValue);
+              }
+              if (event.key === "Backspace" && inputValue === "") {
+                setTitles((current) => current.slice(0, -1));
+              }
+            }}
+            onBlur={() => addTitles(inputValue)}
+            className="h-8 min-w-36 flex-1 border-0 bg-transparent px-1 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder="例: エンジニアリングマネージャー"
+          />
+        </div>
+      </div>
+      <FieldHint>選択肢にない職種は、カンマ・読点・Enterでタグとして追加できます。</FieldHint>
+    </div>
+  );
+}
+
 export function EngineerProfileForm({
   profile,
   skills,
@@ -136,21 +237,7 @@ export function EngineerProfileForm({
             </Label>
             <Input id="displayName" name="displayName" required maxLength={50} defaultValue={profile.displayName} />
           </div>
-          <div>
-            <Label htmlFor="title" required>
-              職種
-            </Label>
-            <Select id="title" name="title" required defaultValue={profile.title ?? ""}>
-              <option value="" disabled>
-                選択してください
-              </option>
-              {JOB_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <JobTitleTagsInput initialTitles={profile.title} />
           <div>
             <Label htmlFor="location">居住地</Label>
             <Select id="location" name="location" defaultValue={profile.location ?? ""}>

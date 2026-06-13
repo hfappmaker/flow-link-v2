@@ -123,7 +123,7 @@ model EngineerProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   displayName       String
-  title             String? // 職種（例: バックエンドエンジニア）
+  title             String[] @default([]) // 職種（複数可）
   bio               String? // 自己紹介・経歴サマリ
   location          String?
   yearsOfExperience Int?

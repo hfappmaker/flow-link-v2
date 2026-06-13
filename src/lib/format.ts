@@ -29,6 +29,11 @@ export function formatDesiredWeeklyDays(days: readonly number[] | null | undefin
     .join("・");
 }
 
+export function formatEngineerTitles(titles: readonly string[] | null | undefined): string | null {
+  if (!titles || titles.length === 0) return null;
+  return titles.join(" / ");
+}
+
 export function formatProjectLocation(
   location: string | null,
   prefecture: string | null,

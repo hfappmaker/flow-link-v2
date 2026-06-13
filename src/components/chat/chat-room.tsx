@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
 import type { MessageAttachmentPayload } from "@/lib/message-attachments";
+import {
+  MESSAGE_ATTACHMENT_ACCEPT,
+  MESSAGE_ATTACHMENT_ALLOWED_LABEL,
+  isAllowedMessageAttachmentFile,
+} from "@/lib/message-attachment-rules";
 
 type ChatMessage = {
   id: string;
@@ -176,6 +181,10 @@ export function ChatRoom({
     const nextFiles = [...selectedFiles];
 
     for (const file of Array.from(files)) {
+      if (!isAllowedMessageAttachmentFile(file.name)) {
+        setFileError(`添付できるファイル形式は${MESSAGE_ATTACHMENT_ALLOWED_LABEL}のみです`);
+        continue;
+      }
       if (file.size > maxAttachmentBytes) {
         setFileError("添付できるファイルサイズは1ファイル10MBまでです");
         continue;
@@ -326,6 +335,7 @@ export function ChatRoom({
             ref={fileInputRef}
             type="file"
             multiple
+            accept={MESSAGE_ATTACHMENT_ACCEPT}
             className="sr-only"
             onChange={(event) => addFiles(event.currentTarget.files)}
           />

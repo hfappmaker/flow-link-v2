@@ -36,7 +36,11 @@ function parseCustomSkillNames(value: string | undefined) {
 
 const engineerProfileSchema = z.object({
   displayName: z.string().min(1, "表示名を入力してください").max(50),
-  title: z.string().min(1, "職種を選択してください"),
+  title: z
+    .array(z.string().trim().min(1).max(50))
+    .min(1, "職種を1つ以上選択または入力してください")
+    .max(20, "職種は20個まで選択できます")
+    .transform((titles) => [...new Set(titles.map((title) => title.replace(/\s+/g, " ")))].sort()),
   bio: z.string().max(4000).optional(),
   location: z.enum(PREFECTURES).optional(),
   yearsOfExperience: z.coerce.number().int().min(0).max(60).optional(),
@@ -61,7 +65,7 @@ export async function updateEngineerProfile(
 
   const parsed = engineerProfileSchema.safeParse({
     displayName: formData.get("displayName"),
-    title: formData.get("title"),
+    title: formData.getAll("title"),
     bio: emptyToUndefined(formData.get("bio")),
     location: emptyToUndefined(formData.get("location")),
     yearsOfExperience: emptyToUndefined(formData.get("yearsOfExperience")),

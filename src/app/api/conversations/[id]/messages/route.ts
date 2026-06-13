@@ -7,6 +7,8 @@ import { getAblyRest } from "@/lib/ably";
 import { CHAT_MESSAGE_CREATED_EVENT, getConversationChannelName } from "@/lib/chat-realtime";
 import { getAttachmentLabel, type MessageAttachmentPayload } from "@/lib/message-attachments";
 import {
+  isAllowedMessageAttachmentFile,
+  MESSAGE_ATTACHMENT_ALLOWED_LABEL,
   MESSAGE_ATTACHMENT_MAX_BYTES,
   MESSAGE_ATTACHMENT_MAX_COUNT,
   removeStoredFile,
@@ -130,6 +132,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (oversized) {
     return NextResponse.json(
       { error: "添付できるファイルサイズは1ファイル10MBまでです" },
+      { status: 400 },
+    );
+  }
+
+  const disallowed = uploadedFiles.find((file) => !isAllowedMessageAttachmentFile(file.name));
+  if (disallowed) {
+    return NextResponse.json(
+      { error: `添付できるファイル形式は${MESSAGE_ATTACHMENT_ALLOWED_LABEL}のみです` },
       { status: 400 },
     );
   }

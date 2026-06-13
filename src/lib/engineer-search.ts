@@ -63,17 +63,15 @@ export function buildEngineerWhere(parsed: ParsedEngineerSearch): Prisma.Enginee
       OR: [
         { displayName: { contains: parsed.q, mode: "insensitive" } },
         { bio: { contains: parsed.q, mode: "insensitive" } },
-        { title: { contains: parsed.q, mode: "insensitive" } },
+        { title: { has: parsed.q } },
         { skills: { some: { skill: { name: { contains: parsed.q, mode: "insensitive" } } } } },
       ],
     });
   }
 
   const jobFilters: Prisma.EngineerProfileWhereInput[] = [];
-  if (parsed.job.length > 0) jobFilters.push({ title: { in: parsed.job } });
-  for (const jobText of parsed.jobText) {
-    jobFilters.push({ title: { contains: jobText, mode: "insensitive" } });
-  }
+  const jobTitles = [...new Set([...parsed.job, ...parsed.jobText])];
+  if (jobTitles.length > 0) jobFilters.push({ title: { hasSome: jobTitles } });
   if (jobFilters.length > 0) and.push({ OR: jobFilters });
 
   const skillFilters: Prisma.EngineerProfileWhereInput[] = [];

@@ -7,7 +7,7 @@ import { getUnreadMessageCount } from "@/lib/messages";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ApplicationStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
-import { formatRelative } from "@/lib/format";
+import { formatEngineerTitles, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "採用ダッシュボード" };
 
@@ -86,7 +86,7 @@ export default async function CompanyDashboardPage() {
                     <p className="text-sm font-bold text-slate-800">
                       {a.engineer.engineerProfile?.displayName ?? a.engineer.name}
                       <span className="ml-2 text-xs font-normal text-slate-500">
-                        {a.engineer.engineerProfile?.title}
+                        {formatEngineerTitles(a.engineer.engineerProfile?.title)}
                       </span>
                     </p>
                     <p className="mt-0.5 truncate text-xs text-slate-500">{a.project.title}</p>

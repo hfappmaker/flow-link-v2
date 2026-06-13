@@ -3,11 +3,16 @@ import { tmpdir } from "node:os";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { del, get, put } from "@vercel/blob";
+export {
+  isAllowedMessageAttachmentFile,
+  MESSAGE_ATTACHMENT_ACCEPT,
+  MESSAGE_ATTACHMENT_ALLOWED_EXTENSIONS,
+  MESSAGE_ATTACHMENT_ALLOWED_LABEL,
+  MESSAGE_ATTACHMENT_MAX_BYTES,
+  MESSAGE_ATTACHMENT_MAX_COUNT,
+} from "@/lib/message-attachment-rules";
 
 const BLOB_REF_PREFIX = "blob:";
-
-export const MESSAGE_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
-export const MESSAGE_ATTACHMENT_MAX_COUNT = 5;
 
 export function sanitizeUploadFileName(fileName: string) {
   const baseName = path.basename(fileName).trim() || "attachment";

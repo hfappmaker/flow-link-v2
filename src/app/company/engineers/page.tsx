@@ -16,7 +16,7 @@ import {
   PAGE_SIZE,
   type EngineerSearchParams,
 } from "@/lib/engineer-search";
-import { formatDesiredWeeklyDays, formatRateRange } from "@/lib/format";
+import { formatDesiredWeeklyDays, formatEngineerTitles, formatRateRange } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニア検索" };
 
@@ -94,7 +94,7 @@ export default async function EngineerSearchPage({
                             {e.displayName}
                           </Link>
                         </h3>
-                        {e.title ? <Badge tone="outline">{e.title}</Badge> : null}
+                        {formatEngineerTitles(e.title) ? <Badge tone="outline">{formatEngineerTitles(e.title)}</Badge> : null}
                         <Badge tone={e.workStatus === "UNAVAILABLE" ? "gray" : "green"}>
                           {WORK_STATUS_LABELS[e.workStatus]}
                         </Badge>

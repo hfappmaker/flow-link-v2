@@ -11,7 +11,7 @@ import { ScoutForm } from "@/components/company/scout-form";
 import { ScoutStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
 import { REMOTE_TYPE_LABELS, WORK_STATUS_LABELS } from "@/lib/constants";
-import { formatDesiredWeeklyDays, formatRateRange, formatRelative } from "@/lib/format";
+import { formatDesiredWeeklyDays, formatEngineerTitles, formatRateRange, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニアプロフィール" };
 
@@ -78,7 +78,7 @@ export default async function EngineerDetailPage({
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
                     {[
-                      profile.title,
+                      formatEngineerTitles(profile.title),
                       profile.yearsOfExperience ? `実務${profile.yearsOfExperience}年` : null,
                       profile.location,
                     ]
