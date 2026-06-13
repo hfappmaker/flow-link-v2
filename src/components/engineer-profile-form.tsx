@@ -190,6 +190,91 @@ function JobTitleTagsInput({ initialTitles }: { initialTitles: string[] }) {
   );
 }
 
+function splitTags(value: string) {
+  return value
+    .split(/[\n,、]/)
+    .map((tag) => tag.trim().replace(/\s+/g, " "))
+    .filter(Boolean);
+}
+
+function WorkHistoryTechStackTagsInput({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [inputValue, setInputValue] = useState("");
+  const tags = splitTags(value);
+
+  const addTags = (rawValue: string) => {
+    const nextTags = splitTags(rawValue);
+    if (nextTags.length === 0) return;
+
+    onChange([...new Set([...tags, ...nextTags])].join(", "));
+    setInputValue("");
+  };
+
+  const removeTag = (tag: string) => {
+    onChange(tags.filter((item) => item !== tag).join(", "));
+  };
+
+  return (
+    <div>
+      <Label htmlFor={id}>技術スタック</Label>
+      <input type="hidden" name="workHistoryTechStack" value={value} />
+      <div className="rounded-lg border border-slate-300 bg-white px-2 py-2 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+        <div className="flex min-h-10 flex-wrap items-center gap-2">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-700"
+            >
+              <span className="truncate">{tag}</span>
+              <button
+                type="button"
+                aria-label={`${tag}を削除`}
+                title="削除"
+                onClick={() => removeTag(tag)}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-800"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            id={id}
+            value={inputValue}
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+              if (/[,、\n]/.test(nextValue)) {
+                addTags(nextValue);
+              } else {
+                setInputValue(nextValue);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addTags(inputValue);
+              }
+              if (event.key === "Backspace" && inputValue === "") {
+                onChange(tags.slice(0, -1).join(", "));
+              }
+            }}
+            onBlur={() => addTags(inputValue)}
+            className="h-8 min-w-36 flex-1 border-0 bg-transparent px-1 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder={tags.length > 0 ? "追加する技術" : "例: TypeScript, Next.js, AWS"}
+          />
+        </div>
+      </div>
+      <FieldHint>カンマ、読点、Enterでタグ化できます。</FieldHint>
+    </div>
+  );
+}
+
 type WorkHistoryFormRow = {
   key: string;
   projectName: string;
@@ -296,14 +381,10 @@ function WorkHistoryFields({ histories }: { histories: WorkHistory[] }) {
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`workHistoryTechStack-${row.key}`}>技術スタック</Label>
-                  <Input
+                  <WorkHistoryTechStackTagsInput
                     id={`workHistoryTechStack-${row.key}`}
-                    name="workHistoryTechStack"
-                    maxLength={200}
                     value={row.techStack}
-                    onChange={(event) => updateRow(row.key, "techStack", event.currentTarget.value)}
-                    placeholder="例: TypeScript, Next.js, AWS"
+                    onChange={(value) => updateRow(row.key, "techStack", value)}
                   />
                 </div>
                 <div>
