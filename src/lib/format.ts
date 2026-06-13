@@ -10,11 +10,6 @@ export function formatRateRange(min: number | null, max: number | null): string 
   return "応相談";
 }
 
-/** 月額単価から時間単価の目安（160h/月換算） */
-export function hourlyFromMonthly(monthly: number): number {
-  return Math.round(monthly / 160 / 10) * 10;
-}
-
 /** 例: 「週2日〜週4日」「週5日」 */
 export function formatWeeklyDays(min: number, max: number): string {
   if (min === max) return `週${min}日`;

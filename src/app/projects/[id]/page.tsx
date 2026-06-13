@@ -14,8 +14,6 @@ import {
   formatProjectLocation,
   formatRateRange,
   formatWeeklyDays,
-  formatYen,
-  hourlyFromMonthly,
   isNew,
 } from "@/lib/format";
 
@@ -178,11 +176,6 @@ export default async function ProjectDetailPage({
                   <span className="font-bold text-slate-900">
                     {formatRateRange(project.rateMin, project.rateMax)}
                   </span>
-                  {project.rateMax ? (
-                    <span className="ml-2 text-xs text-slate-500">
-                      （〜{formatYen(hourlyFromMonthly(project.rateMax))}円/1h換算）
-                    </span>
-                  ) : null}
                 </InfoRow>
                 <InfoRow label="職種">{project.jobCategory}</InfoRow>
                 {project.skills.length > 0 ? (
