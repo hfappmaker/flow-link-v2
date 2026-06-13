@@ -14,6 +14,10 @@ export default async function ProfileSettingsPage() {
     where: { engineerProfileId: profile.id },
     select: { skillId: true },
   });
+  const workHistories = await prisma.workHistory.findMany({
+    where: { engineerProfileId: profile.id },
+    orderBy: { startYearMonth: "desc" },
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -26,6 +30,7 @@ export default async function ProfileSettingsPage() {
         <CardBody className="p-6">
           <EngineerProfileForm
             profile={profile}
+            workHistories={workHistories}
             skills={skills}
             selectedSkillIds={selected.map((s) => s.skillId)}
           />

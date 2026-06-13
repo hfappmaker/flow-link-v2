@@ -34,6 +34,61 @@ function parseCustomSkillNames(value: string | undefined) {
   return { names };
 }
 
+const workHistorySchema = z.object({
+  projectName: z.string().trim().min(1, "参画実績の案件名を入力してください").max(100),
+  role: z.string().trim().max(100).optional(),
+  startYearMonth: z.string().trim().max(20).optional(),
+  endYearMonth: z.string().trim().max(20).optional(),
+  techStack: z.string().trim().max(200).optional(),
+  description: z.string().trim().max(1000).optional(),
+});
+
+function parseWorkHistories(formData: FormData) {
+  const projectNames = formData.getAll("workHistoryProjectName").map(String);
+  const roles = formData.getAll("workHistoryRole").map(String);
+  const starts = formData.getAll("workHistoryStartYearMonth").map(String);
+  const ends = formData.getAll("workHistoryEndYearMonth").map(String);
+  const techStacks = formData.getAll("workHistoryTechStack").map(String);
+  const descriptions = formData.getAll("workHistoryDescription").map(String);
+  const count = Math.max(
+    projectNames.length,
+    roles.length,
+    starts.length,
+    ends.length,
+    techStacks.length,
+    descriptions.length,
+  );
+
+  const histories = [];
+  for (let index = 0; index < count; index += 1) {
+    const raw = {
+      projectName: projectNames[index]?.trim() ?? "",
+      role: roles[index]?.trim() || undefined,
+      startYearMonth: starts[index]?.trim() || undefined,
+      endYearMonth: ends[index]?.trim() || undefined,
+      techStack: techStacks[index]?.trim() || undefined,
+      description: descriptions[index]?.trim() || undefined,
+    };
+    const hasAnyValue = Object.values(raw).some(Boolean);
+    if (!hasAnyValue) continue;
+
+    const parsed = workHistorySchema.safeParse(raw);
+    if (!parsed.success) {
+      return {
+        histories: [] as z.infer<typeof workHistorySchema>[],
+        error: parsed.error.issues[0]?.message ?? "参画実績の入力内容に誤りがあります",
+      };
+    }
+    histories.push(parsed.data);
+  }
+
+  if (histories.length > 20) {
+    return { histories: [] as z.infer<typeof workHistorySchema>[], error: "参画実績は20件まで登録できます" };
+  }
+
+  return { histories };
+}
+
 const engineerProfileSchema = z.object({
   displayName: z.string().min(1, "表示名を入力してください").max(50),
   title: z
@@ -84,6 +139,8 @@ export async function updateEngineerProfile(
 
   const customSkills = parseCustomSkillNames(parsed.data.customSkills);
   if (customSkills.error) return { error: customSkills.error };
+  const workHistories = parseWorkHistories(formData);
+  if (workHistories.error) return { error: workHistories.error };
 
   const selectedSkillIds = [...new Set(formData.getAll("skills").map(String).filter(Boolean))];
 
@@ -124,10 +181,25 @@ export async function updateEngineerProfile(
         data: skillIds.map((skillId) => ({ engineerProfileId: profile.id, skillId })),
       });
     }
+    await tx.workHistory.deleteMany({ where: { engineerProfileId: profile.id } });
+    if (workHistories.histories.length > 0) {
+      await tx.workHistory.createMany({
+        data: workHistories.histories.map((history) => ({
+          engineerProfileId: profile.id,
+          projectName: history.projectName,
+          role: history.role || null,
+          startYearMonth: history.startYearMonth || null,
+          endYearMonth: history.endYearMonth || null,
+          techStack: history.techStack || null,
+          description: history.description || null,
+        })),
+      });
+    }
   });
 
   revalidatePath("/settings/profile");
   revalidatePath("/company/engineers");
+  revalidatePath(`/company/engineers/${profile.id}`);
   return { success: true };
 }
 

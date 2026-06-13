@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
-import type { EngineerProfile, Skill } from "@prisma/client";
-import { X } from "lucide-react";
+import type { EngineerProfile, Skill, WorkHistory } from "@prisma/client";
+import { Plus, X } from "lucide-react";
 import { updateEngineerProfile } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
 import { FieldHint, Input, Label, Select, Textarea } from "@/components/ui/form";
@@ -190,12 +190,172 @@ function JobTitleTagsInput({ initialTitles }: { initialTitles: string[] }) {
   );
 }
 
+type WorkHistoryFormRow = {
+  key: string;
+  projectName: string;
+  role: string;
+  startYearMonth: string;
+  endYearMonth: string;
+  techStack: string;
+  description: string;
+};
+
+function WorkHistoryFields({ histories }: { histories: WorkHistory[] }) {
+  const [rows, setRows] = useState<WorkHistoryFormRow[]>(
+    histories.length > 0
+      ? histories.map((history) => ({
+          key: history.id,
+          projectName: history.projectName,
+          role: history.role ?? "",
+          startYearMonth: history.startYearMonth ?? "",
+          endYearMonth: history.endYearMonth ?? "",
+          techStack: history.techStack ?? "",
+          description: history.description ?? "",
+        }))
+      : [],
+  );
+
+  const addRow = () => {
+    setRows((current) => [
+      ...current,
+      {
+        key: `new-${Date.now()}-${current.length}`,
+        projectName: "",
+        role: "",
+        startYearMonth: "",
+        endYearMonth: "",
+        techStack: "",
+        description: "",
+      },
+    ]);
+  };
+
+  const removeRow = (key: string) => {
+    setRows((current) => current.filter((row) => row.key !== key));
+  };
+
+  const updateRow = (key: string, field: keyof Omit<WorkHistoryFormRow, "key">, value: string) => {
+    setRows((current) => current.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
+  };
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2">
+        <h2 className="text-base font-bold text-slate-800">参画実績</h2>
+        <button
+          type="button"
+          onClick={addRow}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          追加
+        </button>
+      </div>
+      <FieldHint>企業プロフィールに表示されます。案件名を入力した行だけ保存されます。</FieldHint>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
+          参画実績はまだ登録されていません。
+        </p>
+      ) : (
+        <div className="space-y-5">
+          {rows.map((row, index) => (
+            <div key={row.key} className="space-y-4 border-b border-slate-100 pb-5 last:border-b-0 last:pb-0">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-slate-700">実績 {index + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => removeRow(row.key)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                  aria-label={`実績 ${index + 1} を削除`}
+                  title="削除"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <Label htmlFor={`workHistoryProjectName-${row.key}`}>案件名</Label>
+                  <Input
+                    id={`workHistoryProjectName-${row.key}`}
+                    name="workHistoryProjectName"
+                    maxLength={100}
+                    value={row.projectName}
+                    onChange={(event) => updateRow(row.key, "projectName", event.currentTarget.value)}
+                    placeholder="例: BtoB SaaSの新規開発"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`workHistoryRole-${row.key}`}>役割</Label>
+                  <Input
+                    id={`workHistoryRole-${row.key}`}
+                    name="workHistoryRole"
+                    maxLength={100}
+                    value={row.role}
+                    onChange={(event) => updateRow(row.key, "role", event.currentTarget.value)}
+                    placeholder="例: フロントエンドリード"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`workHistoryTechStack-${row.key}`}>技術スタック</Label>
+                  <Input
+                    id={`workHistoryTechStack-${row.key}`}
+                    name="workHistoryTechStack"
+                    maxLength={200}
+                    value={row.techStack}
+                    onChange={(event) => updateRow(row.key, "techStack", event.currentTarget.value)}
+                    placeholder="例: TypeScript, Next.js, AWS"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`workHistoryStart-${row.key}`}>開始年月</Label>
+                  <Input
+                    id={`workHistoryStart-${row.key}`}
+                    name="workHistoryStartYearMonth"
+                    type="month"
+                    value={row.startYearMonth}
+                    onChange={(event) => updateRow(row.key, "startYearMonth", event.currentTarget.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`workHistoryEnd-${row.key}`}>終了年月</Label>
+                  <Input
+                    id={`workHistoryEnd-${row.key}`}
+                    name="workHistoryEndYearMonth"
+                    type="month"
+                    value={row.endYearMonth}
+                    onChange={(event) => updateRow(row.key, "endYearMonth", event.currentTarget.value)}
+                  />
+                  <FieldHint>現在も参画中の場合は空欄にしてください。</FieldHint>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor={`workHistoryDescription-${row.key}`}>内容・成果</Label>
+                  <Textarea
+                    id={`workHistoryDescription-${row.key}`}
+                    name="workHistoryDescription"
+                    rows={4}
+                    maxLength={1000}
+                    value={row.description}
+                    onChange={(event) => updateRow(row.key, "description", event.currentTarget.value)}
+                    placeholder="担当範囲、成果、工夫した点など"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function EngineerProfileForm({
   profile,
+  workHistories,
   skills,
   selectedSkillIds,
 }: {
   profile: EngineerProfile;
+  workHistories: WorkHistory[];
   skills: Skill[];
   selectedSkillIds: string[];
 }) {
@@ -326,6 +486,8 @@ export function EngineerProfileForm({
         ))}
         <CustomSkillTagsInput />
       </section>
+
+      <WorkHistoryFields histories={workHistories} />
 
       <section className="space-y-4">
         <h2 className="border-b border-slate-200 pb-2 text-base font-bold text-slate-800">希望条件</h2>
