@@ -42,10 +42,10 @@ export default async function ConversationPage({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-bold text-slate-800">{counterpartName}</p>
-            {conversation.application ? (
+            {isCompany && conversation.application ? (
               <Badge tone="blue">応募: {APPLICATION_STATUS_LABELS[conversation.application.status]}</Badge>
             ) : null}
-            {conversation.scout ? (
+            {isCompany && conversation.scout ? (
               <Badge tone="amber">スカウト: {SCOUT_STATUS_LABELS[conversation.scout.status]}</Badge>
             ) : null}
           </div>

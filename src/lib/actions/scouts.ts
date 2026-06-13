@@ -72,25 +72,7 @@ export async function sendScout(_prev: ActionState, formData: FormData): Promise
   redirect(`/messages/${conversation.id}`);
 }
 
-const respondSchema = z.object({
-  scoutId: z.string().min(1),
-  response: z.enum(["ACCEPTED", "DECLINED"]),
-});
-
 export async function respondToScout(formData: FormData) {
-  const { user } = await requireEngineer();
-
-  const parsed = respondSchema.safeParse({
-    scoutId: formData.get("scoutId"),
-    response: formData.get("response"),
-  });
-  if (!parsed.success) return;
-
-  await prisma.scout.updateMany({
-    where: { id: parsed.data.scoutId, engineerUserId: user.id, status: "SENT" },
-    data: { status: parsed.data.response },
-  });
-
-  revalidatePath("/scouts");
-  revalidatePath("/company/scouts");
+  await requireEngineer();
+  void formData;
 }

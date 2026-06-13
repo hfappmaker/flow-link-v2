@@ -78,19 +78,8 @@ export async function applyToProject(
 }
 
 export async function withdrawApplication(formData: FormData) {
-  const { user } = await requireEngineer();
-  const applicationId = String(formData.get("applicationId") ?? "");
-
-  await prisma.application.updateMany({
-    where: {
-      id: applicationId,
-      engineerUserId: user.id,
-      status: { notIn: ["ACCEPTED", "REJECTED", "WITHDRAWN"] },
-    },
-    data: { status: "WITHDRAWN" },
-  });
-
-  revalidatePath("/applications");
+  await requireEngineer();
+  void formData;
 }
 
 export async function updateApplicationStatus(formData: FormData) {
