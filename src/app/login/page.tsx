@@ -32,11 +32,8 @@ export default async function LoginPage({
   return (
     <div className="mx-auto max-w-md px-4 py-12 sm:px-6">
       <h1 className="text-center text-2xl font-black text-slate-900">ログイン</h1>
-      <p className="mt-2 text-center text-sm text-slate-500">
-        FlowLinkへおかえりなさい
-      </p>
 
-      <Card className="mt-8">
+      <Card className="mt-6">
         <CardBody className="p-6">
           <OAuthButtons
             availability={{
