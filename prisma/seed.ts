@@ -39,6 +39,7 @@ const SKILLS: Array<[string, SkillCategory]> = [
   ["Ruby on Rails", "FRAMEWORK"],
   ["Laravel", "FRAMEWORK"],
   ["ASP.NET Core", "FRAMEWORK"],
+  [".NET Framework", "FRAMEWORK"],
   ["Spring Boot", "FRAMEWORK"],
   ["Flutter", "FRAMEWORK"],
   ["React Native", "FRAMEWORK"],
