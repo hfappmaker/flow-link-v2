@@ -12,6 +12,7 @@ import {
   PROJECT_FEATURES,
   REMOTE_TYPE_LABELS,
   SKILL_CATEGORY_LABELS,
+  WEEKLY_DAYS_OPTIONS,
 } from "@/lib/constants";
 
 type ProjectWithSkills = Prisma.ProjectGetPayload<{ include: { skills: true } }>;
@@ -182,7 +183,7 @@ export function ProjectForm({
               稼働日数 下限
             </Label>
             <Select id="weeklyDaysMin" name="weeklyDaysMin" required defaultValue={project?.weeklyDaysMin ?? 3}>
-              {[1, 2, 3, 4, 5].map((d) => (
+              {WEEKLY_DAYS_OPTIONS.map((d) => (
                 <option key={d} value={d}>
                   週{d}日
                 </option>
@@ -194,7 +195,7 @@ export function ProjectForm({
               稼働日数 上限
             </Label>
             <Select id="weeklyDaysMax" name="weeklyDaysMax" required defaultValue={project?.weeklyDaysMax ?? 5}>
-              {[1, 2, 3, 4, 5].map((d) => (
+              {WEEKLY_DAYS_OPTIONS.map((d) => (
                 <option key={d} value={d}>
                   週{d}日
                 </option>

@@ -7,7 +7,7 @@ import { RemoteType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
-import { PREFECTURES } from "@/lib/constants";
+import { PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -19,8 +19,8 @@ const projectSchema = z
     jobCategory: z.string().min(1, "募集職種を選択してください"),
     rateMin: z.coerce.number().int().min(0).optional(),
     rateMax: z.coerce.number().int().min(0).optional(),
-    weeklyDaysMin: z.coerce.number().int().min(1).max(5),
-    weeklyDaysMax: z.coerce.number().int().min(1).max(5),
+    weeklyDaysMin: z.coerce.number().int().min(1).max(WEEKLY_DAYS_OPTIONS.at(-1) ?? 7),
+    weeklyDaysMax: z.coerce.number().int().min(1).max(WEEKLY_DAYS_OPTIONS.at(-1) ?? 7),
     remoteType: z.enum(RemoteType),
     location: z.string().max(100).optional(),
     prefecture: z.enum(PREFECTURES).optional(),
