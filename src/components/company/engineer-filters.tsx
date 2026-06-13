@@ -1,6 +1,6 @@
 "use client";
 
-import type { Skill } from "@prisma/client";
+import { SkillCategory, type Skill } from "@prisma/client";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { X } from "lucide-react";
@@ -8,6 +8,7 @@ import { FieldHint, Input, Label } from "@/components/ui/form";
 import {
   JOB_CATEGORIES,
   REMOTE_TYPE_LABELS,
+  SKILL_CATEGORY_LABELS,
   WEEKLY_DAYS_OPTIONS,
 } from "@/lib/constants";
 import type { ParsedEngineerSearch } from "@/lib/engineer-search";
@@ -43,6 +44,61 @@ function CheckboxGroup({
           />
           <span className="min-w-0 flex-1 truncate">{option.label}</span>
         </label>
+      ))}
+    </div>
+  );
+}
+
+const SKILL_CATEGORY_ORDER = [
+  SkillCategory.LANGUAGE,
+  SkillCategory.FRAMEWORK,
+  SkillCategory.INFRA,
+  SkillCategory.DATABASE,
+  SkillCategory.TOOL,
+  SkillCategory.OTHER,
+] as const;
+
+function SkillCheckboxGroups({
+  skills,
+  selected,
+}: {
+  skills: Skill[];
+  selected: string[];
+}) {
+  const groupedSkills = SKILL_CATEGORY_ORDER.map((category) => ({
+    category,
+    skills: skills
+      .filter((skill) => skill.category === category)
+      .sort((a, b) => {
+        const aSelected = selected.includes(a.id);
+        const bSelected = selected.includes(b.id);
+        if (aSelected !== bSelected) return Number(bSelected) - Number(aSelected);
+        return a.name.localeCompare(b.name, "ja");
+      }),
+  })).filter((group) => group.skills.length > 0);
+
+  return (
+    <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+      {groupedSkills.map(({ category, skills }) => (
+        <div key={category} className="space-y-1.5">
+          <p className="sticky top-0 z-10 bg-white py-1 text-[11px] font-bold tracking-wide text-slate-500">
+            {SKILL_CATEGORY_LABELS[category]}
+          </p>
+          <div className="space-y-1.5">
+            {skills.map((skill) => (
+              <label key={skill.id} className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  name="skill"
+                  value={skill.id}
+                  defaultChecked={selected.includes(skill.id)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="min-w-0 flex-1 truncate">{skill.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -190,11 +246,7 @@ export function EngineerFilters({
             initialTags={parsed.skillText}
             placeholder="例: TypeScript, GraphQL"
           />
-          <CheckboxGroup
-            name="skill"
-            selected={parsed.skill}
-            options={skills.map((skill) => ({ value: skill.id, label: skill.name }))}
-          />
+          <SkillCheckboxGroups skills={skills} selected={parsed.skill} />
         </div>
       </FilterSection>
 
