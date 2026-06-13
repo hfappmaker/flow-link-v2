@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import type { Company } from "@prisma/client";
 import { updateCompanyProfile } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
-import { FieldHint, Input, Label, Textarea } from "@/components/ui/form";
+import { Input, Label, Textarea } from "@/components/ui/form";
 
 export function CompanyProfileForm({
   emailNotificationsEnabled,
@@ -75,7 +75,6 @@ export function CompanyProfileForm({
             </span>
           </span>
         </label>
-        <FieldHint>企業メンバーごとの設定です。会社全体の設定ではありません。</FieldHint>
       </section>
       <Button type="submit" size="lg" disabled={pending}>
         {pending ? "保存中..." : "企業情報を保存"}
