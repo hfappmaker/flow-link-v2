@@ -1,13 +1,16 @@
 import type { Prisma } from "@prisma/client";
-import { RemoteType } from "@prisma/client";
+import { RemoteType, SkillCategory } from "@prisma/client";
 import { PAGE_SIZE } from "@/lib/constants";
 
 export type ProjectSearchParams = {
   q?: string;
-  job?: string;
-  lang?: string;
-  skill?: string;
+  job?: string | string[];
+  lang?: string | string[];
+  langText?: string;
+  skill?: string | string[];
+  skillText?: string;
   rateMin?: string;
+  rateMax?: string;
   days?: string | string[];
   remote?: string | string[];
   features?: string | string[];
@@ -31,13 +34,17 @@ export function parseProjectSearch(params: ProjectSearchParams) {
   );
   const features = toArray(params.features).filter(Boolean);
   const rateMin = Number.parseInt(params.rateMin ?? "", 10) || undefined;
+  const rateMax = Number.parseInt(params.rateMax ?? "", 10) || undefined;
 
   return {
     q: params.q?.trim() || undefined,
-    job: params.job || undefined,
-    lang: params.lang || undefined,
-    skill: params.skill || undefined,
+    job: toArray(params.job).filter(Boolean),
+    lang: toArray(params.lang).filter(Boolean),
+    langText: params.langText?.trim() || undefined,
+    skill: toArray(params.skill).filter(Boolean),
+    skillText: params.skillText?.trim() || undefined,
     rateMin,
+    rateMax,
     days,
     remote,
     features,
@@ -60,10 +67,45 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
       ],
     });
   }
-  if (parsed.job) and.push({ jobCategory: parsed.job });
-  if (parsed.lang) and.push({ skills: { some: { skillId: parsed.lang } } });
-  if (parsed.skill) and.push({ skills: { some: { skillId: parsed.skill } } });
-  if (parsed.rateMin) and.push({ rateMax: { gte: parsed.rateMin } });
+  if (parsed.job.length > 0) and.push({ jobCategory: { in: parsed.job } });
+  const languageFilters: Prisma.ProjectWhereInput[] = [];
+  if (parsed.lang.length > 0) {
+    languageFilters.push({ skills: { some: { skillId: { in: parsed.lang } } } });
+  }
+  if (parsed.langText) {
+    languageFilters.push({
+      skills: {
+        some: {
+          skill: {
+            category: SkillCategory.LANGUAGE,
+            name: { contains: parsed.langText, mode: "insensitive" },
+          },
+        },
+      },
+    });
+  }
+  if (languageFilters.length > 0) and.push({ OR: languageFilters });
+
+  const skillFilters: Prisma.ProjectWhereInput[] = [];
+  if (parsed.skill.length > 0) {
+    skillFilters.push({ skills: { some: { skillId: { in: parsed.skill } } } });
+  }
+  if (parsed.skillText) {
+    skillFilters.push({
+      skills: {
+        some: {
+          skill: {
+            category: { not: SkillCategory.LANGUAGE },
+            name: { contains: parsed.skillText, mode: "insensitive" },
+          },
+        },
+      },
+    });
+  }
+  if (skillFilters.length > 0) and.push({ OR: skillFilters });
+
+  if (parsed.rateMin) and.push({ OR: [{ rateMax: null }, { rateMax: { gte: parsed.rateMin } }] });
+  if (parsed.rateMax) and.push({ OR: [{ rateMin: null }, { rateMin: { lte: parsed.rateMax } }] });
   if (parsed.days.length > 0) {
     and.push({
       OR: parsed.days.map((d) => ({
@@ -97,10 +139,13 @@ export function buildSearchQueryString(
 ): string {
   const sp = new URLSearchParams();
   if (parsed.q) sp.set("q", parsed.q);
-  if (parsed.job) sp.set("job", parsed.job);
-  if (parsed.lang) sp.set("lang", parsed.lang);
-  if (parsed.skill) sp.set("skill", parsed.skill);
+  for (const job of parsed.job) sp.append("job", job);
+  for (const lang of parsed.lang) sp.append("lang", lang);
+  if (parsed.langText) sp.set("langText", parsed.langText);
+  for (const skill of parsed.skill) sp.append("skill", skill);
+  if (parsed.skillText) sp.set("skillText", parsed.skillText);
   if (parsed.rateMin) sp.set("rateMin", String(parsed.rateMin));
+  if (parsed.rateMax) sp.set("rateMax", String(parsed.rateMax));
   for (const d of parsed.days) sp.append("days", String(d));
   for (const r of parsed.remote) sp.append("remote", r);
   for (const f of parsed.features) sp.append("features", f);
