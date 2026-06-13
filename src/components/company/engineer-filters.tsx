@@ -148,10 +148,18 @@ export function EngineerFilters({
   parsed: ParsedEngineerSearch;
   action?: string;
 }) {
+  const [searching, setSearching] = useState(false);
+  const parsedKey = JSON.stringify(parsed);
+
+  useEffect(() => {
+    setSearching(false);
+  }, [parsedKey]);
+
   return (
     <form
       method="get"
       action={action}
+      onSubmit={() => setSearching(true)}
       className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20"
     >
       <FilterSection title="フリーワード">
@@ -237,9 +245,11 @@ export function EngineerFilters({
       <div className="flex items-center gap-3 pt-1">
         <button
           type="submit"
-          className="h-10 flex-1 rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          disabled={searching}
+          aria-label={searching ? "検索中" : "この条件で検索"}
+          className="h-10 flex-1 rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-blue-300"
         >
-          この条件で検索
+          {searching ? "検索中..." : "この条件で検索"}
         </button>
         <Link href={action} className="text-xs text-slate-500 hover:text-slate-700 hover:underline">
           クリア
