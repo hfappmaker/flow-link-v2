@@ -23,6 +23,51 @@ type RealtimeChatMessage = Omit<ChatMessage, "mine"> & {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+const urlPattern = /https?:\/\/[^\s<>"']+/g;
+const trailingUrlPunctuationPattern = /[).,!?;:、。）」』】]+$/;
+
+function splitTrailingPunctuation(value: string) {
+  const match = value.match(trailingUrlPunctuationPattern);
+  if (!match) return { href: value, trailing: "" };
+
+  const trailing = match[0];
+  return {
+    href: value.slice(0, -trailing.length),
+    trailing,
+  };
+}
+
+function MessageBody({ body, mine }: { body: string; mine: boolean }) {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of body.matchAll(urlPattern)) {
+    const rawUrl = match[0];
+    const index = match.index ?? 0;
+    if (index > lastIndex) parts.push(body.slice(lastIndex, index));
+
+    const { href, trailing } = splitTrailingPunctuation(rawUrl);
+    parts.push(
+      <a
+        key={`${href}-${index}`}
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className={cn("break-all underline underline-offset-2", mine ? "text-white" : "text-blue-600")}
+      >
+        {href}
+      </a>,
+    );
+    if (trailing) parts.push(trailing);
+
+    lastIndex = index + rawUrl.length;
+  }
+
+  if (lastIndex < body.length) parts.push(body.slice(lastIndex));
+
+  return <>{parts.length > 0 ? parts : body}</>;
+}
+
 export function ChatRoom({
   conversationId,
   currentUserId,
@@ -147,7 +192,7 @@ export function ChatRoom({
                     : "rounded-bl-sm border border-slate-200 bg-white text-slate-800",
                 )}
               >
-                {m.body}
+                <MessageBody body={m.body} mine={m.mine} />
               </div>
             </div>
           ))

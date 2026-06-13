@@ -689,6 +689,7 @@ async function main() {
   console.log("✅ シード完了");
   console.log("デモアカウント:");
   console.log("  エンジニア: engineer@example.com / password123");
+  console.log("  エンジニア（スカウト受信済み）: sato@example.com / password123");
   console.log("  企業:       company@example.com / password123 (株式会社テックフロー)");
   console.log("  企業2:      company2@example.com / password123 (AIワークス株式会社)");
 }
