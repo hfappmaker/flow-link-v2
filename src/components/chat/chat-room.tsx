@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Realtime } from "ably";
 import useSWR from "swr";
 import { SendHorizontal } from "lucide-react";
@@ -77,6 +78,7 @@ export function ChatRoom({
   currentUserId: string;
   isCompanyViewer: boolean;
 }) {
+  const router = useRouter();
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [realtimeUnavailable, setRealtimeUnavailable] = useState(false);
@@ -86,6 +88,7 @@ export function ChatRoom({
     { refreshInterval: realtimeUnavailable ? 4000 : 0 },
   );
   const bottomRef = useRef<HTMLDivElement>(null);
+  const refreshedConversationRef = useRef<string | null>(null);
   const messages = data?.messages ?? [];
 
   useEffect(() => {
@@ -93,7 +96,16 @@ export function ChatRoom({
   }, [messages.length]);
 
   useEffect(() => {
+    if (isLoading || !data) return;
+    if (refreshedConversationRef.current === conversationId) return;
+
+    refreshedConversationRef.current = conversationId;
+    router.refresh();
+  }, [conversationId, data, isLoading, router]);
+
+  useEffect(() => {
     setRealtimeUnavailable(false);
+    refreshedConversationRef.current = null;
 
     const ably = new Realtime({
       authUrl: `/api/ably/auth?conversationId=${encodeURIComponent(conversationId)}`,
@@ -117,6 +129,12 @@ export function ChatRoom({
         if (existing.some((m) => m.id === chatMessage.id)) return current;
         return { messages: [...existing, chatMessage] };
       }, { revalidate: false });
+
+      if (!chatMessage.mine) {
+        void mutate().then(() => {
+          router.refresh();
+        });
+      }
     }).catch(() => {
       if (!closed) {
         setRealtimeUnavailable(true);
@@ -136,7 +154,7 @@ export function ChatRoom({
       channel.unsubscribe();
       ably.close();
     };
-  }, [conversationId, currentUserId, isCompanyViewer, mutate]);
+  }, [conversationId, currentUserId, isCompanyViewer, mutate, router]);
 
   async function send() {
     const body = draft.trim();

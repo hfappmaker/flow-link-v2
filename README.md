@@ -34,6 +34,7 @@ Findy Freelance / レバテックを参考に、案件検索・応募・スカ�
 | スタイリング | Tailwind CSS v4 |
 | DB / ORM | PostgreSQL (Prisma Postgres) / Prisma 6 |
 | 認証 | Auth.js (NextAuth v5) + Prisma Adapter (JWTセッション) |
+| メール送信 | Resend |
 | デプロイ | Vercel |
 
 ## ローカル開発
@@ -59,8 +60,27 @@ docker run -d --name flowlink-pg \
 ### 3. 環境変数
 
 `.env.example` をコピーして `.env` を作成し、値を設定します。
-最低限 `DATABASE_URL` と `AUTH_SECRET`（`npx auth secret` で生成可）があれば、メール＆パスワードログインで動作します。
+最低限 `DATABASE_URL` と `AUTH_SECRET`（`npx auth secret` で生成可）が必要です。
+メール認証・パスワードリセットを使うには Resend の `RESEND_API_KEY` も設定してください。
 OAuth（Google / GitHub / Microsoft）は設定したプロバイダのボタンだけが自動的に表示されます。
+
+#### Resend（メール認証・パスワードリセット）
+
+登録時のメール認証、認証メール再送、パスワードリセットメールの送信に Resend を使います。
+
+ローカル開発では `.env` または `.env.local` に以下を設定します。
+
+```env
+RESEND_API_KEY="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+EMAIL_FROM="FlowLink <onboarding@resend.dev>"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+- `RESEND_API_KEY`: [Resend API Keys](https://resend.com/api-keys) で発行
+- `EMAIL_FROM`: 送信元。独自ドメインを検証するまでは `FlowLink <onboarding@resend.dev>` で動作確認できます
+- `NEXT_PUBLIC_APP_URL`: メール本文の認証リンク・再設定リンク生成に使うアプリURL
+
+本番では独自ドメインを Resend に追加し、DNS（SPF / DKIM / MX）を設定してから `EMAIL_FROM` を `FlowLink <no-reply@your-domain.example>` のような検証済みドメインに変更してください。
 
 ### 4. スキーマ反映とシード投入
 
@@ -91,8 +111,9 @@ http://localhost:3000 で起動します。
 1. このリポジトリを GitHub に push
 2. Vercel で New Project → リポジトリをインポート（Framework: Next.js、設定はデフォルトでOK）
 3. **Storage → Marketplace → Prisma Postgres** を追加（`DATABASE_URL` が自動で設定されます）
-4. 環境変数を設定（下記「人間がやるべき作業」参照）
-5. デプロイ後、ローカルから本番DBへスキーマ反映とシード投入:
+4. **Storage → Marketplace → Resend** を追加、または Resend ダッシュボードで API key を作成
+5. 環境変数を設定（下記「人間がやるべき作業」参照）
+6. デプロイ後、ローカルから本番DBへスキーマ反映とシード投入:
 
 ```bash
 # Vercelの環境変数からDATABASE_URLを取得して実行
@@ -113,6 +134,9 @@ npx dotenv -e .env.production.local -- npx prisma db seed   # 任意
 - [ ] **Vercel プロジェクト作成** — リポジトリをインポート
 - [ ] **Prisma Postgres 作成** — Vercel Marketplace（Storage タブ）から追加。`DATABASE_URL` が自動設定される
 - [ ] **AUTH_SECRET の設定** — `npx auth secret` で生成し、Vercelの環境変数に設定
+- [ ] **Resend の設定** — Vercel Marketplace から Resend を追加、または Resend で API key を作成して `RESEND_API_KEY` を設定
+- [ ] **メール送信元の設定** — `EMAIL_FROM` を設定。独自ドメイン運用時は Resend でドメイン検証（SPF / DKIM / MX）を完了する
+- [ ] **アプリURLの設定** — `NEXT_PUBLIC_APP_URL` に本番URL（例: `https://flow-link-v2-xi.vercel.app` または独自ドメイン）を設定
 - [ ] **本番DBへのスキーマ反映** — `prisma db push`（または `prisma migrate deploy`）
 
 ### OAuthログインを有効にする場合（プロバイダごとに任意）
@@ -135,7 +159,6 @@ npx dotenv -e .env.production.local -- npx prisma db seed   # 任意
 ### 運用開始前に検討すべきこと
 
 - [ ] **独自ドメインの設定**（Vercel → Domains）。設定後はOAuth各社のコールバックURLにも追加
-- [ ] **メール送信の導入** — 現状パスワードリセット・メール認証は未実装。Resend等の導入を推奨
 - [ ] **利用規約・プライバシーポリシーの作成**（フッターへのリンク追加）
 - [ ] **Ablyアプリ作成** — Ably Dashboardでアプリを作成し、API keyを発行
 - [ ] **ABLY_API_KEYの設定** — VercelのEnvironment Variablesに `ABLY_API_KEY` を設定（Production / Preview / Development）。ローカル開発では `.env.local` に同じ値を設定
