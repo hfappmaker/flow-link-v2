@@ -49,6 +49,12 @@ export default async function ProjectsPage({
   ]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const skillHighlight = {
+    languageIds: parsed.lang,
+    skillIds: parsed.skill,
+    languageTexts: parsed.langText,
+    skillTexts: parsed.skillText,
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -94,7 +100,7 @@ export default async function ProjectsPage({
                 description="検索条件を変更してお試しください。"
               />
             ) : (
-              projects.map((p) => <ProjectCard key={p.id} project={p} />)
+              projects.map((p) => <ProjectCard key={p.id} project={p} skillHighlight={skillHighlight} />)
             )}
           </div>
 

@@ -20,6 +20,20 @@ import { formatRateRange } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニア検索" };
 
+function includesSearchText(name: string, texts: string[]) {
+  if (texts.length === 0) return false;
+  const normalizedName = name.toLowerCase();
+  return texts.some((text) => normalizedName.includes(text.toLowerCase()));
+}
+
+function isEngineerSkillMatched(
+  skill: { id: string; name: string },
+  selectedSkillIds: string[],
+  skillTexts: string[],
+) {
+  return selectedSkillIds.includes(skill.id) || includesSearchText(skill.name, skillTexts);
+}
+
 export default async function EngineerSearchPage({
   searchParams,
 }: {
@@ -102,11 +116,21 @@ export default async function EngineerSearchPage({
                       </p>
                       {e.skills.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {e.skills.slice(0, 10).map(({ skill }) => (
-                            <Badge key={skill.id} tone="gray">
-                              {skill.name}
-                            </Badge>
-                          ))}
+                          {[...e.skills]
+                            .sort((a, b) => {
+                              const aMatched = isEngineerSkillMatched(a.skill, parsed.skill, parsed.skillText);
+                              const bMatched = isEngineerSkillMatched(b.skill, parsed.skill, parsed.skillText);
+                              return Number(bMatched) - Number(aMatched);
+                            })
+                            .slice(0, 10)
+                            .map(({ skill }) => (
+                              <Badge
+                                key={skill.id}
+                                tone={isEngineerSkillMatched(skill, parsed.skill, parsed.skillText) ? "blue" : "gray"}
+                              >
+                                {skill.name}
+                              </Badge>
+                            ))}
                         </div>
                       ) : null}
                       {e.bio ? (

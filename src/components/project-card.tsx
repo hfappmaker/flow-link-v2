@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Building2, CalendarDays, MapPin } from "lucide-react";
-import type { Prisma } from "@prisma/client";
+import { SkillCategory, type Prisma } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { REMOTE_TYPE_LABELS } from "@/lib/constants";
 import {
@@ -18,7 +18,36 @@ export type ProjectCardData = Prisma.ProjectGetPayload<{
   };
 }>;
 
-export function ProjectCard({ project }: { project: ProjectCardData }) {
+export type ProjectSkillHighlight = {
+  languageIds?: string[];
+  skillIds?: string[];
+  languageTexts?: string[];
+  skillTexts?: string[];
+};
+
+function includesText(name: string, texts: string[] | undefined) {
+  if (!texts || texts.length === 0) return false;
+  const normalizedName = name.toLowerCase();
+  return texts.some((text) => normalizedName.includes(text.toLowerCase()));
+}
+
+function isProjectSkillMatched(
+  skill: ProjectCardData["skills"][number]["skill"],
+  highlight?: ProjectSkillHighlight,
+) {
+  if (!highlight) return false;
+  if (highlight.languageIds?.includes(skill.id) || highlight.skillIds?.includes(skill.id)) return true;
+  if (skill.category === SkillCategory.LANGUAGE) return includesText(skill.name, highlight.languageTexts);
+  return includesText(skill.name, highlight.skillTexts);
+}
+
+export function ProjectCard({
+  project,
+  skillHighlight,
+}: {
+  project: ProjectCardData;
+  skillHighlight?: ProjectSkillHighlight;
+}) {
   const locationLabel = formatProjectLocation(project.location, project.prefecture);
 
   return (
@@ -60,7 +89,7 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
       {project.skills.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {project.skills.map(({ skill }) => (
-            <Badge key={skill.id} tone="gray">
+            <Badge key={skill.id} tone={isProjectSkillMatched(skill, skillHighlight) ? "blue" : "gray"}>
               {skill.name}
             </Badge>
           ))}
