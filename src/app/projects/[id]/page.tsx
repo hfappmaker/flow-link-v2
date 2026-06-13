@@ -198,9 +198,6 @@ export default async function ProjectDetailPage({
                 ) : null}
                 <InfoRow label="稼働日数">
                   {formatWeeklyDays(project.weeklyDaysMin, project.weeklyDaysMax)}
-                  <span className="ml-2 text-xs text-slate-500">
-                    （週{project.weeklyDaysMin * 8}時間〜週{project.weeklyDaysMax * 8}時間）
-                  </span>
                 </InfoRow>
                 <InfoRow label="リモート頻度">{REMOTE_TYPE_LABELS[project.remoteType]}</InfoRow>
                 {locationLabel ? <InfoRow label="場所">{locationLabel}</InfoRow> : null}
