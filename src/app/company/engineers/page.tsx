@@ -16,7 +16,7 @@ import {
   PAGE_SIZE,
   type EngineerSearchParams,
 } from "@/lib/engineer-search";
-import { formatRateRange } from "@/lib/format";
+import { formatDesiredWeeklyDays, formatRateRange } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニア検索" };
 
@@ -103,7 +103,9 @@ export default async function EngineerSearchPage({
                         {[
                           e.yearsOfExperience ? `実務${e.yearsOfExperience}年` : null,
                           e.location,
-                          e.desiredWeeklyDays ? `週${e.desiredWeeklyDays}日希望` : null,
+                          formatDesiredWeeklyDays(e.desiredWeeklyDays)
+                            ? `${formatDesiredWeeklyDays(e.desiredWeeklyDays)}希望`
+                            : null,
                           e.remotePreference ? REMOTE_TYPE_LABELS[e.remotePreference] : null,
                           e.desiredRateMin || e.desiredRateMax
                             ? `希望単価 ${formatRateRange(e.desiredRateMin, e.desiredRateMax)}`

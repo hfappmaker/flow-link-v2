@@ -93,9 +93,7 @@ export function buildEngineerWhere(parsed: ParsedEngineerSearch): Prisma.Enginee
 
   if (parsed.days.length > 0) {
     and.push({
-      OR: parsed.days.map((day) => ({
-        OR: [{ desiredWeeklyDays: null }, { desiredWeeklyDays: { gte: day } }],
-      })),
+      OR: [{ desiredWeeklyDays: { isEmpty: true } }, { desiredWeeklyDays: { hasSome: parsed.days } }],
     });
   }
   if (parsed.remote.length > 0) and.push({ remotePreference: { in: parsed.remote } });

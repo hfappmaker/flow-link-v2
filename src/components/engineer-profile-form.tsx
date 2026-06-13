@@ -99,7 +99,14 @@ export function EngineerProfileForm({
   selectedSkillIds: string[];
 }) {
   const [state, action, pending] = useActionState(updateEngineerProfile, {});
-  const [selectedWeeklyDays, setSelectedWeeklyDays] = useState<number | null>(profile.desiredWeeklyDays ?? null);
+  const [selectedWeeklyDays, setSelectedWeeklyDays] = useState<number[]>(profile.desiredWeeklyDays);
+
+  const toggleWeeklyDay = (day: number, checked: boolean) => {
+    setSelectedWeeklyDays((current) => {
+      if (checked) return [...new Set([...current, day])].sort((a, b) => a - b);
+      return current.filter((selectedDay) => selectedDay !== day);
+    });
+  };
 
   const grouped = new Map<string, Skill[]>();
   for (const skill of skills) {
@@ -272,8 +279,8 @@ export function EngineerProfileForm({
                     type="checkbox"
                     name="desiredWeeklyDays"
                     value={days}
-                    checked={selectedWeeklyDays === days}
-                    onChange={(event) => setSelectedWeeklyDays(event.currentTarget.checked ? days : null)}
+                    checked={selectedWeeklyDays.includes(days)}
+                    onChange={(event) => toggleWeeklyDay(days, event.currentTarget.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                   週{days}日

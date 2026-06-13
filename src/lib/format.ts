@@ -21,6 +21,14 @@ export function formatWeeklyDays(min: number, max: number): string {
   return `週${min}日〜週${max}日`;
 }
 
+export function formatDesiredWeeklyDays(days: readonly number[] | null | undefined): string | null {
+  if (!days || days.length === 0) return null;
+  return [...days]
+    .sort((a, b) => a - b)
+    .map((day) => `週${day}日`)
+    .join("・");
+}
+
 export function formatProjectLocation(
   location: string | null,
   prefecture: string | null,

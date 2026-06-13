@@ -6,7 +6,7 @@ import { RemoteType, WorkStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireCompany, requireEngineer } from "@/lib/session";
 import type { ActionState } from "@/lib/actions/onboarding";
-import { PREFECTURES } from "@/lib/constants";
+import { PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 
 const emptyToUndefined = (v: FormDataEntryValue | null) =>
   v === null || v === "" ? undefined : v;
@@ -42,7 +42,10 @@ const engineerProfileSchema = z.object({
   yearsOfExperience: z.coerce.number().int().min(0).max(60).optional(),
   desiredRateMin: z.coerce.number().int().min(0).optional(),
   desiredRateMax: z.coerce.number().int().min(0).optional(),
-  desiredWeeklyDays: z.coerce.number().int().min(1).max(7).optional(),
+  desiredWeeklyDays: z
+    .array(z.coerce.number().int().min(1).max(7))
+    .max(WEEKLY_DAYS_OPTIONS.length)
+    .transform((days) => [...new Set(days)].sort((a, b) => a - b)),
   remotePreference: z.enum(RemoteType).optional(),
   workStatus: z.enum(WorkStatus),
   githubUrl: z.union([z.url(), z.literal("")]).optional(),
@@ -64,7 +67,7 @@ export async function updateEngineerProfile(
     yearsOfExperience: emptyToUndefined(formData.get("yearsOfExperience")),
     desiredRateMin: emptyToUndefined(formData.get("desiredRateMin")),
     desiredRateMax: emptyToUndefined(formData.get("desiredRateMax")),
-    desiredWeeklyDays: emptyToUndefined(formData.get("desiredWeeklyDays")),
+    desiredWeeklyDays: formData.getAll("desiredWeeklyDays"),
     remotePreference: emptyToUndefined(formData.get("remotePreference")),
     workStatus: formData.get("workStatus"),
     githubUrl: emptyToUndefined(formData.get("githubUrl")) ?? "",
@@ -103,7 +106,7 @@ export async function updateEngineerProfile(
         yearsOfExperience: parsed.data.yearsOfExperience ?? null,
         desiredRateMin: parsed.data.desiredRateMin ?? null,
         desiredRateMax: parsed.data.desiredRateMax ?? null,
-        desiredWeeklyDays: parsed.data.desiredWeeklyDays ?? null,
+        desiredWeeklyDays: parsed.data.desiredWeeklyDays,
         remotePreference: parsed.data.remotePreference ?? null,
         workStatus: parsed.data.workStatus,
         githubUrl: parsed.data.githubUrl || null,
