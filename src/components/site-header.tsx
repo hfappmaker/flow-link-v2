@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { MessageSquare, Zap } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { getUnreadMessageCount } from "@/lib/messages";
 import { signOut } from "@/auth";
 import { buttonClasses } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
+import { FlowLinkLogo } from "@/components/flow-link-logo";
 
 const engineerNav = [
   { href: "/dashboard", label: "マイページ" },
@@ -41,10 +42,7 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-1.5 text-xl font-black tracking-tight text-slate-900">
-          <Zap className="h-5 w-5 fill-blue-600 text-blue-600" />
-          Flow<span className="text-blue-600">Link</span>
-        </Link>
+        <FlowLinkLogo markClassName="h-9 w-11" textClassName="text-xl" />
 
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => (
