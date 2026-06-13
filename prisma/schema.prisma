@@ -129,7 +129,7 @@ model EngineerProfile {
   yearsOfExperience Int?
   desiredRateMin    Int? // 希望単価 下限（円/月）
   desiredRateMax    Int? // 希望単価 上限（円/月）
-  desiredWeeklyDays Int? // 希望稼働日数（週N日）
+  desiredWeeklyDays Int[] @default([]) // 希望稼働日数（週N日・複数可）
   remotePreference  RemoteType?
   workStatus        WorkStatus  @default(OPEN_TO_OFFERS)
   githubUrl         String?

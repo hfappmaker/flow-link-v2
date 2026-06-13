@@ -11,7 +11,7 @@ import { ScoutForm } from "@/components/company/scout-form";
 import { ScoutStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
 import { REMOTE_TYPE_LABELS, WORK_STATUS_LABELS } from "@/lib/constants";
-import { formatRateRange, formatRelative } from "@/lib/format";
+import { formatDesiredWeeklyDays, formatRateRange, formatRelative } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニアプロフィール" };
 
@@ -47,7 +47,9 @@ export default async function EngineerDetailPage({
     profile.desiredRateMin || profile.desiredRateMax
       ? `希望単価: ${formatRateRange(profile.desiredRateMin, profile.desiredRateMax)}`
       : null,
-    profile.desiredWeeklyDays ? `希望稼働: 週${profile.desiredWeeklyDays}日` : null,
+    formatDesiredWeeklyDays(profile.desiredWeeklyDays)
+      ? `希望稼働: ${formatDesiredWeeklyDays(profile.desiredWeeklyDays)}`
+      : null,
     profile.remotePreference ? `リモート: ${REMOTE_TYPE_LABELS[profile.remotePreference]}` : null,
   ].filter(Boolean);
 
