@@ -5,6 +5,7 @@ import { PAGE_SIZE, PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 export type ProjectSearchParams = {
   q?: string;
   job?: string | string[];
+  jobText?: string | string[];
   lang?: string | string[];
   langText?: string | string[];
   skill?: string | string[];
@@ -52,6 +53,7 @@ export function parseProjectSearch(params: ProjectSearchParams) {
   return {
     q: params.q?.trim() || undefined,
     job: toArray(params.job).filter(Boolean),
+    jobText: toTagArray(params.jobText),
     lang: toArray(params.lang).filter(Boolean),
     langText: toTagArray(params.langText),
     skill: toArray(params.skill).filter(Boolean),
@@ -81,7 +83,13 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
       ],
     });
   }
-  if (parsed.job.length > 0) and.push({ jobCategory: { in: parsed.job } });
+  const jobFilters: Prisma.ProjectWhereInput[] = [];
+  if (parsed.job.length > 0) jobFilters.push({ jobCategory: { in: parsed.job } });
+  for (const jobText of parsed.jobText) {
+    jobFilters.push({ jobCategory: { contains: jobText, mode: "insensitive" } });
+  }
+  if (jobFilters.length > 0) and.push({ OR: jobFilters });
+
   const languageFilters: Prisma.ProjectWhereInput[] = [];
   if (parsed.lang.length > 0) {
     languageFilters.push({ skills: { some: { skillId: { in: parsed.lang } } } });
@@ -152,6 +160,7 @@ export function buildSearchQueryString(
   const sp = new URLSearchParams();
   if (parsed.q) sp.set("q", parsed.q);
   for (const job of parsed.job) sp.append("job", job);
+  for (const jobText of parsed.jobText) sp.append("jobText", jobText);
   for (const lang of parsed.lang) sp.append("lang", lang);
   for (const langText of parsed.langText) sp.append("langText", langText);
   for (const skill of parsed.skill) sp.append("skill", skill);

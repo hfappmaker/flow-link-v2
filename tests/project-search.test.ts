@@ -14,6 +14,7 @@ describe("project search helpers", () => {
     const parsed = parseProjectSearch({
       q: "  Next.js  ",
       job: ["Frontend", ""],
+      jobText: "PM, Tech   Lead\nPM",
       langText: "TypeScript, React\nTypeScript",
       skillText: "AWS, Docker",
       prefecture: [PREFECTURES[0], "INVALID"],
@@ -29,6 +30,7 @@ describe("project search helpers", () => {
     assert.deepEqual(parsed, {
       q: "Next.js",
       job: ["Frontend"],
+      jobText: ["PM", "Tech Lead"],
       lang: [],
       langText: ["TypeScript", "React"],
       skill: [],
@@ -47,6 +49,8 @@ describe("project search helpers", () => {
   it("builds a Prisma where object covering keyword, rates, skills and features", () => {
     const parsed = parseProjectSearch({
       q: "Next",
+      job: "Backend",
+      jobText: "PM",
       lang: "lang-1",
       langText: "TypeScript",
       skill: "skill-1",
@@ -73,6 +77,12 @@ describe("project search helpers", () => {
                 },
               },
             },
+          ],
+        },
+        {
+          OR: [
+            { jobCategory: { in: ["Backend"] } },
+            { jobCategory: { contains: "PM", mode: "insensitive" } },
           ],
         },
         {
@@ -128,6 +138,7 @@ describe("project search helpers", () => {
   it("serializes parsed params, omitting default sort and page", () => {
     const parsed = parseProjectSearch({
       q: "Next",
+      jobText: "PM",
       lang: "lang-1",
       skillText: "AWS",
       sort: "rate",
@@ -136,11 +147,11 @@ describe("project search helpers", () => {
 
     assert.equal(
       buildSearchQueryString(parsed),
-      "?q=Next&lang=lang-1&skillText=AWS&sort=rate",
+      "?q=Next&jobText=PM&lang=lang-1&skillText=AWS&sort=rate",
     );
     assert.equal(
       buildSearchQueryString(parsed, { sort: "new", page: 3 }),
-      "?q=Next&lang=lang-1&skillText=AWS&page=3",
+      "?q=Next&jobText=PM&lang=lang-1&skillText=AWS&page=3",
     );
   });
 });

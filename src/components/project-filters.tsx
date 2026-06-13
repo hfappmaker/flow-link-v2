@@ -165,11 +165,19 @@ export function ProjectFilters({
       </FilterSection>
 
       <FilterSection title="募集職種">
-        <CheckboxGroup
-          name="job"
-          selected={parsed.job}
-          options={JOB_CATEGORIES.map((category) => ({ value: category, label: category }))}
-        />
+        <div className="space-y-3">
+          <SearchTagInput
+            name="jobText"
+            label="手入力で検索"
+            initialTags={parsed.jobText}
+            placeholder="例: PM, テックリード"
+          />
+          <CheckboxGroup
+            name="job"
+            selected={parsed.job}
+            options={JOB_CATEGORIES.map((category) => ({ value: category, label: category }))}
+          />
+        </div>
       </FilterSection>
 
       <FilterSection title="開発言語">
