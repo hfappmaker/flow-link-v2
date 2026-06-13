@@ -18,7 +18,15 @@ export default async function HomePage() {
   });
   const projectCount = await prisma.project.count({ where: { status: "OPEN" } });
   const engineerCount = await prisma.engineerProfile.count({ where: { isPublic: true } });
-  const companyCount = await prisma.company.count();
+  const companyCount = await prisma.company.count({
+    where: {
+      members: {
+        some: {
+          user: { deletedAt: null },
+        },
+      },
+    },
+  });
 
   const engineerSteps = [
     { icon: Search, title: "案件を探す", body: "スキル・単価・稼働日数・リモート頻度などの条件で、あなたに合う案件を検索。" },
