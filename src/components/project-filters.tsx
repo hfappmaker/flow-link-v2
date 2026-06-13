@@ -151,7 +151,9 @@ function SearchTagInput({
 
   return (
     <div>
-      <Label htmlFor={inputId}>{label}</Label>
+      <Label htmlFor={inputId} className="sr-only">
+        {label}
+      </Label>
       {tags.map((tag) => (
         <input key={tag} type="hidden" name={name} value={tag} />
       ))}
