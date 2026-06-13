@@ -16,7 +16,7 @@ import {
   PAGE_SIZE,
   type EngineerSearchParams,
 } from "@/lib/engineer-search";
-import { formatDesiredWeeklyDays, formatEngineerTitles, formatRateRange } from "@/lib/format";
+import { formatDesiredWeeklyDays, formatRateRange } from "@/lib/format";
 
 export const metadata: Metadata = { title: "エンジニア検索" };
 
@@ -32,6 +32,10 @@ function isEngineerSkillMatched(
   skillTexts: string[],
 ) {
   return selectedSkillIds.includes(skill.id) || includesSearchText(skill.name, skillTexts);
+}
+
+function isEngineerTitleMatched(title: string, selectedTitles: string[], titleTexts: string[]) {
+  return selectedTitles.includes(title) || includesSearchText(title, titleTexts);
 }
 
 export default async function EngineerSearchPage({
@@ -94,7 +98,20 @@ export default async function EngineerSearchPage({
                             {e.displayName}
                           </Link>
                         </h3>
-                        {formatEngineerTitles(e.title) ? <Badge tone="outline">{formatEngineerTitles(e.title)}</Badge> : null}
+                        {[...e.title]
+                          .sort((a, b) => {
+                            const aMatched = isEngineerTitleMatched(a, parsed.job, parsed.jobText);
+                            const bMatched = isEngineerTitleMatched(b, parsed.job, parsed.jobText);
+                            return Number(bMatched) - Number(aMatched);
+                          })
+                          .map((title) => (
+                            <Badge
+                              key={title}
+                              tone={isEngineerTitleMatched(title, parsed.job, parsed.jobText) ? "blue" : "outline"}
+                            >
+                              {title}
+                            </Badge>
+                          ))}
                         <Badge tone={e.workStatus === "UNAVAILABLE" ? "gray" : "green"}>
                           {WORK_STATUS_LABELS[e.workStatus]}
                         </Badge>
