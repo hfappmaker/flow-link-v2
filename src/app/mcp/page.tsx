@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bot, CheckCircle2, ExternalLink, Search } from "lucide-react";
+import { Bot, CheckCircle2, Search } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 
 const mcpServerUrl = "https://flowlink.flowtech.co.jp/api/mcp";
@@ -15,24 +15,24 @@ export const metadata: Metadata = {
 export default function McpPage() {
   return (
     <div className="bg-slate-50">
-      <section className="border-b border-slate-200 bg-slate-950 text-white">
+      <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 via-white to-white">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-          <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-1.5 text-xs font-bold text-cyan-100">
+          <p className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-1.5 text-xs font-bold text-blue-700">
             <Bot className="h-4 w-4" />
             FlowLink MCP Server
           </p>
-          <h1 className="mt-5 max-w-3xl text-3xl leading-tight font-black text-white sm:text-4xl">
+          <h1 className="mt-5 max-w-3xl text-3xl leading-tight font-black text-slate-900 sm:text-4xl">
             AIクライアントからFlowLinkの公開案件を検索
           </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-300 sm:text-base">
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
             ClaudeやChatGPTなどのMCP対応クライアントにFlowLink MCPサーバーを追加すると、
             公開中の案件検索、案件詳細取得、検索条件の確認ができます。
             応募・メッセージ・非公開情報にはアクセスしません。
           </p>
 
-          <div className="mt-8 rounded-lg border border-white/15 bg-white/8 p-4">
-            <p className="text-xs font-bold tracking-wide text-slate-400 uppercase">MCP Server URL</p>
-            <code className="mt-2 block overflow-x-auto rounded-md bg-black/35 px-3 py-3 text-sm font-semibold whitespace-nowrap text-cyan-100">
+          <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">MCP Server URL</p>
+            <code className="mt-2 block overflow-x-auto rounded-md bg-slate-950 px-3 py-3 text-sm font-semibold whitespace-nowrap text-cyan-100">
               {mcpServerUrl}
             </code>
           </div>
@@ -132,15 +132,6 @@ export default function McpPage() {
             <Search className="h-4 w-4" />
             公開案件を見る
           </Link>
-          <a
-            href={mcpServerUrl}
-            className={buttonClasses("outline")}
-            target="_blank"
-            rel="noreferrer"
-          >
-            MCP URLを開く
-            <ExternalLink className="h-4 w-4" />
-          </a>
         </div>
       </section>
     </div>

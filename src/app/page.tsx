@@ -90,23 +90,23 @@ export default async function HomePage() {
       </section>
 
       {/* MCP接続案内 */}
-      <section className="border-b border-slate-200 bg-slate-950 text-white">
+      <section className="border-b border-slate-200 bg-blue-50/70">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-1.5 text-xs font-bold text-cyan-100">
+            <p className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-1.5 text-xs font-bold text-blue-700">
               <Bot className="h-4 w-4" />
               MCP Server
             </p>
-            <h2 className="mt-4 text-2xl leading-tight font-black text-white sm:text-3xl">
+            <h2 className="mt-4 text-2xl leading-tight font-black text-slate-900 sm:text-3xl">
               AIクライアントから公開案件を検索できます
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
               ClaudeやChatGPTなどのMCP対応クライアントから、FlowLinkの公開案件検索と案件詳細取得を利用できます。
             </p>
           </div>
           <Link
             href="/mcp"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-bold whitespace-nowrap text-slate-950 transition-colors hover:bg-cyan-100"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-bold whitespace-nowrap text-white transition-colors hover:bg-blue-700"
           >
             MCP設定方法を見る
             <ArrowRight className="h-4 w-4" />
