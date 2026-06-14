@@ -12,7 +12,8 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.flowtech.co.jp";
-const siteImage = "/flow-link-icon.png";
+const siteIcon = "/flow-link-mark.svg";
+const siteImage = "/flow-link-og.png";
 const siteImageUrl = new URL(siteImage, siteUrl).toString();
 const siteDescription =
   "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
@@ -25,9 +26,9 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   icons: {
-    icon: siteImage,
-    shortcut: siteImage,
-    apple: siteImage,
+    icon: siteIcon,
+    shortcut: siteIcon,
+    apple: siteIcon,
   },
   openGraph: {
     type: "website",
