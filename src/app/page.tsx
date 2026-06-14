@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, Building2, CheckCircle2, MessageSquare, Search, Send, UserCheck } from "lucide-react";
+import { ArrowRight, Bot, Building2, MessageSquare, Search, Send, UserCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { ProjectCard } from "@/components/project-card";
@@ -91,64 +91,26 @@ export default async function HomePage() {
 
       {/* MCP接続案内 */}
       <section className="border-b border-slate-200 bg-slate-950 text-white">
-        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-          <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-            <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-1.5 text-xs font-bold text-cyan-100">
-                <Bot className="h-4 w-4" />
-                MCP Server
-              </p>
-              <h2 className="mt-5 max-w-2xl text-2xl leading-tight font-black text-white sm:text-3xl">
-                AIクライアントからFlowLinkの公開案件を検索
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-300">
-                ClaudeやChatGPTなどのMCP対応クライアントにFlowLink MCPサーバーを追加すると、
-                公開中の案件検索、案件詳細取得、検索条件の確認ができます。
-                応募・メッセージ・非公開情報にはアクセスしません。
-              </p>
-
-              <div className="mt-6 rounded-lg border border-white/15 bg-white/8 p-4">
-                <p className="text-xs font-bold tracking-wide text-slate-400 uppercase">MCP Server URL</p>
-                <code className="mt-2 block overflow-x-auto rounded-md bg-black/35 px-3 py-3 text-sm font-semibold whitespace-nowrap text-cyan-100">
-                  https://flowlink.flowtech.co.jp/api/mcp
-                </code>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-lg border border-white/15 bg-white/8 p-5">
-                <p className="text-sm font-black text-white">Claudeで使う</p>
-                <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                  Claudeの Connectors から Add custom connector を選び、
-                  MCPサーバーURLを追加してください。認証設定は不要です。
-                </p>
-              </div>
-              <div className="rounded-lg border border-white/15 bg-white/8 p-5">
-                <p className="text-sm font-black text-white">ChatGPTで使う</p>
-                <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                  ChatGPTの Apps / Developer Mode でカスタムMCPアプリを作成し、
-                  MCPサーバーURLを登録してください。利用可否はプランとワークスペース設定に依存します。
-                </p>
-              </div>
-              <div className="rounded-lg border border-white/15 bg-white/8 p-5 md:col-span-2">
-                <p className="text-sm font-black text-white">利用できるツール</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {["search_projects", "get_project", "list_project_filter_options"].map((tool) => (
-                    <span
-                      key={tool}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1.5 text-xs font-semibold text-cyan-100"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {tool}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-4 text-xs leading-relaxed text-slate-400">
-                  公開案件検索のみ利用できます。利用できるメニュー名や権限は、各AIクライアントのプラン・ワークスペース設定により異なります。
-                </p>
-              </div>
-            </div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-1.5 text-xs font-bold text-cyan-100">
+              <Bot className="h-4 w-4" />
+              MCP Server
+            </p>
+            <h2 className="mt-4 text-2xl leading-tight font-black text-white sm:text-3xl">
+              AIクライアントから公開案件を検索できます
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">
+              ClaudeやChatGPTなどのMCP対応クライアントから、FlowLinkの公開案件検索と案件詳細取得を利用できます。
+            </p>
           </div>
+          <Link
+            href="/mcp"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-bold whitespace-nowrap text-slate-950 transition-colors hover:bg-cyan-100"
+          >
+            MCP設定方法を見る
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
