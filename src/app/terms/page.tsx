@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "利用規約",
@@ -102,7 +103,7 @@ const sections = [
   {
     title: "第14条（運営者情報・問い合わせ）",
     body: [
-      "運営者: 株式会社FlowTech（ホームページ: https://www.flowtech.co.jp）",
+      "運営者: 株式会社FlowTech（ホームページ）",
       "住所: 東京都渋谷区渋谷２丁目１９－１５宮益坂ビルディング６０９",
       "代表者: 古垣 博光",
       "問い合わせ先: hiromitsu_furugaki@flowtech.co.jp",
@@ -122,9 +123,21 @@ export default function TermsPage() {
             <section key={section.title}>
               <h2 className="text-lg font-bold text-slate-900">{section.title}</h2>
               <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
-                {section.body.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
-                ))}
+                {section.body.map((paragraph) => {
+                  if (paragraph === "運営者: 株式会社FlowTech（ホームページ）") {
+                    return (
+                      <p key={paragraph}>
+                        運営者: 株式会社FlowTech（
+                        <Link href="https://www.flowtech.co.jp" className="font-semibold text-blue-600 hover:underline">
+                          ホームページ
+                        </Link>
+                        ）
+                      </p>
+                    );
+                  }
+
+                  return <p key={paragraph}>{paragraph}</p>;
+                })}
               </div>
             </section>
           ))}
