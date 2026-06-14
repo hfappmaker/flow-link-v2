@@ -11,16 +11,60 @@ const notoSansJP = Noto_Sans_JP({
   weight: ["400", "500", "700", "900"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.flowtech.co.jp";
+const siteIcon = "/flow-link-mark.svg";
+const siteImage = "/flow-link-og.png";
+const siteImageUrl = new URL(siteImage, siteUrl).toString();
+const siteDescription =
+  "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム",
     template: "%s | FlowLink",
   },
-  description:
-    "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。",
+  description: siteDescription,
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
+    icon: siteIcon,
+    shortcut: siteIcon,
+    apple: siteIcon,
+  },
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    url: siteUrl,
+    siteName: "FlowLink",
+    title: "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム",
+    description: siteDescription,
+    images: [
+      {
+        url: siteImage,
+        width: 512,
+        height: 512,
+        alt: "FlowLink",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム",
+    description: siteDescription,
+    images: [siteImage],
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "FlowLink",
+  url: siteUrl,
+  image: siteImageUrl,
+  publisher: {
+    "@type": "Organization",
+    name: "株式会社FlowTech",
+    url: "https://www.flowtech.co.jp",
+    logo: siteImageUrl,
   },
 };
 
@@ -38,6 +82,10 @@ export default function RootLayout({
           <SiteFooter />
         </div>
         <Analytics />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </body>
     </html>
   );
