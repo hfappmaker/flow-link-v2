@@ -128,7 +128,7 @@ export default function TermsPage() {
                     return (
                       <p key={paragraph}>
                         運営者: 株式会社FlowTech（
-                        <Link href="/" className="font-semibold text-blue-600 hover:underline">
+                        <Link href="https://www.flowtech.co.jp" className="font-semibold text-blue-600 hover:underline">
                           ホームページ
                         </Link>
                         ）

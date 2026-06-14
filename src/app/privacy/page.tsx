@@ -113,7 +113,7 @@ export default function PrivacyPage() {
                     return (
                       <p key={paragraph}>
                         事業者: 株式会社FlowTech（
-                        <Link href="/" className="font-semibold text-blue-600 hover:underline">
+                        <Link href="https://www.flowtech.co.jp" className="font-semibold text-blue-600 hover:underline">
                           ホームページ
                         </Link>
                         ）
