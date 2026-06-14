@@ -65,7 +65,7 @@ export function FlowLinkLogo({
     <Link
       href={href}
       className={`inline-flex items-center gap-2 font-black tracking-tight text-slate-950 ${className}`}
-      aria-label="Flow Link"
+      aria-label="FlowLink"
     >
       <FlowLinkMark className={markClassName} />
       {showText ? (
