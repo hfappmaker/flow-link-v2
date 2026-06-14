@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, MessageSquare, Search, Send, UserCheck } from "lucide-react";
+import { ArrowRight, Building2, MessageSquare, Search, Send, UserCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { ProjectCard } from "@/components/project-card";
@@ -86,6 +86,27 @@ export default async function HomePage() {
               </div>
             ))}
           </dl>
+        </div>
+      </section>
+
+      {/* MCP接続案内 */}
+      <section className="border-b border-slate-200 bg-blue-50/70">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-2xl leading-tight font-black text-slate-900 sm:text-3xl">
+              AIクライアントから公開案件を検索できます
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+              ClaudeやChatGPTなどのMCP対応クライアントから、FlowLinkの公開案件検索と案件詳細取得を利用できます。
+            </p>
+          </div>
+          <Link
+            href="/mcp"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-bold whitespace-nowrap text-white transition-colors hover:bg-blue-700"
+          >
+            設定方法を見る
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
