@@ -32,7 +32,7 @@ export default function McpPage() {
 
           <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">MCP Server URL</p>
-            <code className="mt-2 block overflow-x-auto rounded-md bg-slate-950 px-3 py-3 text-sm font-semibold whitespace-nowrap text-cyan-100">
+            <code className="mt-2 block overflow-x-auto rounded-md border border-blue-100 bg-blue-50 px-3 py-3 text-sm font-semibold whitespace-nowrap text-blue-800">
               {mcpServerUrl}
             </code>
           </div>
