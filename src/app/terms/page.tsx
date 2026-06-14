@@ -102,7 +102,7 @@ const sections = [
   {
     title: "第14条（運営者情報・問い合わせ）",
     body: [
-      "運営者: 株式会社FlowTech",
+      "運営者: 株式会社FlowTech（ホームページ: https://www.flowtech.co.jp）",
       "住所: 東京都渋谷区渋谷２丁目１９－１５宮益坂ビルディング６０９",
       "代表者: 古垣 博光",
       "問い合わせ先: hiromitsu_furugaki@flowtech.co.jp",
