@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
@@ -15,6 +16,7 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.flowtech.co.jp";
 const siteIcon = "/flow-link-mark.svg";
 const siteImage = "/flow-link-og.png";
 const siteImageUrl = new URL(siteImage, siteUrl).toString();
+const googleAdsId = "AW-18241351815";
 const siteDescription =
   "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
 
@@ -82,6 +84,18 @@ export default function RootLayout({
           <SiteFooter />
         </div>
         <Analytics />
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${googleAdsId}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads-tag" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${googleAdsId}');
+          `}
+        </Script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
