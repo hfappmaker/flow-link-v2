@@ -151,6 +151,86 @@ export function DashboardSkeleton() {
   );
 }
 
+export function HomePageSkeleton() {
+  return (
+    <div aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 via-white to-white">
+        <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6">
+          <Skeleton className="mx-auto h-8 w-80 max-w-full rounded-full" />
+          <Skeleton className="mx-auto mt-6 h-11 w-[42rem] max-w-full" />
+          <Skeleton className="mx-auto mt-3 h-11 w-[34rem] max-w-full" />
+          <div className="mx-auto mt-5 max-w-xl space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="mx-auto h-4 w-5/6" />
+          </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Skeleton className="h-12 w-36 rounded-lg" />
+            <Skeleton className="h-12 w-44 rounded-lg" />
+          </div>
+          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <Skeleton className="mx-auto h-9 w-16" />
+                <Skeleton className="mx-auto mt-2 h-3 w-20 max-w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-slate-200 bg-blue-50/70">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-8 w-[34rem] max-w-full" />
+            <Skeleton className="mt-3 h-4 w-[40rem] max-w-full" />
+            <Skeleton className="mt-2 h-4 w-96 max-w-full" />
+          </div>
+          <Skeleton className="h-11 w-40 rounded-lg" />
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+        <div className="flex items-center justify-between gap-4">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-36" />
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <ProjectCardSkeleton key={index} />
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+          <Skeleton className="mx-auto h-8 w-44" />
+          <div className="mt-10 grid gap-10 lg:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, columnIndex) => (
+              <div key={columnIndex}>
+                <Skeleton className="h-5 w-52" />
+                <div className="mt-4 space-y-4">
+                  {Array.from({ length: 3 }).map((_, rowIndex) => (
+                    <div key={rowIndex} className="flex gap-4 rounded-xl border border-slate-200 p-5">
+                      <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+                      <div className="min-w-0 flex-1">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="mt-2 h-4 w-full" />
+                        <Skeleton className="mt-2 h-4 w-2/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Skeleton className="mt-5 h-10 w-48 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function SearchPageSkeleton({ kind }: { kind: "project" | "engineer" }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
