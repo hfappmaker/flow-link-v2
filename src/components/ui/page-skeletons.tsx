@@ -280,6 +280,65 @@ export function MessageListSkeleton() {
   );
 }
 
+function ReceivedScoutCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <Skeleton className="mt-3 h-5 w-3/5" />
+      <Skeleton className="mt-2 h-4 w-full" />
+      <Skeleton className="mt-2 h-4 w-4/5" />
+      <Skeleton className="mt-3 h-10 w-full rounded-lg" />
+      <Skeleton className="mt-4 h-8 w-28 rounded-lg" />
+    </div>
+  );
+}
+
+function SentScoutCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start gap-4">
+        <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="ml-auto h-3 w-20" />
+          </div>
+          <Skeleton className="mt-3 h-4 w-1/2" />
+          <Skeleton className="mt-2 h-3 w-2/3" />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Skeleton className="h-8 w-28 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ScoutListSkeleton({ variant = "received" }: { variant?: "received" | "sent" }) {
+  const action = variant === "sent";
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <PageHeaderSkeleton action={action} />
+      <div className="mt-6 space-y-3">
+        {Array.from({ length: 4 }).map((_, index) =>
+          variant === "sent" ? (
+            <SentScoutCardSkeleton key={index} />
+          ) : (
+            <ReceivedScoutCardSkeleton key={index} />
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ConversationSkeleton() {
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-3xl flex-col px-4 sm:px-6" aria-live="polite" aria-busy="true">
