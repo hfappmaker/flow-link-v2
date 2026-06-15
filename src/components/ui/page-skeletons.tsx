@@ -87,6 +87,98 @@ export function ProjectListSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+function ProjectDetailInfoCardSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <Skeleton className="h-5 w-40" />
+      <div className="mt-5 space-y-4">
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="grid grid-cols-1 gap-2 border-b border-slate-100 pb-4 last:border-b-0 last:pb-0 sm:grid-cols-[10rem_1fr] sm:gap-4">
+            <Skeleton className="h-4 w-24" />
+            <div className="min-w-0">
+              <Skeleton className="h-4 w-full" />
+              {index === 1 || index === 2 ? <Skeleton className="mt-2 h-4 w-2/3" /> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ProjectDetailSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-2 rounded-full" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Skeleton className="h-5 w-12 rounded-full" />
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-5 w-20 rounded-full" />
+      </div>
+      <Skeleton className="mt-3 h-8 w-[42rem] max-w-full" />
+      <Skeleton className="mt-3 h-4 w-[46rem] max-w-full" />
+      <Skeleton className="mt-2 h-4 w-[34rem] max-w-full" />
+
+      <div className="mt-6 flex flex-col gap-8 lg:flex-row">
+        <div className="min-w-0 flex-1 space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <Skeleton className="h-5 w-48" />
+            <div className="mt-5 space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="flex items-start gap-2">
+                  <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <ProjectDetailInfoCardSkeleton rows={8} />
+
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Skeleton className="h-5 w-36" />
+              <div className="mt-5 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-11/12" />
+                <Skeleton className="h-4 w-4/5" />
+              </div>
+            </div>
+          ))}
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <Skeleton className="h-5 w-28" />
+            <div className="mt-5 flex items-start gap-3">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="mt-2 h-3 w-56 max-w-full" />
+                <Skeleton className="mt-4 h-4 w-full" />
+                <Skeleton className="mt-2 h-4 w-3/4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside className="w-full shrink-0 lg:w-72">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
+            <Skeleton className="mx-auto h-3 w-28" />
+            <Skeleton className="mx-auto mt-4 h-7 w-36" />
+            <Skeleton className="mt-5 h-12 w-full rounded-lg" />
+            <Skeleton className="mt-3 h-10 w-full rounded-lg" />
+            <Skeleton className="mx-auto mt-4 h-3 w-44 max-w-full" />
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 export function EngineerCardSkeleton() {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
