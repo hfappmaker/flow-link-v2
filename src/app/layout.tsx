@@ -18,6 +18,7 @@ const siteIcon = "/flow-link-mark.svg";
 const siteImage = "/flow-link-og.png";
 const siteImageUrl = new URL(siteImage, siteUrl).toString();
 const googleAdsId = "AW-18241351815";
+const googleAdsPageViewConversionId = `${googleAdsId}/P31JCJ3oisAcEIfhk_pD`;
 const siteDescription =
   "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
 
@@ -96,6 +97,9 @@ export default function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${googleAdsId}');
+            gtag('event', 'conversion', {
+              send_to: '${googleAdsPageViewConversionId}',
+            });
           `}
         </Script>
         <script
