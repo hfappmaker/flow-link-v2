@@ -5,9 +5,21 @@ import { getAppUrl } from "@/lib/app-url";
 import { PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 import { getMcpRequest, withMcpRequestContext } from "@/lib/mcp-request-context";
 import {
+  buildProjectOrderBy,
+  buildProjectWhere,
+  PAGE_SIZE,
+  parseProjectSearch,
+} from "@/lib/project-search";
+import {
+  getBearerAuthInfo,
+  getMcpResourceUrl,
+  getOAuthMetadata,
   getOAuthIssuer,
+  getProtectedResourceMetadata,
   getWwwAuthenticateHeader,
+  OAUTH_SCOPES,
   requireMcpScope,
+  scopeString,
   type McpAuthInfo,
   type OAuthScope,
 } from "@/lib/mcp-oauth";
@@ -17,12 +29,6 @@ import {
   engineerProfileInputSchema,
   resolveProfileSkillIds,
 } from "@/lib/profile-input";
-import {
-  buildProjectOrderBy,
-  buildProjectWhere,
-  PAGE_SIZE,
-  parseProjectSearch,
-} from "@/lib/project-search";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -40,6 +46,19 @@ const PROTECTED_TOOL_SCOPES = {
   register_my_engineer_profile: "engineer_profile:write",
   update_my_engineer_profile: "engineer_profile:write",
 } satisfies Record<string, OAuthScope>;
+const AUTHENTICATED_TOOL_NAMES = [
+  "search_projects",
+  "get_project",
+  "list_project_filter_options",
+] as const;
+
+const mcpAuthInputSchema = {
+  scopes: z.array(z.enum(OAUTH_SCOPES)).optional(),
+  clientId: z.string().trim().min(1).optional(),
+  redirectUri: z.string().trim().url().optional(),
+  codeChallenge: z.string().trim().min(1).optional(),
+  state: z.string().trim().optional(),
+};
 
 const remoteTypeValues = [
   RemoteType.FULL_REMOTE,
@@ -119,19 +138,74 @@ function projectUrl(projectId: string) {
   return new URL(`/projects/${projectId}`, getAppUrl()).toString();
 }
 
+function buildMcpAuthInfo(input: {
+  scopes?: OAuthScope[];
+  clientId?: string;
+  redirectUri?: string;
+  codeChallenge?: string;
+  state?: string;
+}) {
+  const request = getMcpRequest();
+  const issuer = getOAuthIssuer(request ?? undefined);
+  const requestedScopes = input.scopes?.length ? [...new Set(input.scopes)] : [...OAUTH_SCOPES];
+  const authorizationServer = getOAuthMetadata(issuer);
+  const protectedResource = getProtectedResourceMetadata(issuer);
+  const registration = {
+    endpoint: authorizationServer.registration_endpoint,
+    request: {
+      client_name: "FlowLink MCP client",
+      redirect_uris: ["https://your-mcp-client.example/callback"],
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none",
+      scope: scopeString(requestedScopes),
+    },
+  };
+
+  let authorizationUrl: string | null = null;
+  const missingAuthorizationUrlInputs: string[] = [];
+  if (!input.clientId) missingAuthorizationUrlInputs.push("clientId");
+  if (!input.redirectUri) missingAuthorizationUrlInputs.push("redirectUri");
+  if (!input.codeChallenge) missingAuthorizationUrlInputs.push("codeChallenge");
+
+  if (!missingAuthorizationUrlInputs.length && input.clientId && input.redirectUri && input.codeChallenge) {
+    const url = new URL(authorizationServer.authorization_endpoint);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("client_id", input.clientId);
+    url.searchParams.set("redirect_uri", input.redirectUri);
+    url.searchParams.set("scope", scopeString(requestedScopes));
+    url.searchParams.set("code_challenge", input.codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+    if (input.state) url.searchParams.set("state", input.state);
+    authorizationUrl = url.toString();
+  }
+
+  return {
+    mcpServerUrl: getMcpResourceUrl(issuer),
+    authorizationUrl,
+    missingAuthorizationUrlInputs,
+    requestedScopes,
+    authorizationServer,
+    protectedResource,
+    registration,
+    instructions: [
+      "FlowLink MCP tools require OAuth authentication; public project search tools require login but do not require a specific scope.",
+      "Register a public PKCE client at the registration endpoint if your MCP client does not already have a FlowLink client_id.",
+      "Open the authorization URL after providing clientId, redirectUri, and codeChallenge to this tool, then exchange the authorization code at the token endpoint.",
+      "Send the resulting access token as an Authorization: Bearer header when calling protected FlowLink MCP tools.",
+      "FlowLink MCP can create and edit draft projects, but publishing must be done in the FlowLink web app.",
+    ],
+    authenticatedTools: AUTHENTICATED_TOOL_NAMES,
+    protectedTools: PROTECTED_TOOL_SCOPES,
+  };
+}
+
 function projectEditUrl(projectId: string) {
   return new URL(`/company/projects/${projectId}/edit`, getAppUrl()).toString();
 }
 
 function toIsoString(date: Date | null) {
   return date ? date.toISOString() : null;
-}
-
-function publicToolError(message = "FlowLink project data is temporarily unavailable.") {
-  return {
-    isError: true,
-    content: [{ type: "text" as const, text: message }],
-  };
 }
 
 function protectedToolError(message: string, status = 401) {
@@ -153,6 +227,65 @@ function protectedToolError(message: string, status = 401) {
       },
     ],
   };
+}
+
+async function requireMcpAuth() {
+  const request = getMcpRequest();
+  if (!request) {
+    return { ok: false as const, status: 401, message: "Authentication required." };
+  }
+
+  const auth = await getBearerAuthInfo(request);
+  if (!auth) {
+    return { ok: false as const, status: 401, message: "Authentication required." };
+  }
+
+  return { ok: true as const, auth };
+}
+
+async function requireToolAuth(requiredScope: OAuthScope) {
+  return requireMcpScope(getMcpRequest(), requiredScope);
+}
+
+async function requireCompanyToolAuth(requiredScope: OAuthScope) {
+  const authResult = await requireToolAuth(requiredScope);
+  if (!authResult.ok) return authResult;
+  if (!authResult.auth.companyId) {
+    return {
+      ok: false as const,
+      status: 403,
+      message: "This MCP tool requires a company account.",
+    };
+  }
+  return {
+    ok: true as const,
+    auth: { ...authResult.auth, companyId: authResult.auth.companyId },
+  };
+}
+
+async function auditMcpTool({
+  auth,
+  toolName,
+  outcome,
+  projectId,
+}: {
+  auth?: McpAuthInfo;
+  toolName: string;
+  outcome: string;
+  projectId?: string;
+}) {
+  await prisma.mcpAuditLog
+    .create({
+      data: {
+        companyId: auth?.companyId,
+        userId: auth?.userId,
+        clientId: auth?.clientId,
+        toolName,
+        projectId,
+        outcome,
+      },
+    })
+    .catch((error) => console.error("Failed to write MCP audit log", error));
 }
 
 type ProjectListItem = {
@@ -200,51 +333,6 @@ function toProjectListItem(project: {
     publishedAt: toIsoString(project.publishedAt),
     url: projectUrl(project.id),
   };
-}
-
-async function requireToolAuth(requiredScope: OAuthScope) {
-  return requireMcpScope(getMcpRequest(), requiredScope);
-}
-
-async function requireCompanyToolAuth(requiredScope: OAuthScope) {
-  const authResult = await requireToolAuth(requiredScope);
-  if (!authResult.ok) return authResult;
-  if (!authResult.auth.companyId) {
-    return {
-      ok: false as const,
-      status: 403,
-      message: "This MCP tool requires a company account.",
-    };
-  }
-  return {
-    ok: true as const,
-    auth: { ...authResult.auth, companyId: authResult.auth.companyId },
-  };
-}
-
-async function auditMcpTool({
-  auth,
-  toolName,
-  outcome,
-  projectId,
-}: {
-  auth?: McpAuthInfo;
-  toolName: string;
-  outcome: string;
-  projectId?: string;
-}) {
-  await prisma.mcpAuditLog
-    .create({
-      data: {
-        companyId: auth?.companyId,
-        userId: auth?.userId,
-        clientId: auth?.clientId,
-        toolName,
-        projectId,
-        outcome,
-      },
-    })
-    .catch((error) => console.error("Failed to write MCP audit log", error));
 }
 
 async function getProjects({
@@ -475,10 +563,31 @@ const handler = createMcpHandler(
       });
 
     server.registerTool(
+      "mcp_auth",
+      {
+        title: "Get FlowLink MCP OAuth details",
+        description:
+          "Get OAuth metadata, dynamic client registration details, and an optional authorization URL for protected FlowLink MCP tools.",
+        inputSchema: mcpAuthInputSchema,
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const output = buildMcpAuthInfo(input);
+        return {
+          content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+          structuredContent: output,
+        };
+      },
+    );
+
+    server.registerTool(
       "search_projects",
       {
-        title: "Search public projects",
-        description: "Search FlowLink projects that are currently open to applications.",
+        title: "Search projects",
+        description: "Search FlowLink projects that are currently open to applications. Requires login but no scope.",
         inputSchema: {
           q: z.string().trim().optional(),
           jobText: z.array(z.string().trim().min(1)).optional(),
@@ -498,15 +607,20 @@ const handler = createMcpHandler(
         },
       },
       async (input) => {
+        const authResult = await requireMcpAuth();
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
         try {
           const output = await getProjects(input);
+          await auditMcpTool({ auth: authResult.auth, toolName: "search_projects", outcome: "success" });
           return {
             content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
             structuredContent: output,
           };
         } catch (error) {
           console.error("MCP search_projects failed", error);
-          return publicToolError();
+          await auditMcpTool({ auth: authResult.auth, toolName: "search_projects", outcome: "error" });
+          return protectedToolError("FlowLink project data is temporarily unavailable.", 500);
         }
       },
     );
@@ -514,8 +628,8 @@ const handler = createMcpHandler(
     server.registerTool(
       "get_project",
       {
-        title: "Get public project",
-        description: "Get details for a single open FlowLink project.",
+        title: "Get project",
+        description: "Get details for a single open FlowLink project. Requires login but no scope.",
         inputSchema: {
           projectId: z.string().trim().min(1),
         },
@@ -525,6 +639,9 @@ const handler = createMcpHandler(
         },
       },
       async ({ projectId }) => {
+        const authResult = await requireMcpAuth();
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
         try {
           const project = await prisma.project.findFirst({
             where: { id: projectId, status: "OPEN" },
@@ -543,7 +660,13 @@ const handler = createMcpHandler(
           });
 
           if (!project) {
-            return publicToolError("Open project not found.");
+            await auditMcpTool({
+              auth: authResult.auth,
+              toolName: "get_project",
+              outcome: "not_found",
+              projectId,
+            });
+            return protectedToolError("Open project not found.", 404);
           }
 
           const output = {
@@ -563,13 +686,15 @@ const handler = createMcpHandler(
             company: project.company,
           };
 
+          await auditMcpTool({ auth: authResult.auth, toolName: "get_project", outcome: "success", projectId });
           return {
             content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
             structuredContent: output,
           };
         } catch (error) {
           console.error("MCP get_project failed", error);
-          return publicToolError();
+          await auditMcpTool({ auth: authResult.auth, toolName: "get_project", outcome: "error", projectId });
+          return protectedToolError("FlowLink project data is temporarily unavailable.", 500);
         }
       },
     );
@@ -578,13 +703,16 @@ const handler = createMcpHandler(
       "list_project_filter_options",
       {
         title: "List project filter options",
-        description: "List supported public project search filter values.",
+        description: "List supported project search filter values. Requires login but no scope.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: true,
         },
       },
       async () => {
+        const authResult = await requireMcpAuth();
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
         try {
           const skills = await prisma.skill.findMany({
             orderBy: { name: "asc" },
@@ -597,13 +725,23 @@ const handler = createMcpHandler(
             skills,
           };
 
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "list_project_filter_options",
+            outcome: "success",
+          });
           return {
             content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
             structuredContent: output,
           };
         } catch (error) {
           console.error("MCP list_project_filter_options failed", error);
-          return publicToolError();
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "list_project_filter_options",
+            outcome: "error",
+          });
+          return protectedToolError("FlowLink project data is temporarily unavailable.", 500);
         }
       },
     );
@@ -1358,7 +1496,30 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
   if (!toolName) return null;
 
   const requiredScope = PROTECTED_TOOL_SCOPES[toolName as keyof typeof PROTECTED_TOOL_SCOPES];
-  if (!requiredScope) return null;
+  if (!requiredScope) {
+    if (!(AUTHENTICATED_TOOL_NAMES as readonly string[]).includes(toolName)) return null;
+
+    const auth = await getBearerAuthInfo(request);
+    if (auth) return null;
+
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        id: body?.id ?? null,
+        error: {
+          code: -32001,
+          message: "Authentication required.",
+          data: {
+            resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
+          },
+        },
+      },
+      {
+        status: 401,
+        headers: { "WWW-Authenticate": getWwwAuthenticateHeader(request) },
+      },
+    );
+  }
 
   const authResult = await requireMcpScope(request, requiredScope);
   if (authResult.ok) return null;

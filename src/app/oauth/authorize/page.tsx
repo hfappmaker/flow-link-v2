@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
 import {
-  filterAllowedScopes,
   getAllowedScopesForSubject,
   normalizeScopes,
   OAUTH_SCOPES,
@@ -55,7 +54,6 @@ export default async function OAuthAuthorizePage({
   ]);
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedScopes = getAllowedScopesForSubject(subjectKind);
-  const selectableScopes = filterAllowedScopes(validation.scopes, subjectKind);
 
   const clientName = validation.client.clientName ?? "MCPクライアント";
   const accountName = membership?.company.name ?? engineerProfile?.displayName ?? session.user.email ?? "このアカウント";
@@ -72,6 +70,22 @@ export default async function OAuthAuthorizePage({
             <div>
               <h2 className="text-base font-bold text-slate-900">許可する権限</h2>
               <div className="mt-3 space-y-2">
+                <label className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                  <input
+                    type="checkbox"
+                    checked
+                    disabled
+                    readOnly
+                    className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 disabled:opacity-100"
+                  />
+                  <span>
+                    <span className="block font-semibold text-blue-950">公開案件の検索</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed">
+                      ログイン済みのMCPクライアントから、公開案件の検索・詳細取得・検索条件の参照ができます。
+                      この項目は常に有効で、scopeは不要です。
+                    </span>
+                  </span>
+                </label>
                 {validation.scopes.map((scope) => {
                   const allowed = allowedScopes.includes(scope);
                   return (
@@ -112,7 +126,7 @@ export default async function OAuthAuthorizePage({
               value ? <input key={key} type="hidden" name={key} value={value} /> : null,
             )}
             <div className="flex items-center gap-3">
-              <Button type="submit" disabled={selectableScopes.length === 0}>
+              <Button type="submit">
                 選択した権限を許可
               </Button>
               <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-slate-900">

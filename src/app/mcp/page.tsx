@@ -15,10 +15,10 @@ import { buttonClasses } from "@/components/ui/button";
 
 const mcpServerUrl = "https://flowlink.flowtech.co.jp/api/mcp";
 
-const publicTools = [
-  "search_projects",
-  "get_project",
-  "list_project_filter_options",
+const searchTools = [
+  { name: "search_projects", scope: "ログイン必須 / scope不要" },
+  { name: "get_project", scope: "ログイン必須 / scope不要" },
+  { name: "list_project_filter_options", scope: "ログイン必須 / scope不要" },
 ];
 
 const profileTools = [
@@ -65,8 +65,8 @@ export default function McpPage() {
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
             Claude、ChatGPT、CodexなどのMCP対応クライアントから、公開案件の検索、
-            プロフィール登録、企業案件の下書き作成・更新を利用できます。公開検索は認証不要、
-            登録情報や自社案件を扱う操作はFlowLinkログインとOAuth認可が必要です。
+            プロフィール登録、企業案件の下書き作成・更新を利用できます。公開案件検索は
+            FlowLinkログイン必須、scope不要です。
           </p>
 
           <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -115,8 +115,8 @@ export default function McpPage() {
               OAuth認可
             </h2>
             <ul className="mt-5 space-y-3 text-sm leading-relaxed text-slate-600">
-              <li>公開案件検索ツールはログインなしで利用できます。</li>
-              <li>プロフィール登録・更新、自社案件の操作にはFlowLinkログインが必要です。</li>
+              <li>公開案件検索ツールはFlowLinkログイン必須、scope不要で利用できます。</li>
+              <li>プロフィール登録・更新、自社案件の操作は許可したscopeの範囲で実行できます。</li>
               <li>認可画面ではscopeを選択できます。アカウント種別に合わないscopeは選択できません。</li>
               <li>MCPから案件公開はできません。公開操作はFlowLinkのWeb画面で行います。</li>
             </ul>
@@ -127,8 +127,8 @@ export default function McpPage() {
           <ToolGroup
             title="公開検索"
             icon={<Search className="h-5 w-5 text-cyan-600" />}
-            description="認証不要で公開案件を検索・参照できます。"
-            tools={publicTools.map((name) => ({ name, scope: "認証不要" }))}
+            description="ログイン済みのMCPクライアントから公開案件を検索・参照できます。"
+            tools={searchTools}
           />
           <ToolGroup
             title="プロフィール"

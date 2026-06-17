@@ -109,9 +109,7 @@ async function validateRequest({
   }
 
   const grantedScopes = normalizeScopes(grantedScopeValues.join(" "), []);
-  if (!grantedScopes || grantedScopes.length === 0) {
-    return { ok: false as const, error: "access_denied" };
-  }
+  if (!grantedScopes) return { ok: false as const, error: "access_denied" };
   if (grantedScopes.some((scope) => !requestedScopes.includes(scope) || !clientScopes.includes(scope))) {
     return { ok: false as const, error: "invalid_scope" };
   }
