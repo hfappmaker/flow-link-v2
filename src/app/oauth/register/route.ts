@@ -15,6 +15,10 @@ type ClientRegistrationRequest = {
   logo_uri?: string;
 };
 
+function optionalString(value: unknown) {
+  return typeof value === "string" ? value : undefined;
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as ClientRegistrationRequest | null;
   if (!body) return oauthError("invalid_client_metadata", "Request body must be JSON.", 400);
@@ -60,8 +64,8 @@ export async function POST(request: Request) {
       responseTypes,
       tokenEndpointAuthMethod: "none",
       scope: scopeString(scopes),
-      clientUri: body.client_uri,
-      logoUri: body.logo_uri,
+      clientUri: optionalString(body.client_uri),
+      logoUri: optionalString(body.logo_uri),
     },
   });
 
@@ -74,8 +78,8 @@ export async function POST(request: Request) {
       response_types: client.responseTypes,
       token_endpoint_auth_method: client.tokenEndpointAuthMethod,
       scope: client.scope,
-      client_uri: client.clientUri,
-      logo_uri: client.logoUri,
+      ...(client.clientUri ? { client_uri: client.clientUri } : {}),
+      ...(client.logoUri ? { logo_uri: client.logoUri } : {}),
     },
     { status: 201 },
   );
