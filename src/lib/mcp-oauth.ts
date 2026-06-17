@@ -107,7 +107,6 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
     authorization_endpoint: `${issuer}/oauth/authorize`,
     token_endpoint: `${issuer}/oauth/token`,
     registration_endpoint: `${issuer}/oauth/register`,
-    revocation_endpoint: `${issuer}/oauth/revoke`,
     scopes_supported: OAUTH_SCOPES,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],

@@ -89,12 +89,6 @@ export async function SiteHeader() {
                 >
                   {user.role === "COMPANY" ? "企業情報設定" : "プロフィール設定"}
                 </Link>
-                <Link
-                  href="/settings/mcp"
-                  className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                >
-                  MCP連携
-                </Link>
                 <form
                   action={async () => {
                     "use server";
