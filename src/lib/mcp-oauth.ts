@@ -20,6 +20,7 @@ export type McpAuthInfo = {
   clientId: string;
   userId: string;
   companyId: string | null;
+  resource: string;
   scopes: OAuthScope[];
 };
 
@@ -69,6 +70,36 @@ export function getMcpResourceUrl(requestOrOrigin?: Request | string) {
   return `${getOAuthIssuer(requestOrOrigin)}/api/mcp`;
 }
 
+export function normalizeOAuthResource(value: string) {
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+    if (url.hash || url.search) return null;
+    url.protocol = url.protocol.toLowerCase();
+    url.hostname = url.hostname.toLowerCase();
+    return stripTrailingSlash(url.toString());
+  } catch {
+    return null;
+  }
+}
+
+export function isValidMcpResource(value: string) {
+  const normalized = normalizeOAuthResource(value);
+  if (!normalized) return false;
+
+  const url = new URL(normalized);
+  if (url.pathname !== "/api/mcp") return false;
+  if (!isAllowedOAuthOrigin(url.origin)) return false;
+
+  return normalized === normalizeOAuthResource(getMcpResourceUrl(url.origin));
+}
+
+export function isSameOAuthResource(left: string, right: string) {
+  const normalizedLeft = normalizeOAuthResource(left);
+  const normalizedRight = normalizeOAuthResource(right);
+  return !!normalizedLeft && !!normalizedRight && normalizedLeft === normalizedRight;
+}
+
 export function getOAuthMetadata(requestOrOrigin?: Request | string) {
   const issuer = getOAuthIssuer(requestOrOrigin);
   return {
@@ -95,8 +126,31 @@ export function getProtectedResourceMetadata(requestOrOrigin?: Request | string)
   };
 }
 
-export function getWwwAuthenticateHeader(requestOrOrigin?: Request | string) {
-  return `Bearer resource_metadata="${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource"`;
+function quoteWwwAuthenticateValue(value: string) {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+export function getWwwAuthenticateHeader(
+  requestOrOrigin?: Request | string,
+  options?: {
+    error?: string;
+    errorDescription?: string;
+    scope?: OAuthScope | OAuthScope[] | string;
+  },
+) {
+  const params: string[] = [];
+  if (options?.error) params.push(`error=${quoteWwwAuthenticateValue(options.error)}`);
+  if (options?.scope) {
+    const scope = Array.isArray(options.scope) ? scopeString(options.scope) : options.scope;
+    params.push(`scope=${quoteWwwAuthenticateValue(scope)}`);
+  }
+  params.push(
+    `resource_metadata=${quoteWwwAuthenticateValue(`${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource`)}`,
+  );
+  if (options?.errorDescription) {
+    params.push(`error_description=${quoteWwwAuthenticateValue(options.errorDescription)}`);
+  }
+  return `Bearer ${params.join(", ")}`;
 }
 
 export function secondsFromNow(seconds: number) {
@@ -194,6 +248,7 @@ export async function getBearerAuthInfo(request: Request) {
       clientId: true,
       userId: true,
       companyId: true,
+      resource: true,
       scope: true,
       expiresAt: true,
       revokedAt: true,
@@ -203,6 +258,7 @@ export async function getBearerAuthInfo(request: Request) {
   if (!accessToken) return null;
   if (accessToken.revokedAt) return null;
   if (accessToken.expiresAt <= new Date()) return null;
+  if (!isSameOAuthResource(accessToken.resource, getMcpResourceUrl(request))) return null;
 
   const scopes = normalizeScopes(accessToken.scope, []);
   if (!scopes) return null;
@@ -218,6 +274,7 @@ export async function getBearerAuthInfo(request: Request) {
     clientId: accessToken.clientId,
     userId: accessToken.userId,
     companyId: accessToken.companyId,
+    resource: accessToken.resource,
     scopes,
   } satisfies McpAuthInfo;
 }

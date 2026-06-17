@@ -3,6 +3,9 @@ import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_TOKEN_TTL_SECONDS,
   hashToken,
+  isSameOAuthResource,
+  isValidMcpResource,
+  normalizeOAuthResource,
   randomToken,
   secondsFromNow,
   verifyPkceS256,
@@ -25,10 +28,12 @@ async function exchangeAuthorizationCode(form: FormData) {
   const clientId = stringValue(form, "client_id");
   const code = stringValue(form, "code");
   const redirectUri = stringValue(form, "redirect_uri");
+  const resource = stringValue(form, "resource");
   const codeVerifier = stringValue(form, "code_verifier");
-  if (!clientId || !code || !redirectUri || !codeVerifier) {
-    return oauthError("invalid_request", "client_id, code, redirect_uri, and code_verifier are required.", 400);
+  if (!clientId || !code || !redirectUri || !resource || !codeVerifier) {
+    return oauthError("invalid_request", "client_id, code, redirect_uri, resource, and code_verifier are required.", 400);
   }
+  if (!isValidMcpResource(resource)) return oauthError("invalid_target", "Unsupported resource.", 400);
 
   const client = await prisma.oAuthClient.findUnique({ where: { clientId } });
   if (!client || !client.redirectUris.includes(redirectUri)) {
@@ -41,6 +46,9 @@ async function exchangeAuthorizationCode(form: FormData) {
   if (!codeRecord || codeRecord.clientId !== clientId || codeRecord.redirectUri !== redirectUri) {
     return oauthError("invalid_grant", "Invalid authorization code.", 400);
   }
+  if (!isSameOAuthResource(codeRecord.resource, resource)) {
+    return oauthError("invalid_target", "Authorization code was not issued for this resource.", 400);
+  }
   if (codeRecord.usedAt) return oauthError("invalid_grant", "Authorization code has already been used.", 400);
   if (codeRecord.expiresAt <= new Date()) return oauthError("invalid_grant", "Authorization code has expired.", 400);
   if (codeRecord.codeChallengeMethod !== "S256" || !verifyPkceS256(codeVerifier, codeRecord.codeChallenge)) {
@@ -49,6 +57,7 @@ async function exchangeAuthorizationCode(form: FormData) {
 
   const accessToken = randomToken();
   const refreshToken = randomToken();
+  const tokenResource = normalizeOAuthResource(resource)!;
 
   await prisma.$transaction([
     prisma.oAuthAuthorizationCode.update({
@@ -61,6 +70,7 @@ async function exchangeAuthorizationCode(form: FormData) {
         clientId,
         userId: codeRecord.userId,
         companyId: codeRecord.companyId,
+        resource: tokenResource,
         scope: codeRecord.scope,
         expiresAt: secondsFromNow(ACCESS_TOKEN_TTL_SECONDS),
       },
@@ -71,6 +81,7 @@ async function exchangeAuthorizationCode(form: FormData) {
         clientId,
         userId: codeRecord.userId,
         companyId: codeRecord.companyId,
+        resource: tokenResource,
         scope: codeRecord.scope,
         expiresAt: secondsFromNow(REFRESH_TOKEN_TTL_SECONDS),
       },
@@ -83,9 +94,11 @@ async function exchangeAuthorizationCode(form: FormData) {
 async function refreshAccessToken(form: FormData) {
   const clientId = stringValue(form, "client_id");
   const refreshToken = stringValue(form, "refresh_token");
-  if (!clientId || !refreshToken) {
-    return oauthError("invalid_request", "client_id and refresh_token are required.", 400);
+  const resource = stringValue(form, "resource");
+  if (!clientId || !refreshToken || !resource) {
+    return oauthError("invalid_request", "client_id, refresh_token, and resource are required.", 400);
   }
+  if (!isValidMcpResource(resource)) return oauthError("invalid_target", "Unsupported resource.", 400);
 
   const tokenRecord = await prisma.oAuthRefreshToken.findUnique({
     where: { tokenHash: hashToken(refreshToken) },
@@ -93,11 +106,15 @@ async function refreshAccessToken(form: FormData) {
   if (!tokenRecord || tokenRecord.clientId !== clientId) {
     return oauthError("invalid_grant", "Invalid refresh token.", 400);
   }
+  if (!isSameOAuthResource(tokenRecord.resource, resource)) {
+    return oauthError("invalid_target", "Refresh token was not issued for this resource.", 400);
+  }
   if (tokenRecord.revokedAt) return oauthError("invalid_grant", "Refresh token has been revoked.", 400);
   if (tokenRecord.expiresAt <= new Date()) return oauthError("invalid_grant", "Refresh token has expired.", 400);
 
   const accessToken = randomToken();
   const nextRefreshToken = randomToken();
+  const tokenResource = normalizeOAuthResource(resource)!;
   await prisma.$transaction([
     prisma.oAuthRefreshToken.update({
       where: { id: tokenRecord.id },
@@ -109,6 +126,7 @@ async function refreshAccessToken(form: FormData) {
         clientId,
         userId: tokenRecord.userId,
         companyId: tokenRecord.companyId,
+        resource: tokenResource,
         scope: tokenRecord.scope,
         expiresAt: secondsFromNow(ACCESS_TOKEN_TTL_SECONDS),
       },
@@ -119,6 +137,7 @@ async function refreshAccessToken(form: FormData) {
         clientId,
         userId: tokenRecord.userId,
         companyId: tokenRecord.companyId,
+        resource: tokenResource,
         scope: tokenRecord.scope,
         expiresAt: secondsFromNow(REFRESH_TOKEN_TTL_SECONDS),
       },

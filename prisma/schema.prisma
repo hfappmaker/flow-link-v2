@@ -103,6 +103,7 @@ model OAuthAuthorizationCode {
   userId              String
   companyId           String?
   redirectUri         String
+  resource            String
   scope               String
   codeChallenge       String
   codeChallengeMethod String
@@ -114,6 +115,7 @@ model OAuthAuthorizationCode {
   @@index([clientId])
   @@index([userId])
   @@index([companyId])
+  @@index([resource])
   @@index([expiresAt])
 }
 
@@ -123,6 +125,7 @@ model OAuthAccessToken {
   clientId   String
   userId     String
   companyId  String?
+  resource   String
   scope      String
   expiresAt  DateTime
   revokedAt  DateTime?
@@ -133,6 +136,7 @@ model OAuthAccessToken {
   @@index([clientId])
   @@index([userId])
   @@index([companyId])
+  @@index([resource])
   @@index([expiresAt])
 }
 
@@ -142,6 +146,7 @@ model OAuthRefreshToken {
   clientId   String
   userId     String
   companyId  String?
+  resource   String
   scope      String
   expiresAt  DateTime
   revokedAt  DateTime?
@@ -152,6 +157,7 @@ model OAuthRefreshToken {
   @@index([clientId])
   @@index([userId])
   @@index([companyId])
+  @@index([resource])
   @@index([expiresAt])
 }
 

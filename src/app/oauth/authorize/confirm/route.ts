@@ -4,6 +4,8 @@ import {
   AUTHORIZATION_CODE_TTL_SECONDS,
   filterAllowedScopes,
   hashToken,
+  isValidMcpResource,
+  normalizeOAuthResource,
   normalizeScopes,
   OAUTH_SCOPES,
   randomToken,
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
   const responseType = stringValue(form, "response_type");
   const clientId = stringValue(form, "client_id");
   const redirectUri = stringValue(form, "redirect_uri");
+  const resource = stringValue(form, "resource");
   const requestedScope = stringValue(form, "scope");
   const grantedScopeValues = form.getAll("granted_scope").map(String);
   const state = stringValue(form, "state");
@@ -34,6 +37,7 @@ export async function POST(request: Request) {
     responseType,
     clientId,
     redirectUri,
+    resource,
     requestedScope,
     grantedScopeValues,
     codeChallenge,
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
       userId: session.user.id,
       companyId: membership?.companyId ?? null,
       redirectUri,
+      resource: validation.resource,
       scope: scopeString(validation.scopes),
       codeChallenge,
       codeChallengeMethod: "S256",
@@ -80,6 +85,7 @@ async function validateRequest({
   responseType,
   clientId,
   redirectUri,
+  resource,
   requestedScope,
   grantedScopeValues,
   codeChallenge,
@@ -88,13 +94,17 @@ async function validateRequest({
   responseType: string;
   clientId: string;
   redirectUri: string;
+  resource: string;
   requestedScope: string;
   grantedScopeValues: string[];
   codeChallenge: string;
   codeChallengeMethod: string;
 }) {
   if (responseType !== "code") return { ok: false as const, error: "unsupported_response_type" };
-  if (!clientId || !redirectUri || !codeChallenge) return { ok: false as const, error: "invalid_request" };
+  if (!clientId || !redirectUri || !resource || !codeChallenge) {
+    return { ok: false as const, error: "invalid_request" };
+  }
+  if (!isValidMcpResource(resource)) return { ok: false as const, error: "invalid_target" };
   if (codeChallengeMethod !== "S256") return { ok: false as const, error: "invalid_request" };
 
   const client = await prisma.oAuthClient.findUnique({ where: { clientId } });
@@ -115,7 +125,7 @@ async function validateRequest({
   }
 
   const scopes = grantedScopes as OAuthScope[];
-  return { ok: true as const, scopes };
+  return { ok: true as const, resource: normalizeOAuthResource(resource)!, scopes };
 }
 
 function redirectWithError(redirectUri: string, error: string, state: string) {

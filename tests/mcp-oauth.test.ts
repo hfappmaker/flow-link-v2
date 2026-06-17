@@ -3,7 +3,11 @@ import { describe, it } from "node:test";
 import {
   getOAuthMetadata,
   getProtectedResourceMetadata,
+  getWwwAuthenticateHeader,
+  isSameOAuthResource,
+  isValidMcpResource,
   isValidRedirectUri,
+  normalizeOAuthResource,
   normalizeScopes,
   sha256Base64Url,
   verifyPkceS256,
@@ -101,6 +105,29 @@ describe("MCP OAuth helpers", () => {
     assert.equal(normalizeScopes("project:publish"), null);
     assert.equal(normalizeScopes("project:edit"), null);
     assert.equal(normalizeScopes("profile:read"), null);
+  });
+
+  it("validates MCP resource indicators for audience binding", () => {
+    assert.equal(
+      normalizeOAuthResource("HTTPS://FLOW-LINK-V2-GIT-DEVELOP-EXAMPLE.VERCEL.APP/api/mcp"),
+      "https://flow-link-v2-git-develop-example.vercel.app/api/mcp",
+    );
+    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp"), true);
+    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp#token"), false);
+    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/other"), false);
+    assert.equal(isSameOAuthResource("HTTPS://FLOW-LINK-V2-GIT-DEVELOP-EXAMPLE.VERCEL.APP/api/mcp", "https://flow-link-v2-git-develop-example.vercel.app/api/mcp"), true);
+  });
+
+  it("builds WWW-Authenticate challenges with MCP resource metadata and scope", () => {
+    const request = new Request("https://flow-link-v2-git-develop-example.vercel.app/api/mcp");
+    assert.equal(
+      getWwwAuthenticateHeader(request, {
+        error: "insufficient_scope",
+        scope: "project:write",
+        errorDescription: "Missing required scope: project:write",
+      }),
+      'Bearer error="insufficient_scope", scope="project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource", error_description="Missing required scope: project:write"',
+    );
   });
 
   it("validates OAuth redirect URI shape", () => {

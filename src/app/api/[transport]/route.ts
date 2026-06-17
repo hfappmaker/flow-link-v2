@@ -147,6 +147,7 @@ function buildMcpAuthInfo(input: {
 }) {
   const request = getMcpRequest();
   const issuer = getOAuthIssuer(request ?? undefined);
+  const resource = getMcpResourceUrl(issuer);
   const requestedScopes = input.scopes?.length ? [...new Set(input.scopes)] : [...OAUTH_SCOPES];
   const authorizationServer = getOAuthMetadata(issuer);
   const protectedResource = getProtectedResourceMetadata(issuer);
@@ -174,6 +175,7 @@ function buildMcpAuthInfo(input: {
     url.searchParams.set("client_id", input.clientId);
     url.searchParams.set("redirect_uri", input.redirectUri);
     url.searchParams.set("scope", scopeString(requestedScopes));
+    url.searchParams.set("resource", resource);
     url.searchParams.set("code_challenge", input.codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
     if (input.state) url.searchParams.set("state", input.state);
@@ -181,7 +183,7 @@ function buildMcpAuthInfo(input: {
   }
 
   return {
-    mcpServerUrl: getMcpResourceUrl(issuer),
+    mcpServerUrl: resource,
     authorizationUrl,
     missingAuthorizationUrlInputs,
     requestedScopes,
@@ -191,7 +193,8 @@ function buildMcpAuthInfo(input: {
     instructions: [
       "FlowLink MCP tools require OAuth authentication; public project search tools require login but do not require a specific scope.",
       "Register a public PKCE client at the registration endpoint if your MCP client does not already have a FlowLink client_id.",
-      "Open the authorization URL after providing clientId, redirectUri, and codeChallenge to this tool, then exchange the authorization code at the token endpoint.",
+      "Open the authorization URL after providing clientId, redirectUri, and codeChallenge to this tool, then exchange the authorization code at the token endpoint with the same resource value as mcpServerUrl.",
+      "Include the same resource value when refreshing tokens so FlowLink can keep tokens audience-bound to this MCP server.",
       "Send the resulting access token as an Authorization: Bearer header when calling protected FlowLink MCP tools.",
       "FlowLink MCP can create and edit draft projects, but publishing must be done in the FlowLink web app.",
     ],
@@ -226,6 +229,24 @@ function protectedToolError(message: string, status = 401) {
         ),
       },
     ],
+  };
+}
+
+function authChallengeHeaders(
+  request: Request,
+  options?: {
+    status?: number;
+    scope?: OAuthScope | OAuthScope[];
+    errorDescription?: string;
+  },
+) {
+  const status = options?.status ?? 401;
+  return {
+    "WWW-Authenticate": getWwwAuthenticateHeader(request, {
+      ...(status === 403 ? { error: "insufficient_scope" } : {}),
+      scope: options?.scope,
+      errorDescription: options?.errorDescription,
+    }),
   };
 }
 
@@ -1517,7 +1538,7 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
       },
       {
         status: 401,
-        headers: { "WWW-Authenticate": getWwwAuthenticateHeader(request) },
+        headers: authChallengeHeaders(request),
       },
     );
   }
@@ -1539,12 +1560,32 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
     },
     {
       status: authResult.status,
-      headers: authResult.status === 401 ? { "WWW-Authenticate": getWwwAuthenticateHeader(request) } : undefined,
+      headers:
+        authResult.status === 401
+          ? authChallengeHeaders(request, { scope: requiredScope })
+          : authChallengeHeaders(request, {
+              status: 403,
+              scope: requiredScope,
+              errorDescription: authResult.message,
+            }),
     },
   );
 }
 
 async function routeHandler(request: Request) {
+  if (request.method === "GET" && new URL(request.url).pathname === "/api/mcp") {
+    return Response.json(
+      {
+        error: "Authentication required.",
+        resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
+      },
+      {
+        status: 401,
+        headers: authChallengeHeaders(request),
+      },
+    );
+  }
+
   const authRejection = await maybeRejectUnauthenticatedProtectedToolCall(request);
   if (authRejection) return authRejection;
   return withMcpRequestContext(request, () => handler(request));

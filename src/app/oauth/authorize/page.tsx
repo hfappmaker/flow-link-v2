@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import {
   getAllowedScopesForSubject,
+  isValidMcpResource,
   normalizeScopes,
   OAUTH_SCOPES,
   type OAuthScope,
@@ -18,6 +19,7 @@ type AuthorizeParams = {
   response_type?: string;
   client_id?: string;
   redirect_uri?: string;
+  resource?: string;
   scope?: string;
   state?: string;
   code_challenge?: string;
@@ -168,6 +170,10 @@ async function validateAuthorizeParams(params: AuthorizeParams) {
   if (params.response_type !== "code") return { ok: false as const, message: "未対応のresponse_typeです。" };
   if (!params.client_id) return { ok: false as const, message: "client_idが必要です。" };
   if (!params.redirect_uri) return { ok: false as const, message: "redirect_uriが必要です。" };
+  if (!params.resource) return { ok: false as const, message: "resourceが必要です。" };
+  if (!isValidMcpResource(params.resource)) {
+    return { ok: false as const, message: "未対応のresourceです。" };
+  }
   if (!params.code_challenge) return { ok: false as const, message: "code_challengeが必要です。" };
   if (params.code_challenge_method !== "S256") {
     return { ok: false as const, message: "PKCEはS256のみ対応しています。" };
