@@ -140,7 +140,7 @@ async function refreshAccessToken(form: FormData) {
       hasRefreshToken: Boolean(refreshToken),
       hasResource: Boolean(resource),
     });
-    return oauthError("invalid_request", "client_id, refresh_token, and resource are required.", 400);
+    return oauthError("invalid_grant", "Refresh token is missing or invalid. Reauthorization is required.", 400);
   }
   if (!isValidMcpResource(resource)) {
     logTokenExchangeIssue("refresh_token_invalid_resource", { resource });
@@ -229,7 +229,11 @@ function oauthError(error: string, errorDescription: string, status: number) {
     { error, error_description: errorDescription },
     {
       status,
-      headers: status === 401 ? { "WWW-Authenticate": "Bearer" } : undefined,
+      headers: {
+        "Cache-Control": "no-store",
+        Pragma: "no-cache",
+        ...(status === 401 ? { "WWW-Authenticate": "Bearer" } : {}),
+      },
     },
   );
 }
