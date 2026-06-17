@@ -23,6 +23,8 @@ export type McpAuthInfo = {
   scopes: OAuthScope[];
 };
 
+export type OAuthSubjectKind = "company" | "engineer" | "unregistered";
+
 export function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
@@ -114,6 +116,25 @@ export function scopeString(scopes: OAuthScope[]) {
 
 export function hasScope(scopes: OAuthScope[], required: OAuthScope) {
   return scopes.includes(required);
+}
+
+export function getAllowedScopesForSubject(kind: OAuthSubjectKind) {
+  if (kind === "company") {
+    return OAUTH_SCOPES.filter(
+      (scope) => scope.startsWith("company_profile:") || scope.startsWith("project:"),
+    );
+  }
+  if (kind === "engineer") {
+    return OAUTH_SCOPES.filter((scope) => scope.startsWith("engineer_profile:"));
+  }
+  return OAUTH_SCOPES.filter(
+    (scope) => scope.startsWith("company_profile:") || scope.startsWith("engineer_profile:"),
+  );
+}
+
+export function filterAllowedScopes(scopes: OAuthScope[], kind: OAuthSubjectKind) {
+  const allowedScopes = getAllowedScopesForSubject(kind);
+  return scopes.filter((scope) => allowedScopes.includes(scope));
 }
 
 export function isValidRedirectUri(value: string) {
