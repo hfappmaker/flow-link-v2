@@ -1475,22 +1475,12 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
 
 async function routeHandler(request: Request) {
   if (request.method === "GET" && new URL(request.url).pathname === "/api/mcp") {
-    const auth = await getBearerAuthInfo(request);
-    if (!auth) {
-      console.warn("[MCP OAuth GET] rejected", {
-        hasAuthorizationHeader: Boolean(request.headers.get("authorization")),
-      });
-      return Response.json(
-        {
-          error: "Authentication required.",
-          resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
-        },
-        {
-          status: 401,
-          headers: authChallengeHeaders(request),
-        },
-      );
-    }
+    return new Response(null, {
+      status: 405,
+      headers: {
+        Allow: "POST",
+      },
+    });
   }
 
   const authRejection = await maybeRejectUnauthenticatedProtectedToolCall(request);
