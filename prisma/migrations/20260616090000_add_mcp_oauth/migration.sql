@@ -1,4 +1,4 @@
-﻿-- OAuth 2.1 support for FlowLink MCP clients.
+-- OAuth 2.1 support for FlowLink MCP clients.
 CREATE TABLE "OAuthClient" (
     "id" TEXT NOT NULL,
     "clientId" TEXT NOT NULL,
