@@ -23,7 +23,7 @@ describe("MCP OAuth helpers", () => {
       const authMetadata = getOAuthMetadata();
       assert.equal(authMetadata.issuer, "https://flowlink.flowtech.co.jp");
       assert.equal(authMetadata.authorization_endpoint, "https://flowlink.flowtech.co.jp/oauth/authorize");
-      assert.equal("revocation_endpoint" in authMetadata, false);
+      assert.equal(authMetadata.revocation_endpoint, "https://flowlink.flowtech.co.jp/oauth/revoke");
       assert.deepEqual(authMetadata.scopes_supported, [
         "company_profile:read",
         "company_profile:write",
