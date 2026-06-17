@@ -29,16 +29,48 @@ export function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-export function getOAuthIssuer() {
-  return stripTrailingSlash(process.env.OAUTH_ISSUER ?? getAppUrl());
+export function getRequestOrigin(request: Request) {
+  return new URL(request.url).origin;
 }
 
-export function getMcpResourceUrl() {
-  return `${getOAuthIssuer()}/api/mcp`;
+export function getOAuthIssuer(requestOrOrigin?: Request | string) {
+  if (process.env.OAUTH_ISSUER) return stripTrailingSlash(process.env.OAUTH_ISSUER);
+  if (typeof requestOrOrigin === "string" && isAllowedOAuthOrigin(requestOrOrigin)) {
+    return stripTrailingSlash(requestOrOrigin);
+  }
+  if (requestOrOrigin && typeof requestOrOrigin !== "string") {
+    const origin = getRequestOrigin(requestOrOrigin);
+    if (isAllowedOAuthOrigin(origin)) return stripTrailingSlash(origin);
+  }
+  return stripTrailingSlash(getAppUrl());
 }
 
-export function getOAuthMetadata() {
-  const issuer = getOAuthIssuer();
+export function isAllowedOAuthOrigin(origin: string) {
+  try {
+    const url = new URL(origin);
+    const appUrl = new URL(getAppUrl());
+    const configuredOrigins = (process.env.OAUTH_ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map((value) => stripTrailingSlash(value));
+
+    if (configuredOrigins.includes(stripTrailingSlash(url.origin))) return true;
+    if (url.origin === appUrl.origin) return true;
+    if (url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return true;
+    if (url.protocol === "https:" && url.hostname.endsWith(".vercel.app")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function getMcpResourceUrl(requestOrOrigin?: Request | string) {
+  return `${getOAuthIssuer(requestOrOrigin)}/api/mcp`;
+}
+
+export function getOAuthMetadata(requestOrOrigin?: Request | string) {
+  const issuer = getOAuthIssuer(requestOrOrigin);
   return {
     issuer,
     authorization_endpoint: `${issuer}/oauth/authorize`,
@@ -53,18 +85,18 @@ export function getOAuthMetadata() {
   };
 }
 
-export function getProtectedResourceMetadata() {
-  const issuer = getOAuthIssuer();
+export function getProtectedResourceMetadata(requestOrOrigin?: Request | string) {
+  const issuer = getOAuthIssuer(requestOrOrigin);
   return {
-    resource: getMcpResourceUrl(),
+    resource: getMcpResourceUrl(issuer),
     authorization_servers: [issuer],
     scopes_supported: OAUTH_SCOPES,
     bearer_methods_supported: ["header"],
   };
 }
 
-export function getWwwAuthenticateHeader() {
-  return `Bearer resource_metadata="${getOAuthIssuer()}/.well-known/oauth-protected-resource"`;
+export function getWwwAuthenticateHeader(requestOrOrigin?: Request | string) {
+  return `Bearer resource_metadata="${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource"`;
 }
 
 export function secondsFromNow(seconds: number) {

@@ -135,6 +135,7 @@ function publicToolError(message = "FlowLink project data is temporarily unavail
 }
 
 function protectedToolError(message: string, status = 401) {
+  const request = getMcpRequest() ?? undefined;
   return {
     isError: true,
     content: [
@@ -144,7 +145,7 @@ function protectedToolError(message: string, status = 401) {
           {
             error: message,
             status,
-            resourceMetadataUrl: `${getOAuthIssuer()}/.well-known/oauth-protected-resource`,
+            resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
           },
           null,
           2,
@@ -1370,13 +1371,13 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
         code: authResult.status === 401 ? -32001 : -32003,
         message: authResult.message,
         data: {
-          resourceMetadataUrl: `${getOAuthIssuer()}/.well-known/oauth-protected-resource`,
+          resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
         },
       },
     },
     {
       status: authResult.status,
-      headers: authResult.status === 401 ? { "WWW-Authenticate": getWwwAuthenticateHeader() } : undefined,
+      headers: authResult.status === 401 ? { "WWW-Authenticate": getWwwAuthenticateHeader(request) } : undefined,
     },
   );
 }

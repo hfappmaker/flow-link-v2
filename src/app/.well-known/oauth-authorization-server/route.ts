@@ -3,6 +3,6 @@ import { getOAuthMetadata } from "@/lib/mcp-oauth";
 
 export const runtime = "nodejs";
 
-export function GET() {
-  return NextResponse.json(getOAuthMetadata());
+export function GET(request: Request) {
+  return NextResponse.json(getOAuthMetadata(request));
 }

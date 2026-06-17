@@ -37,6 +37,53 @@ describe("MCP OAuth helpers", () => {
     }
   });
 
+  it("uses the request origin when OAUTH_ISSUER is not configured", () => {
+    const previousIssuer = process.env.OAUTH_ISSUER;
+    const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.OAUTH_ISSUER;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+
+    try {
+      const request = new Request("https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource");
+      const authMetadata = getOAuthMetadata(request);
+      assert.equal(authMetadata.issuer, "https://flow-link-v2-git-develop-example.vercel.app");
+      assert.equal(
+        authMetadata.authorization_endpoint,
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize",
+      );
+
+      const resourceMetadata = getProtectedResourceMetadata(request);
+      assert.equal(resourceMetadata.resource, "https://flow-link-v2-git-develop-example.vercel.app/api/mcp");
+      assert.deepEqual(resourceMetadata.authorization_servers, ["https://flow-link-v2-git-develop-example.vercel.app"]);
+    } finally {
+      if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
+      else process.env.OAUTH_ISSUER = previousIssuer;
+      if (previousAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+    }
+  });
+
+  it("falls back to the configured app URL for untrusted request origins", () => {
+    const previousIssuer = process.env.OAUTH_ISSUER;
+    const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.OAUTH_ISSUER;
+    process.env.NEXT_PUBLIC_APP_URL = "https://flowlink.flowtech.co.jp";
+
+    try {
+      const request = new Request("https://attacker.example.test/.well-known/oauth-protected-resource");
+      const authMetadata = getOAuthMetadata(request);
+      assert.equal(authMetadata.issuer, "https://flowlink.flowtech.co.jp");
+
+      const resourceMetadata = getProtectedResourceMetadata(request);
+      assert.equal(resourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp");
+    } finally {
+      if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
+      else process.env.OAUTH_ISSUER = previousIssuer;
+      if (previousAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+    }
+  });
+
   it("normalizes only supported scopes", () => {
     assert.deepEqual(normalizeScopes("project:read project:write project:read"), [
       "project:read",
