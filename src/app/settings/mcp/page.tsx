@@ -23,13 +23,13 @@ const scopeLabels: Record<OAuthScope, string> = {
   "project:write": "自社案件下書きの作成・更新",
 };
 
-type TokenRow = {
+type CredentialRow = {
   clientId: string;
   scope: string;
   expiresAt: Date;
   lastUsedAt: Date | null;
   createdAt: Date;
-  tokenKind: "access" | "refresh";
+  credentialKind: "access" | "refresh" | "authorization_code";
 };
 
 type ClientConnection = {
@@ -51,7 +51,7 @@ export default async function McpSettingsPage() {
   const user = await requireUser();
   const now = new Date();
 
-  const [accessTokens, refreshTokens] = await Promise.all([
+  const [accessTokens, refreshTokens, authorizationCodes] = await Promise.all([
     prisma.oAuthAccessToken.findMany({
       where: {
         userId: user.id,
@@ -80,13 +80,32 @@ export default async function McpSettingsPage() {
         createdAt: true,
       },
     }),
+    prisma.oAuthAuthorizationCode.findMany({
+      where: {
+        userId: user.id,
+        revokedAt: null,
+        usedAt: null,
+        expiresAt: { gt: now },
+      },
+      select: {
+        clientId: true,
+        scope: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
-  const tokenRows: TokenRow[] = [
-    ...accessTokens.map((token) => ({ ...token, tokenKind: "access" as const })),
-    ...refreshTokens.map((token) => ({ ...token, tokenKind: "refresh" as const })),
+  const credentialRows: CredentialRow[] = [
+    ...accessTokens.map((token) => ({ ...token, credentialKind: "access" as const })),
+    ...refreshTokens.map((token) => ({ ...token, credentialKind: "refresh" as const })),
+    ...authorizationCodes.map((code) => ({
+      ...code,
+      lastUsedAt: null,
+      credentialKind: "authorization_code" as const,
+    })),
   ];
-  const clientIds = [...new Set(tokenRows.map((token) => token.clientId))];
+  const clientIds = [...new Set(credentialRows.map((credential) => credential.clientId))];
 
   const [clients, auditLogs] =
     clientIds.length > 0
@@ -116,7 +135,7 @@ export default async function McpSettingsPage() {
         ])
       : [[], []];
 
-  const connections = buildConnections({ tokenRows, clients, auditLogs });
+  const connections = buildConnections({ credentialRows, clients, auditLogs });
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -176,7 +195,7 @@ export default async function McpSettingsPage() {
                     <p className="mt-1 break-all text-xs font-normal text-slate-500">{connection.clientId}</p>
                   </div>
                 }
-                action={<DisconnectMcpClientForm clientId={connection.clientId} />}
+                action={<DisconnectMcpClientForm clientId={connection.clientId} clientName={connection.clientName} />}
                 className="items-start gap-4"
               />
               <CardBody className="p-5">
@@ -250,11 +269,11 @@ export default async function McpSettingsPage() {
 }
 
 function buildConnections({
-  tokenRows,
+  credentialRows,
   clients,
   auditLogs,
 }: {
-  tokenRows: TokenRow[];
+  credentialRows: CredentialRow[];
   clients: Array<{
     clientId: string;
     clientName: string | null;
@@ -276,35 +295,35 @@ function buildConnections({
   }
 
   const grouped = new Map<string, ClientConnection>();
-  for (const token of tokenRows) {
-    const client = clientById.get(token.clientId);
-    const existing = grouped.get(token.clientId);
-    const scopes = normalizeScopes(token.scope, []) ?? [];
-    const auditLog = latestAuditByClient.get(token.clientId);
+  for (const credential of credentialRows) {
+    const client = clientById.get(credential.clientId);
+    const existing = grouped.get(credential.clientId);
+    const scopes = normalizeScopes(credential.scope, []) ?? [];
+    const auditLog = latestAuditByClient.get(credential.clientId);
 
     if (!existing) {
-      grouped.set(token.clientId, {
-        clientId: token.clientId,
+      grouped.set(credential.clientId, {
+        clientId: credential.clientId,
         clientName: client?.clientName || "MCPクライアント",
         clientUri: client?.clientUri ?? null,
         redirectUris: client?.redirectUris ?? [],
         scopes,
-        createdAt: token.createdAt,
-        expiresAt: token.expiresAt,
-        lastUsedAt: token.lastUsedAt,
+        createdAt: credential.createdAt,
+        expiresAt: credential.expiresAt,
+        lastUsedAt: credential.lastUsedAt,
         latestToolName: auditLog?.toolName ?? null,
         latestOutcome: auditLog?.outcome ?? null,
         latestAuditAt: auditLog?.createdAt ?? null,
-        hasRefreshToken: token.tokenKind === "refresh",
+        hasRefreshToken: credential.credentialKind === "refresh",
       });
       continue;
     }
 
     existing.scopes = sortScopes([...new Set([...existing.scopes, ...scopes])]);
-    existing.createdAt = minDate([existing.createdAt, token.createdAt]) ?? existing.createdAt;
-    existing.expiresAt = maxDate([existing.expiresAt, token.expiresAt]) ?? existing.expiresAt;
-    existing.lastUsedAt = maxDate([existing.lastUsedAt, token.lastUsedAt]);
-    existing.hasRefreshToken = existing.hasRefreshToken || token.tokenKind === "refresh";
+    existing.createdAt = minDate([existing.createdAt, credential.createdAt]) ?? existing.createdAt;
+    existing.expiresAt = maxDate([existing.expiresAt, credential.expiresAt]) ?? existing.expiresAt;
+    existing.lastUsedAt = maxDate([existing.lastUsedAt, credential.lastUsedAt]);
+    existing.hasRefreshToken = existing.hasRefreshToken || credential.credentialKind === "refresh";
   }
 
   return [...grouped.values()].sort((a, b) => {

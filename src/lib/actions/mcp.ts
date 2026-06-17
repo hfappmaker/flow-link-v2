@@ -23,7 +23,7 @@ export async function disconnectMcpClient(
   }
 
   const now = new Date();
-  const [accessTokens, refreshTokens] = await prisma.$transaction([
+  const [accessTokens, refreshTokens, authorizationCodes] = await prisma.$transaction([
     prisma.oAuthAccessToken.updateMany({
       where: {
         userId: user.id,
@@ -40,9 +40,17 @@ export async function disconnectMcpClient(
       },
       data: { revokedAt: now },
     }),
+    prisma.oAuthAuthorizationCode.updateMany({
+      where: {
+        userId: user.id,
+        clientId: parsed.data.clientId,
+        revokedAt: null,
+      },
+      data: { revokedAt: now },
+    }),
   ]);
 
-  if (accessTokens.count + refreshTokens.count === 0) {
+  if (accessTokens.count + refreshTokens.count + authorizationCodes.count === 0) {
     return { error: "解除できるMCP連携が見つかりませんでした。" };
   }
 

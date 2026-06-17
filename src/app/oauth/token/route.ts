@@ -49,6 +49,7 @@ async function exchangeAuthorizationCode(form: FormData) {
   if (!isSameOAuthResource(codeRecord.resource, resource)) {
     return oauthError("invalid_target", "Authorization code was not issued for this resource.", 400);
   }
+  if (codeRecord.revokedAt) return oauthError("invalid_grant", "Authorization code has been revoked.", 400);
   if (codeRecord.usedAt) return oauthError("invalid_grant", "Authorization code has already been used.", 400);
   if (codeRecord.expiresAt <= new Date()) return oauthError("invalid_grant", "Authorization code has expired.", 400);
   if (codeRecord.codeChallengeMethod !== "S256" || !verifyPkceS256(codeVerifier, codeRecord.codeChallenge)) {

@@ -11,7 +11,6 @@ import {
   randomToken,
   scopeString,
   secondsFromNow,
-  type OAuthScope,
   type OAuthSubjectKind,
 } from "@/lib/mcp-oauth";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +27,6 @@ export async function POST(request: Request) {
   const redirectUri = stringValue(form, "redirect_uri");
   const resource = stringValue(form, "resource");
   const requestedScope = stringValue(form, "scope");
-  const grantedScopeValues = form.getAll("granted_scope").map(String);
   const state = stringValue(form, "state");
   const codeChallenge = stringValue(form, "code_challenge");
   const codeChallengeMethod = stringValue(form, "code_challenge_method");
@@ -39,7 +37,6 @@ export async function POST(request: Request) {
     redirectUri,
     resource,
     requestedScope,
-    grantedScopeValues,
     codeChallenge,
     codeChallengeMethod,
   });
@@ -55,7 +52,7 @@ export async function POST(request: Request) {
   });
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedGrantedScopes = filterAllowedScopes(validation.scopes, subjectKind);
-  if (allowedGrantedScopes.length !== validation.scopes.length) {
+  if (allowedGrantedScopes.length === 0) {
     return redirectWithError(redirectUri, "access_denied", state);
   }
 
@@ -68,7 +65,7 @@ export async function POST(request: Request) {
       companyId: membership?.companyId ?? null,
       redirectUri,
       resource: validation.resource,
-      scope: scopeString(validation.scopes),
+      scope: scopeString(allowedGrantedScopes),
       codeChallenge,
       codeChallengeMethod: "S256",
       expiresAt: secondsFromNow(AUTHORIZATION_CODE_TTL_SECONDS),
@@ -87,7 +84,6 @@ async function validateRequest({
   redirectUri,
   resource,
   requestedScope,
-  grantedScopeValues,
   codeChallenge,
   codeChallengeMethod,
 }: {
@@ -96,7 +92,6 @@ async function validateRequest({
   redirectUri: string;
   resource: string;
   requestedScope: string;
-  grantedScopeValues: string[];
   codeChallenge: string;
   codeChallengeMethod: string;
 }) {
@@ -118,14 +113,7 @@ async function validateRequest({
     return { ok: false as const, error: "invalid_scope" };
   }
 
-  const grantedScopes = normalizeScopes(grantedScopeValues.join(" "), []);
-  if (!grantedScopes) return { ok: false as const, error: "access_denied" };
-  if (grantedScopes.some((scope) => !requestedScopes.includes(scope) || !clientScopes.includes(scope))) {
-    return { ok: false as const, error: "invalid_scope" };
-  }
-
-  const scopes = grantedScopes as OAuthScope[];
-  return { ok: true as const, resource: normalizeOAuthResource(resource)!, scopes };
+  return { ok: true as const, resource: normalizeOAuthResource(resource)!, scopes: requestedScopes };
 }
 
 function redirectWithError(redirectUri: string, error: string, state: string) {

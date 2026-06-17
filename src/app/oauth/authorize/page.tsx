@@ -1,6 +1,8 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardBody } from "@/components/ui/card";
 import {
   getAllowedScopesForSubject,
   isValidMcpResource,
@@ -10,8 +12,6 @@ import {
   type OAuthSubjectKind,
 } from "@/lib/mcp-oauth";
 import { prisma } from "@/lib/prisma";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody } from "@/components/ui/card";
 
 export const runtime = "nodejs";
 
@@ -56,9 +56,11 @@ export default async function OAuthAuthorizePage({
   ]);
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedScopes = getAllowedScopesForSubject(subjectKind);
+  const grantedScopes = validation.scopes.filter((scope) => allowedScopes.includes(scope));
 
   const clientName = validation.client.clientName ?? "MCPクライアント";
   const accountName = membership?.company.name ?? engineerProfile?.displayName ?? session.user.email ?? "このアカウント";
+
   return (
     <main className="mx-auto max-w-xl px-4 py-12">
       <h1 className="text-2xl font-black text-slate-900">FlowLink MCP連携</h1>
@@ -70,67 +72,55 @@ export default async function OAuthAuthorizePage({
         <CardBody className="p-6">
           <form method="post" action="/oauth/authorize/confirm" className="space-y-5">
             <div>
-              <h2 className="text-base font-bold text-slate-900">許可する権限</h2>
+              <h2 className="text-base font-bold text-slate-900">要求された権限</h2>
               <div className="mt-3 space-y-2">
-                <label className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-                  <input
-                    type="checkbox"
-                    checked
-                    disabled
-                    readOnly
-                    className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 disabled:opacity-100"
-                  />
-                  <span>
-                    <span className="block font-semibold text-blue-950">公開案件の検索</span>
-                    <span className="mt-0.5 block text-xs leading-relaxed">
-                      ログイン済みのMCPクライアントから、公開案件の検索・詳細取得・検索条件の参照ができます。
-                      この項目は常に有効で、scopeは不要です。
-                    </span>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                  <span className="block font-semibold text-blue-950">公開案件の検索</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed">
+                    ログイン済みのMCPクライアントから、公開案件の検索・詳細取得・検索条件の参照ができます。
+                    この項目は常に有効で、scopeは不要です。
                   </span>
-                </label>
+                </div>
+
                 {validation.scopes.map((scope) => {
                   const allowed = allowedScopes.includes(scope);
                   return (
-                    <label
+                    <div
                       key={scope}
                       className={[
-                        "flex items-start gap-3 rounded-lg border px-3 py-2 text-sm",
+                        "rounded-lg border px-3 py-2 text-sm",
                         allowed
                           ? "border-slate-200 bg-white text-slate-700"
                           : "border-slate-200 bg-slate-50 text-slate-400",
                       ].join(" ")}
                     >
-                      <input
-                        type="checkbox"
-                        name="granted_scope"
-                        value={scope}
-                        defaultChecked={allowed}
-                        disabled={!allowed}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:text-slate-300"
-                      />
-                      <span>
-                        <span className="block font-semibold text-slate-900">{SCOPE_LABELS[scope]}</span>
-                        <span className="mt-0.5 block text-xs leading-relaxed">
-                          {allowed ? SCOPE_DESCRIPTIONS[scope] : unavailableScopeMessage(subjectKind)}
-                        </span>
+                      <span className={["block font-semibold", allowed ? "text-slate-900" : "text-slate-500"].join(" ")}>
+                        {SCOPE_LABELS[scope]}
                       </span>
-                    </label>
+                      <span className="mt-0.5 block text-xs leading-relaxed">
+                        {allowed ? SCOPE_DESCRIPTIONS[scope] : unavailableScopeMessage(subjectKind)}
+                      </span>
+                    </div>
                   );
                 })}
               </div>
+
               {validation.scopes.some((scope) => scope.startsWith("project:")) ? (
                 <p className="mt-3 text-xs leading-relaxed text-slate-500">
                   MCPから案件を公開することはできません。公開はFlowLinkの画面から行ってください。
                 </p>
               ) : null}
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                実際に付与される権限は、ログイン中のアカウント種別に応じてFlowLink側で制限されます。
+                今回付与される権限は {grantedScopes.length} 件です。
+              </p>
             </div>
+
             {Object.entries(params).map(([key, value]) =>
               value ? <input key={key} type="hidden" name={key} value={value} /> : null,
             )}
             <div className="flex items-center gap-3">
-              <Button type="submit">
-                選択した権限を許可
-              </Button>
+              <Button type="submit">許可する</Button>
               <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-slate-900">
                 キャンセル
               </Link>
