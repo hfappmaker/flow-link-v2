@@ -66,7 +66,8 @@ export default function McpPage() {
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
             Claude、ChatGPT、CodexなどのMCP対応クライアントから、公開案件の検索、
             プロフィール登録、企業案件の下書き作成・更新を利用できます。公開案件検索は
-            FlowLinkログイン必須、scope不要です。
+            FlowLinkログイン必須、scope不要です。MCP連携時の確認画面では、
+            「公開案件の検索」がチェック済み・解除不可の項目として表示されます。
           </p>
 
           <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -99,6 +100,7 @@ export default function McpPage() {
                   2
                 </span>
                 認証が求められたらFlowLinkにログインし、利用したいscopeを選択します。
+                公開案件の検索はscope不要のため、チェック済み・解除不可で表示されます。
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-50 text-xs font-black text-blue-700">
@@ -116,6 +118,7 @@ export default function McpPage() {
             </h2>
             <ul className="mt-5 space-y-3 text-sm leading-relaxed text-slate-600">
               <li>公開案件検索ツールはFlowLinkログイン必須、scope不要で利用できます。</li>
+              <li>連携確認画面では「公開案件の検索」がチェック済み・解除不可で表示されます。</li>
               <li>プロフィール登録・更新、自社案件の操作は許可したscopeの範囲で実行できます。</li>
               <li>認可画面ではscopeを選択できます。アカウント種別に合わないscopeは選択できません。</li>
               <li>MCPから案件公開はできません。公開操作はFlowLinkのWeb画面で行います。</li>
