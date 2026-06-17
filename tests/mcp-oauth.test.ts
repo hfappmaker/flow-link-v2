@@ -4,6 +4,7 @@ import {
   getOAuthMetadata,
   getProtectedResourceMetadata,
   getWwwAuthenticateHeader,
+  filterValidRedirectUris,
   isSameOAuthResource,
   isValidMcpResource,
   isValidRedirectUri,
@@ -135,7 +136,19 @@ describe("MCP OAuth helpers", () => {
     assert.equal(isValidRedirectUri("http://localhost:8787/callback"), true);
     assert.equal(isValidRedirectUri("http://127.0.0.1:8787/callback"), true);
     assert.equal(isValidRedirectUri("http://example.com/callback"), false);
+    assert.equal(isValidRedirectUri("cursor://example.com/oauth/callback"), false);
     assert.equal(isValidRedirectUri("https://example.com/callback#fragment"), false);
+  });
+
+  it("filters unsupported redirect URIs from dynamic registration input", () => {
+    assert.deepEqual(
+      filterValidRedirectUris([
+        "cursor://anysphere.cursor-mcp/oauth/callback",
+        "https://www.cursor.com/agents/mcp/oauth/callback",
+        "http://localhost:8787/callback",
+      ]),
+      ["https://www.cursor.com/agents/mcp/oauth/callback", "http://localhost:8787/callback"],
+    );
   });
 
   it("verifies S256 PKCE challenges", () => {

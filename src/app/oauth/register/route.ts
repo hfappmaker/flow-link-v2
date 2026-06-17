@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeScopes, randomToken, scopeString, isValidRedirectUri } from "@/lib/mcp-oauth";
+import { filterValidRedirectUris, normalizeScopes, randomToken, scopeString } from "@/lib/mcp-oauth";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -21,8 +21,12 @@ export async function POST(request: Request) {
   if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
     return oauthError("invalid_redirect_uri", "redirect_uris is required.", 400);
   }
-  if (body.redirect_uris.some((uri) => typeof uri !== "string" || !isValidRedirectUri(uri))) {
-    return oauthError("invalid_redirect_uri", "Each redirect URI must be HTTPS or localhost HTTP.", 400);
+  if (body.redirect_uris.some((uri) => typeof uri !== "string")) {
+    return oauthError("invalid_redirect_uri", "redirect_uris must contain only strings.", 400);
+  }
+  const redirectUris = filterValidRedirectUris(body.redirect_uris);
+  if (redirectUris.length === 0) {
+    return oauthError("invalid_redirect_uri", "At least one redirect URI must be HTTPS or localhost HTTP.", 400);
   }
 
   const grantTypes = body.grant_types ?? ["authorization_code", "refresh_token"];
@@ -51,7 +55,7 @@ export async function POST(request: Request) {
     data: {
       clientId: `fl_${randomToken(18)}`,
       clientName: body.client_name?.slice(0, 200),
-      redirectUris: body.redirect_uris,
+      redirectUris,
       grantTypes,
       responseTypes,
       tokenEndpointAuthMethod: "none",

@@ -235,6 +235,10 @@ export function isValidRedirectUri(value: string) {
   }
 }
 
+export function filterValidRedirectUris(values: string[]) {
+  return values.filter((value) => isValidRedirectUri(value));
+}
+
 export async function getBearerAuthInfo(request: Request) {
   const authorization = request.headers.get("authorization");
   const match = authorization?.match(/^Bearer\s+(.+)$/i);
