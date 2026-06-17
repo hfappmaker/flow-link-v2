@@ -1477,6 +1477,9 @@ async function routeHandler(request: Request) {
   if (request.method === "GET" && new URL(request.url).pathname === "/api/mcp") {
     const auth = await getBearerAuthInfo(request);
     if (!auth) {
+      console.warn("[MCP OAuth GET] rejected", {
+        hasAuthorizationHeader: Boolean(request.headers.get("authorization")),
+      });
       return Response.json(
         {
           error: "Authentication required.",
