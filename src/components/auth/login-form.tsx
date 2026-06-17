@@ -9,7 +9,15 @@ import { Input, Label } from "@/components/ui/form";
 
 type LoginNotice = "registered" | "verified" | "invalid-verification" | "reset";
 
-export function LoginForm({ notice, initialEmail = "" }: { notice?: LoginNotice; initialEmail?: string }) {
+export function LoginForm({
+  notice,
+  initialEmail = "",
+  redirectTo = "/post-login",
+}: {
+  notice?: LoginNotice;
+  initialEmail?: string;
+  redirectTo?: string;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(
@@ -69,7 +77,7 @@ export function LoginForm({ notice, initialEmail = "" }: { notice?: LoginNotice;
       setPending(false);
       return;
     }
-    router.push("/post-login");
+    router.push(redirectTo);
     router.refresh();
   }
 

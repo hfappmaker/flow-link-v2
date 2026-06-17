@@ -12,12 +12,19 @@ export const metadata: Metadata = { title: "ログイン" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ registered?: string; verified?: string; reset?: string; email?: string }>;
+  searchParams: Promise<{
+    registered?: string;
+    verified?: string;
+    reset?: string;
+    email?: string;
+    callbackUrl?: string;
+  }>;
 }) {
-  const user = await getCurrentUser();
-  if (user) redirect("/post-login");
-
   const params = await searchParams;
+  const redirectTo = safeInternalPath(params.callbackUrl) ?? "/post-login";
+  const user = await getCurrentUser();
+  if (user) redirect(redirectTo);
+
   const notice =
     params.registered === "1"
       ? "registered"
@@ -41,8 +48,9 @@ export default async function LoginPage({
               github: oauthProviderAvailability.github,
               microsoft: oauthProviderAvailability["microsoft-entra-id"],
             }}
+            redirectTo={redirectTo}
           />
-          <LoginForm notice={notice} initialEmail={params.email ?? ""} />
+          <LoginForm notice={notice} initialEmail={params.email ?? ""} redirectTo={redirectTo} />
         </CardBody>
       </Card>
 
@@ -54,4 +62,9 @@ export default async function LoginPage({
       </p>
     </div>
   );
+}
+
+function safeInternalPath(value: string | undefined) {
+  if (!value?.startsWith("/") || value.startsWith("//")) return null;
+  return value;
 }
