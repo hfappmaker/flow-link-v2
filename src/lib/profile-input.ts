@@ -1,4 +1,4 @@
-import { RemoteType, WorkStatus, type Prisma } from "@prisma/client";
+import { RemoteType, WorkStatus } from "@prisma/client";
 import { z } from "zod";
 import { PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
 import { parseCustomSkillNames } from "@/lib/project-input";
@@ -107,33 +107,19 @@ export function parseWorkHistories(formData: FormData) {
   return { histories };
 }
 
-type SkillWriter = Pick<Prisma.TransactionClient, "skill">;
-
 export async function resolveProfileSkillIds({
-  db,
   skillIds,
   skillNames,
 }: {
-  db: SkillWriter;
   skillIds?: string[];
   skillNames?: string[];
 }) {
   const cleanSkillIds = [...new Set((skillIds ?? []).map((id) => id.trim()).filter(Boolean))];
   const customSkills = parseCustomSkillNames((skillNames ?? []).join("\n"));
-  if (customSkills.error) return { skillIds: [] as string[], error: customSkills.error };
-
-  const customSkillIds = await Promise.all(
-    customSkills.names.map((name) =>
-      db.skill.upsert({
-        where: { name },
-        update: {},
-        create: { name, category: "OTHER" },
-        select: { id: true },
-      }),
-    ),
-  );
+  if (customSkills.error) return { skillIds: [] as string[], customSkillNames: [] as string[], error: customSkills.error };
 
   return {
-    skillIds: [...new Set([...cleanSkillIds, ...customSkillIds.map((skill) => skill.id)])],
+    skillIds: cleanSkillIds,
+    customSkillNames: customSkills.names,
   };
 }

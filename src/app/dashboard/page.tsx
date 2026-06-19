@@ -33,7 +33,16 @@ export default async function DashboardPage() {
   const recommended = await prisma.project.findMany({
     where: {
       status: "OPEN",
-      ...(skillIds.length > 0 ? { skills: { some: { skillId: { in: skillIds } } } } : {}),
+      ...(skillIds.length > 0 || profile.customSkillNames.length > 0
+        ? {
+            OR: [
+              ...(skillIds.length > 0 ? [{ skills: { some: { skillId: { in: skillIds } } } }] : []),
+              ...(profile.customSkillNames.length > 0
+                ? [{ skills: { some: { skill: { name: { in: profile.customSkillNames } } } } }]
+                : []),
+            ],
+          }
+        : {}),
     },
     orderBy: { publishedAt: "desc" },
     take: 4,
