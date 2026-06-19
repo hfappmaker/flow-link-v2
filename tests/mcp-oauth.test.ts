@@ -151,6 +151,7 @@ describe("MCP OAuth helpers", () => {
     assert.equal(isValidRedirectUri("http://localhost:8787/callback"), true);
     assert.equal(isValidRedirectUri("http://127.0.0.1:8787/callback"), true);
     assert.equal(isValidRedirectUri("http://example.com/callback"), false);
+    assert.equal(isValidRedirectUri("cursor://anysphere.cursor-mcp/oauth/callback"), true);
     assert.equal(isValidRedirectUri("cursor://example.com/oauth/callback"), false);
     assert.equal(isValidRedirectUri("com.example.app:/oauth/callback"), false);
     assert.equal(isValidRedirectUri("javascript:alert(1)"), false);
@@ -165,7 +166,11 @@ describe("MCP OAuth helpers", () => {
         "https://www.cursor.com/agents/mcp/oauth/callback",
         "http://localhost:8787/callback",
       ]),
-      ["https://www.cursor.com/agents/mcp/oauth/callback", "http://localhost:8787/callback"],
+      [
+        "cursor://anysphere.cursor-mcp/oauth/callback",
+        "https://www.cursor.com/agents/mcp/oauth/callback",
+        "http://localhost:8787/callback",
+      ],
     );
   });
 

@@ -396,12 +396,17 @@ export function isValidRedirectUri(value: string) {
   try {
     const url = new URL(value);
     if (url.hash) return false;
+    if (isAllowedCursorRedirectUri(url)) return true;
     if (url.protocol === "https:") return true;
     if (url.protocol !== "http:") return false;
     return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   } catch {
     return false;
   }
+}
+
+function isAllowedCursorRedirectUri(url: URL) {
+  return url.protocol === "cursor:" && url.hostname === "anysphere.cursor-mcp" && url.pathname === "/oauth/callback";
 }
 
 export function filterValidRedirectUris(values: string[]) {
