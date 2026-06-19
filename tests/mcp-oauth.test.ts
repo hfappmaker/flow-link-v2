@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   createOAuthConsentToken,
+  getAllowedScopesForSubject,
   getOAuthMetadata,
   getProtectedResourceMetadata,
   getWwwAuthenticateHeader,
@@ -34,6 +35,7 @@ describe("MCP OAuth helpers", () => {
         "company_profile:write",
         "engineer_profile:read",
         "engineer_profile:write",
+        "engineer_search:read",
         "project:read",
         "project:write",
       ]);
@@ -109,9 +111,16 @@ describe("MCP OAuth helpers", () => {
       "engineer_profile:read",
       "engineer_profile:write",
     ]);
+    assert.deepEqual(normalizeScopes("engineer_search:read"), ["engineer_search:read"]);
     assert.equal(normalizeScopes("project:publish"), null);
     assert.equal(normalizeScopes("project:edit"), null);
     assert.equal(normalizeScopes("profile:read"), null);
+  });
+
+  it("allows engineer search scope only for company accounts", () => {
+    assert.equal(getAllowedScopesForSubject("company").includes("engineer_search:read"), true);
+    assert.equal(getAllowedScopesForSubject("engineer").includes("engineer_search:read"), false);
+    assert.equal(getAllowedScopesForSubject("unregistered").includes("engineer_search:read"), false);
   });
 
   it("validates MCP resource indicators for audience binding", () => {

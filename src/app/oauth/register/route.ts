@@ -67,6 +67,7 @@ export async function POST(request: Request) {
     "company_profile:write",
     "engineer_profile:read",
     "engineer_profile:write",
+    "engineer_search:read",
     "project:read",
     "project:write",
   ]);

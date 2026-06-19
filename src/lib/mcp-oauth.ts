@@ -6,6 +6,7 @@ export const OAUTH_SCOPES = [
   "company_profile:write",
   "engineer_profile:read",
   "engineer_profile:write",
+  "engineer_search:read",
   "project:read",
   "project:write",
 ] as const;
@@ -324,7 +325,10 @@ export function hasScope(scopes: OAuthScope[], required: OAuthScope) {
 export function getAllowedScopesForSubject(kind: OAuthSubjectKind) {
   if (kind === "company") {
     return OAUTH_SCOPES.filter(
-      (scope) => scope.startsWith("company_profile:") || scope.startsWith("project:"),
+      (scope) =>
+        scope.startsWith("company_profile:") ||
+        scope.startsWith("engineer_search:") ||
+        scope.startsWith("project:"),
     );
   }
   if (kind === "engineer") {

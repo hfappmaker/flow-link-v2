@@ -58,6 +58,7 @@ export default async function OAuthAuthorizePage({
   ]);
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedScopes = getAllowedScopesForSubject(subjectKind);
+  const visibleScopes = validation.scopes.filter((scope) => allowedScopes.includes(scope));
   const consentToken = createOAuthConsentToken({
     userId: session.user.id,
     clientId: validation.client.clientId,
@@ -87,31 +88,19 @@ export default async function OAuthAuthorizePage({
                 <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
                   <span className="block font-semibold text-slate-900">公開案件の検索</span>
                   <span className="mt-0.5 block text-xs leading-relaxed">
-                    ログイン済みのMCPクライアントから、公開案件の検索・詳細取得・検索条件の参照ができます。
+                    公開案件の検索・詳細取得・検索条件の参照ができます。
                   </span>
                 </div>
 
-                {validation.scopes.map((scope) => {
-                  const allowed = allowedScopes.includes(scope);
-                  return (
-                    <div
-                      key={scope}
-                      className={[
-                        "rounded-lg border px-3 py-2 text-sm",
-                        allowed
-                          ? "border-slate-200 bg-white text-slate-700"
-                          : "border-slate-200 bg-slate-50 text-slate-400",
-                      ].join(" ")}
-                    >
-                      <span className={["block font-semibold", allowed ? "text-slate-900" : "text-slate-500"].join(" ")}>
-                        {SCOPE_LABELS[scope]}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-relaxed">
-                        {allowed ? SCOPE_DESCRIPTIONS[scope] : unavailableScopeMessage(subjectKind)}
-                      </span>
-                    </div>
-                  );
-                })}
+                {visibleScopes.map((scope) => (
+                  <div
+                    key={scope}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    <span className="block font-semibold text-slate-900">{SCOPE_LABELS[scope]}</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed">{SCOPE_DESCRIPTIONS[scope]}</span>
+                  </div>
+                ))}
               </div>
 
               {validation.scopes.some((scope) => scope.startsWith("project:")) ? (
@@ -143,6 +132,7 @@ const SCOPE_LABELS = {
   "company_profile:write": "企業プロフィールの登録・更新",
   "engineer_profile:read": "エンジニアプロフィールの表示",
   "engineer_profile:write": "エンジニアプロフィールの登録・更新",
+  "engineer_search:read": "エンジニア検索",
   "project:read": "自社案件の表示",
   "project:write": "案件下書きの作成・更新",
 } satisfies Record<OAuthScope, string>;
@@ -152,15 +142,10 @@ const SCOPE_DESCRIPTIONS = {
   "company_profile:write": "企業登録を完了するか、既存の企業プロフィールを更新します。",
   "engineer_profile:read": "このアカウントに紐づくエンジニアプロフィールを表示します。",
   "engineer_profile:write": "エンジニア登録を完了するか、既存のエンジニアプロフィールを更新します。",
+  "engineer_search:read": "公開中のエンジニアプロフィールを検索・閲覧します。",
   "project:read": "自社が登録した案件を表示します。",
   "project:write": "自社案件の下書きを作成・更新します。公開はWeb画面からのみ行えます。",
 } satisfies Record<OAuthScope, string>;
-
-function unavailableScopeMessage(subjectKind: OAuthSubjectKind) {
-  if (subjectKind === "company") return "企業アカウントでは利用できない権限です。";
-  if (subjectKind === "engineer") return "エンジニアアカウントでは利用できない権限です。";
-  return "プロフィール登録前は利用できない権限です。";
-}
 
 async function validateAuthorizeParams(params: AuthorizeParams) {
   if (params.response_type !== "code") return { ok: false as const, message: "未対応のresponse_typeです。" };

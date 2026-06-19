@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Bot, Building2, Search, UserRound } from "lucide-react";
+import { Bot, Building2, Search, UserRound, UsersRound } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 
 const mcpServerUrl = "https://flowlink.flowtech.co.jp/api/mcp";
@@ -10,6 +10,12 @@ const searchTools = [
   { name: "search_projects", description: "公開案件をキーワード、単価、稼働日数、スキルなどで検索します。" },
   { name: "get_project", description: "公開案件の詳細情報を取得します。" },
   { name: "list_project_filter_options", description: "案件検索で使える絞り込み候補を取得します。" },
+];
+
+const engineerSearchTools = [
+  { name: "search_engineers", description: "企業アカウントで公開中のエンジニアを検索します。" },
+  { name: "get_engineer", description: "公開中のエンジニアプロフィール詳細を取得します。" },
+  { name: "list_engineer_filter_options", description: "エンジニア検索で使える絞り込み候補を取得します。" },
 ];
 
 const profileTools = [
@@ -46,7 +52,7 @@ export default function McpPage() {
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
             MCP対応クライアントから、FlowLinkの公開案件検索、プロフィール登録、
-            企業案件の下書き作成・更新を利用できます。
+            企業向けエンジニア検索、企業案件の下書き作成・更新を利用できます。
           </p>
 
           <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -61,12 +67,18 @@ export default function McpPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-4">
           <ToolGroup
             title="公開案件検索"
             icon={<Search className="h-5 w-5 text-cyan-600" />}
             description="公開中の案件を探して、詳細や検索条件を参照できます。"
             tools={searchTools}
+          />
+          <ToolGroup
+            title="エンジニア検索"
+            icon={<UsersRound className="h-5 w-5 text-emerald-600" />}
+            description="企業アカウントで公開中のエンジニアを探して、プロフィールを参照できます。"
+            tools={engineerSearchTools}
           />
           <ToolGroup
             title="プロフィール"
@@ -76,7 +88,7 @@ export default function McpPage() {
           />
           <ToolGroup
             title="企業案件"
-            icon={<Building2 className="h-5 w-5 text-emerald-600" />}
+            icon={<Building2 className="h-5 w-5 text-violet-600" />}
             description="企業アカウントで自社案件の一覧取得と下書き作成・更新ができます。"
             tools={projectTools}
           />
