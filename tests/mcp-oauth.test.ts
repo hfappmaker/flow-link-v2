@@ -51,8 +51,19 @@ describe("MCP OAuth helpers", () => {
       assert.deepEqual(resourceMetadata.authorization_servers, ["https://flowlink.flowtech.co.jp"]);
       assert.deepEqual(resourceMetadata.scopes_supported, [
         "company_profile:read",
+        "company_profile:write",
         "project:read",
+        "project:write",
         "engineer_search:read",
+      ]);
+
+      const engineerResourceMetadata = getProtectedResourceMetadata(
+        "https://flowlink.flowtech.co.jp/.well-known/oauth-protected-resource/api/mcp/engineer",
+      );
+      assert.equal(engineerResourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp/engineer");
+      assert.deepEqual(engineerResourceMetadata.scopes_supported, [
+        "engineer_profile:read",
+        "engineer_profile:write",
       ]);
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
@@ -82,7 +93,9 @@ describe("MCP OAuth helpers", () => {
       assert.deepEqual(resourceMetadata.authorization_servers, ["https://flow-link-v2-git-develop-example.vercel.app"]);
       assert.deepEqual(resourceMetadata.scopes_supported, [
         "company_profile:read",
+        "company_profile:write",
         "project:read",
+        "project:write",
         "engineer_search:read",
       ]);
     } finally {

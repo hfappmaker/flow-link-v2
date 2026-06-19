@@ -16,8 +16,14 @@ export const MCP_ENDPOINTS = ["company", "engineer"] as const;
 export type McpEndpoint = (typeof MCP_ENDPOINTS)[number];
 
 const PROTECTED_RESOURCE_SCOPES = {
-  company: ["company_profile:read", "project:read", "engineer_search:read"],
-  engineer: ["engineer_profile:read"],
+  company: [
+    "company_profile:read",
+    "company_profile:write",
+    "project:read",
+    "project:write",
+    "engineer_search:read",
+  ],
+  engineer: ["engineer_profile:read", "engineer_profile:write"],
 } satisfies Record<McpEndpoint, OAuthScope[]>;
 
 export const AUTHORIZATION_CODE_TTL_SECONDS = 5 * 60;
