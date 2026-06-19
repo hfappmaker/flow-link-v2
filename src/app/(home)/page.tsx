@@ -94,10 +94,11 @@ export default async function HomePage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-2xl leading-tight font-black text-slate-900 sm:text-3xl">
-              AIクライアントから公開案件を検索できます
+              AIクライアントからFlowLinkを操作できます
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
-              ClaudeやChatGPTなどのMCP対応クライアントから、FlowLinkの公開案件検索と案件詳細取得を利用できます。
+              ClaudeやChatGPTなどのMCP対応クライアントから、利用者に応じた認証付きツールを利用できます。
+              企業は案件検索・エンジニア検索・案件下書き管理、エンジニアは案件検索・プロフィール管理に対応しています。
             </p>
           </div>
           <Link
