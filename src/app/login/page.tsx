@@ -16,6 +16,7 @@ export default async function LoginPage({
     registered?: string;
     verified?: string;
     reset?: string;
+    error?: string;
     email?: string;
     callbackUrl?: string;
   }>;
@@ -34,7 +35,11 @@ export default async function LoginPage({
           ? "invalid-verification"
           : params.reset === "1"
             ? "reset"
-            : undefined;
+            : params.error === "AccessDenied"
+              ? "oauth-canceled"
+              : params.error
+                ? "oauth-error"
+                : undefined;
 
   return (
     <div className="mx-auto max-w-md px-4 py-12 sm:px-6">
