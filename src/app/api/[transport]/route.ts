@@ -45,12 +45,6 @@ const PROTECTED_TOOL_SCOPES = {
   register_my_engineer_profile: "engineer_profile:write",
   update_my_engineer_profile: "engineer_profile:write",
 } satisfies Record<string, OAuthScope>;
-const AUTHENTICATED_TOOL_NAMES = [
-  "search_projects",
-  "get_project",
-  "list_project_filter_options",
-] as const;
-
 const remoteTypeValues = [
   RemoteType.FULL_REMOTE,
   RemoteType.REMOTE_MAIN,
@@ -1661,22 +1655,15 @@ const handler = createMcpHandler(
   },
 );
 
-async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
+async function maybeRejectUnauthorizedMcpRequest(request: Request) {
   if (request.method !== "POST") return null;
 
   const body = (await request.clone().json().catch(() => null)) as
     | { id?: unknown; method?: string; params?: { name?: string } }
     | null;
-  const toolName = body?.method === "tools/call" ? body.params?.name : undefined;
-  if (!toolName) return null;
 
-  const requiredScope = PROTECTED_TOOL_SCOPES[toolName as keyof typeof PROTECTED_TOOL_SCOPES];
-  if (!requiredScope) {
-    if (!(AUTHENTICATED_TOOL_NAMES as readonly string[]).includes(toolName)) return null;
-
-    const auth = await getBearerAuthInfo(request);
-    if (auth) return null;
-
+  const auth = await getBearerAuthInfo(request);
+  if (!auth) {
     return Response.json(
       {
         jsonrpc: "2.0",
@@ -1695,6 +1682,12 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
       },
     );
   }
+
+  const toolName = body?.method === "tools/call" ? body.params?.name : undefined;
+  if (!toolName) return null;
+
+  const requiredScope = PROTECTED_TOOL_SCOPES[toolName as keyof typeof PROTECTED_TOOL_SCOPES];
+  if (!requiredScope) return null;
 
   const authResult = await requireMcpScope(request, requiredScope);
   if (authResult.ok) return null;
@@ -1735,7 +1728,7 @@ async function routeHandler(request: Request) {
     });
   }
 
-  const authRejection = await maybeRejectUnauthenticatedProtectedToolCall(request);
+  const authRejection = await maybeRejectUnauthorizedMcpRequest(request);
   if (authRejection) return authRejection;
   return withMcpRequestContext(request, () => handler(request));
 }

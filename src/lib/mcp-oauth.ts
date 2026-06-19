@@ -397,25 +397,11 @@ export function isValidRedirectUri(value: string) {
     const url = new URL(value);
     if (url.hash) return false;
     if (url.protocol === "https:") return true;
-    if (url.protocol !== "http:") return isValidPrivateUseRedirectUri(url);
+    if (url.protocol !== "http:") return false;
     return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   } catch {
     return false;
   }
-}
-
-const BLOCKED_PRIVATE_USE_REDIRECT_SCHEMES = new Set([
-  "about:",
-  "blob:",
-  "data:",
-  "file:",
-  "javascript:",
-  "vbscript:",
-]);
-
-function isValidPrivateUseRedirectUri(url: URL) {
-  if (BLOCKED_PRIVATE_USE_REDIRECT_SCHEMES.has(url.protocol)) return false;
-  return /^[a-z][a-z0-9+.-]*:$/.test(url.protocol);
 }
 
 export function filterValidRedirectUris(values: string[]) {
