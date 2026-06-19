@@ -64,6 +64,13 @@ export default function McpSetupPage() {
             FlowLink MCPは利用者別に接続先を分けています。用途に合うURLをMCPクライアントに設定してください。
           </p>
 
+          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
+            <p className="font-bold">利用にはFlowLinkへのログインが必要です。</p>
+            <p className="mt-1">
+              MCPクライアントにURLを設定すると、接続時にFlowLinkのOAuth認可画面が開きます。ログイン後、利用するツールに必要な権限を許可してください。
+            </p>
+          </div>
+
           <div className="mt-8 grid gap-3">
             {mcpServers.map((server) => (
               <div key={server.key} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
