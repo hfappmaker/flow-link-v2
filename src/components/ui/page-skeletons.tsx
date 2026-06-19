@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ReactNode } from "react";
 
 export function PageHeaderSkeleton({ action = false }: { action?: boolean }) {
   return (
@@ -498,6 +499,148 @@ export function FormPageSkeleton({ columns = 2 }: { columns?: 1 | 2 }) {
         <Skeleton className="mt-5 h-24 w-full rounded-lg" />
         <div className="mt-5 flex justify-end">
           <Skeleton className="h-10 w-32 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormSectionSkeleton({
+  titleWidth = "w-28",
+  children,
+}: {
+  titleWidth?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="border-b border-slate-200 pb-2">
+        <Skeleton className={`h-5 ${titleWidth}`} />
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function FieldSkeleton({ wide = false }: { wide?: boolean }) {
+  return (
+    <div>
+      <Skeleton className="h-3 w-24" />
+      <Skeleton className={wide ? "mt-2 h-11 w-full rounded-lg" : "mt-2 h-10 w-full rounded-lg"} />
+    </div>
+  );
+}
+
+function ChipRowSkeleton({ count = 8 }: { count?: number }) {
+  const widths = ["w-20", "w-24", "w-16", "w-28", "w-20", "w-24", "w-20", "w-16"];
+  return (
+    <div className="flex flex-wrap gap-2">
+      {Array.from({ length: count }).map((_, index) => (
+        <Skeleton key={index} className={`h-8 rounded-full ${widths[index % widths.length]}`} />
+      ))}
+    </div>
+  );
+}
+
+export function EngineerProfileSettingsSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <Skeleton className="h-8 w-56 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-[34rem] max-w-full" />
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-8">
+          <FormSectionSkeleton>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldSkeleton />
+              <div>
+                <Skeleton className="h-3 w-20" />
+                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/60 px-2 py-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Skeleton className="h-7 w-24 rounded-full" />
+                    <Skeleton className="h-7 w-28 rounded-full" />
+                    <Skeleton className="h-7 w-20 rounded-full" />
+                  </div>
+                </div>
+              </div>
+              <FieldSkeleton />
+              <FieldSkeleton />
+            </div>
+            <div>
+              <Skeleton className="h-3 w-36" />
+              <Skeleton className="mt-2 h-32 w-full rounded-lg" />
+              <Skeleton className="mt-2 h-3 w-[30rem] max-w-full" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldSkeleton />
+              <FieldSkeleton />
+            </div>
+            <Skeleton className="h-12 w-full rounded-lg bg-amber-100/80" />
+          </FormSectionSkeleton>
+
+          <FormSectionSkeleton titleWidth="w-16">
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index}>
+                  <Skeleton className="mb-2 h-3 w-24" />
+                  <ChipRowSkeleton count={index === 1 ? 7 : 5} />
+                </div>
+              ))}
+            </div>
+            <div>
+              <Skeleton className="h-3 w-24" />
+              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/60 px-2 py-2">
+                <ChipRowSkeleton count={3} />
+              </div>
+            </div>
+          </FormSectionSkeleton>
+
+          <FormSectionSkeleton titleWidth="w-24">
+            <div className="rounded-lg border border-dashed border-slate-200 px-3 py-4">
+              <Skeleton className="h-4 w-64 max-w-full" />
+              <Skeleton className="mt-2 h-3 w-80 max-w-full" />
+            </div>
+          </FormSectionSkeleton>
+
+          <FormSectionSkeleton>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldSkeleton />
+              <FieldSkeleton />
+              <div>
+                <Skeleton className="mb-2 h-3 w-24" />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-10 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+              <FieldSkeleton />
+              <FieldSkeleton />
+            </div>
+          </FormSectionSkeleton>
+
+          {Array.from({ length: 2 }).map((_, index) => (
+            <FormSectionSkeleton key={index} titleWidth={index === 0 ? "w-20" : "w-24"}>
+              <div className="flex items-start gap-3">
+                <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-72 max-w-full" />
+                  <Skeleton className="mt-2 h-3 w-[30rem] max-w-full" />
+                </div>
+              </div>
+            </FormSectionSkeleton>
+          ))}
+
+          <Skeleton className="h-11 w-44 rounded-lg" />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-red-200 bg-white p-6 shadow-sm">
+        <Skeleton className="h-5 w-16 bg-red-100" />
+        <div className="mt-4 rounded-lg border border-red-100 bg-red-50/50 p-4">
+          <Skeleton className="h-4 w-80 max-w-full bg-red-100" />
+          <Skeleton className="mt-3 h-10 w-36 rounded-lg bg-red-100" />
         </div>
       </div>
     </div>
