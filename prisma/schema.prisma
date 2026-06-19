@@ -80,6 +80,84 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
+model OAuthClient {
+  id                      String   @id @default(cuid())
+  clientId                String   @unique
+  clientName              String?
+  redirectUris            String[] @default([])
+  grantTypes              String[] @default([])
+  responseTypes           String[] @default([])
+  tokenEndpointAuthMethod String   @default("none")
+  scope                   String?
+  clientUri               String?
+  logoUri                 String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OAuthAuthorizationCode {
+  id                  String    @id @default(cuid())
+  codeHash            String    @unique
+  clientId            String
+  userId              String
+  companyId           String?
+  redirectUri         String
+  resource            String
+  scope               String
+  codeChallenge       String
+  codeChallengeMethod String
+  expiresAt           DateTime
+  usedAt              DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([companyId])
+  @@index([resource])
+  @@index([expiresAt])
+}
+
+model OAuthRefreshToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  clientId   String
+  userId     String
+  companyId  String?
+  resource   String
+  scope      String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([companyId])
+  @@index([resource])
+  @@index([expiresAt])
+}
+
+model McpAuditLog {
+  id        String  @id @default(cuid())
+  companyId String?
+  userId    String?
+  clientId  String?
+  toolName  String
+  projectId String?
+  outcome   String
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([clientId])
+  @@index([toolName])
+  @@index([createdAt])
+}
+
 // ---------------------------------------------------------------------------
 // マスタ
 // ---------------------------------------------------------------------------

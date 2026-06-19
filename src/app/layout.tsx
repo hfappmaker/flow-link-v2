@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { googleAdsId } from "@/lib/google-ads";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -17,8 +18,6 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.flowtech.co.jp";
 const siteIcon = "/flow-link-mark.svg";
 const siteImage = "/flow-link-og.png";
 const siteImageUrl = new URL(siteImage, siteUrl).toString();
-const googleAdsId = "AW-18241351815";
-const googleAdsPageViewConversionId = `${googleAdsId}/P31JCJ3oisAcEIfhk_pD`;
 const siteDescription =
   "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
 
@@ -97,9 +96,6 @@ export default function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${googleAdsId}');
-            gtag('event', 'conversion', {
-              send_to: '${googleAdsPageViewConversionId}',
-            });
           `}
         </Script>
         <script

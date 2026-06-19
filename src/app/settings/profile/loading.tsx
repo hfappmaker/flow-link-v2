@@ -1,5 +1,5 @@
-import { FormPageSkeleton } from "@/components/ui/page-skeletons";
+import { EngineerProfileSettingsSkeleton } from "@/components/ui/page-skeletons";
 
 export default function Loading() {
-  return <FormPageSkeleton />;
+  return <EngineerProfileSettingsSkeleton />;
 }

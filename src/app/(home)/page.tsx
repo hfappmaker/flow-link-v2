@@ -101,7 +101,7 @@ export default async function HomePage() {
             </p>
           </div>
           <Link
-            href="/mcp"
+            href="/mcp-setup"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-bold whitespace-nowrap text-white transition-colors hover:bg-blue-700"
           >
             設定方法を見る

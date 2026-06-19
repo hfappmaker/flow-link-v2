@@ -1,0 +1,1793 @@
+import { RemoteType, WorkStatus, type ProjectStatus } from "@prisma/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpHandler } from "mcp-handler";
+import { z } from "zod";
+import { getAppUrl } from "@/lib/app-url";
+import { JOB_CATEGORIES, PREFECTURES, WEEKLY_DAYS_OPTIONS } from "@/lib/constants";
+import { getMcpRequest, withMcpRequestContext } from "@/lib/mcp-request-context";
+import { buildEngineerWhere, parseEngineerSearch, PAGE_SIZE as ENGINEER_PAGE_SIZE } from "@/lib/engineer-search";
+import {
+  buildProjectOrderBy,
+  buildProjectWhere,
+  PAGE_SIZE,
+  parseProjectSearch,
+} from "@/lib/project-search";
+import {
+  getBearerAuthInfo,
+  getMcpResourceMetadataUrl,
+  getWwwAuthenticateHeader,
+  requireMcpScope,
+  type McpAuthInfo,
+  type McpEndpoint,
+  type OAuthScope,
+} from "@/lib/mcp-oauth";
+import { projectInputSchema, resolveProjectSkillIds } from "@/lib/project-input";
+import {
+  companyProfileInputSchema,
+  engineerProfileInputSchema,
+  resolveProfileSkillIds,
+} from "@/lib/profile-input";
+import { prisma } from "@/lib/prisma";
+
+const DEFAULT_CONTRACT_TYPE = "業務委託";
+const PROTECTED_TOOL_SCOPES = {
+  search_projects: "public_project:read",
+  get_project: "public_project:read",
+  list_project_filter_options: "public_project:read",
+  list_my_projects: "company_project:read",
+  create_project_draft: "company_project:write",
+  update_project_draft: "company_project:write",
+  get_my_company_profile: "company_profile:read",
+  register_my_company_profile: "company_profile:write",
+  update_my_company_profile: "company_profile:write",
+  search_engineers: "engineer_search:read",
+  get_engineer: "engineer_search:read",
+  list_engineer_filter_options: "engineer_search:read",
+  get_my_engineer_profile: "engineer_profile:read",
+  register_my_engineer_profile: "engineer_profile:write",
+  update_my_engineer_profile: "engineer_profile:write",
+} satisfies Record<string, OAuthScope>;
+
+const TOOL_ENDPOINTS: Record<string, readonly McpEndpoint[]> = {
+  search_projects: ["company", "engineer"],
+  get_project: ["company", "engineer"],
+  list_project_filter_options: ["company", "engineer"],
+  search_engineers: ["company"],
+  get_engineer: ["company"],
+  list_engineer_filter_options: ["company"],
+  list_my_projects: ["company"],
+  create_project_draft: ["company"],
+  update_project_draft: ["company"],
+  get_my_company_profile: ["company"],
+  register_my_company_profile: ["company"],
+  update_my_company_profile: ["company"],
+  get_my_engineer_profile: ["engineer"],
+  register_my_engineer_profile: ["engineer"],
+  update_my_engineer_profile: ["engineer"],
+};
+
+const MCP_ENDPOINT_CONFIG = {
+  company: {
+    name: "flow-link-company",
+    instructions:
+      "Use this server for authenticated FlowLink company workflows: project search, engineer search, company profile management, and company draft project management. MCP can create and edit drafts, but it cannot publish projects.",
+  },
+  engineer: {
+    name: "flow-link-engineer",
+    instructions: "Use this server for authenticated FlowLink engineer workflows: project search and engineer profile management.",
+  },
+} satisfies Record<McpEndpoint, { name: string; instructions: string }>;
+
+function toolBelongsToEndpoint(toolName: string, endpoint: McpEndpoint) {
+  return TOOL_ENDPOINTS[toolName as keyof typeof TOOL_ENDPOINTS]?.includes(endpoint) ?? false;
+}
+
+export function getMcpToolNamesForEndpoint(endpoint: McpEndpoint) {
+  return Object.entries(TOOL_ENDPOINTS)
+    .filter(([, toolEndpoints]) => toolEndpoints.includes(endpoint))
+    .map(([toolName]) => toolName);
+}
+
+export function getRequiredMcpToolScope(endpoint: McpEndpoint, toolName: string | undefined) {
+  if (!toolName || !toolBelongsToEndpoint(toolName, endpoint)) return undefined;
+  return PROTECTED_TOOL_SCOPES[toolName as keyof typeof PROTECTED_TOOL_SCOPES];
+}
+
+function installEndpointToolFilter(server: McpServer, endpoint: McpEndpoint) {
+  const registerTool = server.registerTool.bind(server) as (name: string, ...args: unknown[]) => unknown;
+
+  server.registerTool = ((name: string, ...args: unknown[]) => {
+    if (!toolBelongsToEndpoint(name, endpoint)) return undefined;
+    return registerTool(name, ...args);
+  }) as typeof server.registerTool;
+}
+
+const legacyMcpEndpointResponse = {
+  error: "mcp_endpoint_removed",
+  message: "The /api/mcp endpoint has been split by persona. Use one of the new MCP endpoints.",
+  endpoints: {
+    company: "/api/mcp/company",
+    engineer: "/api/mcp/engineer",
+  },
+};
+const remoteTypeValues = [
+  RemoteType.FULL_REMOTE,
+  RemoteType.REMOTE_MAIN,
+  RemoteType.PARTIAL_REMOTE,
+  RemoteType.ONSITE_MAIN,
+] as const;
+
+const mcpProjectInputSchema = {
+  title: z.string().trim().min(1).max(200).describe("Project title shown to engineers."),
+  summary: z.string().trim().max(2000).describe("Short project summary for listings.").optional(),
+  jobCategory: z.string().trim().min(1).describe("Main job category or role, such as backend engineer or project manager."),
+  rateMin: z.number().int().min(0).describe("Minimum monthly rate in JPY, if known.").optional(),
+  rateMax: z.number().int().min(0).describe("Maximum monthly rate in JPY, if known.").optional(),
+  weeklyDaysMin: z.number().int().min(1).max(WEEKLY_DAYS_OPTIONS.at(-1) ?? 7).describe("Minimum working days per week."),
+  weeklyDaysMax: z.number().int().min(1).max(WEEKLY_DAYS_OPTIONS.at(-1) ?? 7).describe("Maximum working days per week."),
+  remoteType: z.enum(remoteTypeValues).describe("Remote work style for the project."),
+  location: z.string().trim().max(100).describe("Work location text such as nearest station or office area.").optional(),
+  prefecture: z.enum(PREFECTURES).describe("Japanese prefecture for the project location.").optional(),
+  industry: z.string().trim().max(100).describe("Client industry or business domain.").optional(),
+  contractType: z.string().trim().max(50).describe("Contract type. Omit to use the FlowLink default.").optional(),
+  merits: z.string().trim().max(4000).describe("Selling points, benefits, or attractive aspects of the project.").optional(),
+  background: z.string().trim().max(8000).describe("Business background or reason for recruiting.").optional(),
+  description: z.string().trim().min(1).max(8000).describe("Detailed project description and responsibilities."),
+  requiredSkillsText: z.string().trim().max(4000).describe("Required skills written as free text.").optional(),
+  preferredSkillsText: z.string().trim().max(4000).describe("Preferred or nice-to-have skills written as free text.").optional(),
+  idealCandidate: z.string().trim().max(4000).describe("Ideal candidate profile.").optional(),
+  devEnvironment: z.string().trim().max(4000).describe("Development environment, tools, languages, frameworks, or team setup.").optional(),
+  features: z.array(z.string().trim().min(1).max(80)).max(20).describe("Project feature labels or tags.").optional(),
+  skillIds: z.array(z.string().trim().min(1)).max(50).describe("Existing FlowLink skill IDs to attach.").optional(),
+  skillNames: z.array(z.string().trim().min(1).max(50)).max(20).describe("Skill names to resolve and attach when IDs are not known.").optional(),
+};
+
+const mcpProjectUpdateInputSchema = Object.fromEntries(
+  Object.entries(mcpProjectInputSchema).map(([key, schema]) => [key, schema.optional()]),
+) as { [K in keyof typeof mcpProjectInputSchema]: z.ZodOptional<(typeof mcpProjectInputSchema)[K]> };
+
+const mcpCompanyProfileInputSchema = {
+  name: z.string().trim().min(1).max(100).describe("Company display name."),
+  industry: z.string().trim().max(100).describe("Company industry or business domain.").optional(),
+  location: z.string().trim().max(100).describe("Company location or headquarters area.").optional(),
+  website: z.union([z.url(), z.literal("")]).describe("Company website URL. Use an empty string to clear it.").optional(),
+  description: z.string().trim().max(4000).describe("Company profile description.").optional(),
+  emailNotificationsEnabled: z.boolean().describe("Whether FlowLink email notifications are enabled for the user.").optional(),
+};
+
+const mcpWorkHistoryInputSchema = z.object({
+  projectName: z.string().trim().min(1).max(100).describe("Past project name."),
+  role: z.string().trim().max(100).describe("Role or position in the project.").optional(),
+  startYearMonth: z.string().trim().max(20).describe("Start date, preferably YYYY-MM.").optional(),
+  endYearMonth: z.string().trim().max(20).describe("End date, preferably YYYY-MM, or blank for current work.").optional(),
+  techStack: z.string().trim().max(200).describe("Technologies used in this work history.").optional(),
+  description: z.string().trim().max(1000).describe("Brief description of responsibilities and outcomes.").optional(),
+});
+
+const mcpEngineerProfileInputSchema = {
+  displayName: z.string().trim().min(1).max(50).describe("Engineer display name."),
+  title: z.array(z.string().trim().min(1).max(50)).min(1).max(20).describe("Engineer titles or roles, such as frontend engineer or PM."),
+  bio: z.string().trim().max(4000).describe("Engineer self-introduction or profile summary.").optional(),
+  location: z.enum(PREFECTURES).describe("Engineer location prefecture.").optional(),
+  yearsOfExperience: z.number().int().min(0).max(60).describe("Years of professional experience.").optional(),
+  desiredRateMin: z.number().int().min(0).describe("Desired minimum monthly rate in JPY.").optional(),
+  desiredRateMax: z.number().int().min(0).describe("Desired maximum monthly rate in JPY.").optional(),
+  desiredWeeklyDays: z.array(z.number().int().min(1).max(7)).max(WEEKLY_DAYS_OPTIONS.length).describe("Desired working days per week.").optional(),
+  remotePreference: z.enum(remoteTypeValues).describe("Preferred remote work style.").optional(),
+  workStatus: z.enum([WorkStatus.AVAILABLE, WorkStatus.OPEN_TO_OFFERS, WorkStatus.UNAVAILABLE]).describe("Current availability for work.").optional(),
+  githubUrl: z.union([z.url(), z.literal("")]).describe("GitHub profile URL. Use an empty string to clear it.").optional(),
+  portfolioUrl: z.union([z.url(), z.literal("")]).describe("Portfolio or personal website URL. Use an empty string to clear it.").optional(),
+  isPublic: z.boolean().describe("Whether the engineer profile is visible to companies.").optional(),
+  emailNotificationsEnabled: z.boolean().describe("Whether FlowLink email notifications are enabled for the user.").optional(),
+  skillIds: z.array(z.string().trim().min(1)).max(50).describe("Existing FlowLink skill IDs to attach.").optional(),
+  skillNames: z.array(z.string().trim().min(1).max(50)).max(20).describe("Skill names to resolve and attach when IDs are not known.").optional(),
+  workHistories: z.array(mcpWorkHistoryInputSchema).max(20).describe("Past work history entries.").optional(),
+};
+
+function projectUrl(projectId: string) {
+  return new URL(`/projects/${projectId}`, getAppUrl()).toString();
+}
+
+function projectEditUrl(projectId: string) {
+  return new URL(`/company/projects/${projectId}/edit`, getAppUrl()).toString();
+}
+
+function companyEngineerProfileUrl(engineerProfileId: string) {
+  return new URL(`/company/engineers/${engineerProfileId}`, getAppUrl()).toString();
+}
+
+function toIsoString(date: Date | null) {
+  return date ? date.toISOString() : null;
+}
+
+function protectedToolError(message: string, status = 401) {
+  const request = getMcpRequest() ?? undefined;
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            error: message,
+            status,
+            resourceMetadataUrl: getMcpResourceMetadataUrl(request),
+          },
+          null,
+          2,
+        ),
+      },
+    ],
+  };
+}
+
+function authChallengeHeaders(
+  request: Request,
+  options?: {
+    status?: number;
+    scope?: OAuthScope | OAuthScope[];
+    errorDescription?: string;
+  },
+) {
+  const status = options?.status ?? 401;
+  return {
+    "WWW-Authenticate": getWwwAuthenticateHeader(request, {
+      ...(status === 403 ? { error: "insufficient_scope" } : {}),
+      scope: options?.scope,
+      errorDescription: options?.errorDescription,
+    }),
+  };
+}
+
+async function requireToolAuth(requiredScope: OAuthScope) {
+  return requireMcpScope(getMcpRequest(), requiredScope);
+}
+
+async function requireCompanyToolAuth(requiredScope: OAuthScope) {
+  const authResult = await requireToolAuth(requiredScope);
+  if (!authResult.ok) return authResult;
+  if (!authResult.auth.companyId) {
+    return {
+      ok: false as const,
+      status: 403,
+      message: "This MCP tool requires a company account.",
+    };
+  }
+  return {
+    ok: true as const,
+    auth: { ...authResult.auth, companyId: authResult.auth.companyId },
+  };
+}
+
+async function auditMcpTool({
+  auth,
+  toolName,
+  outcome,
+  projectId,
+}: {
+  auth?: McpAuthInfo;
+  toolName: string;
+  outcome: string;
+  projectId?: string;
+}) {
+  await prisma.mcpAuditLog
+    .create({
+      data: {
+        companyId: auth?.companyId,
+        userId: auth?.userId,
+        clientId: auth?.clientId,
+        toolName,
+        projectId,
+        outcome,
+      },
+    })
+    .catch((error) => console.error("Failed to write MCP audit log", error));
+}
+
+type ProjectListItem = {
+  id: string;
+  title: string;
+  summary: string | null;
+  companyName: string;
+  rateMin: number | null;
+  rateMax: number | null;
+  weeklyDaysMin: number;
+  weeklyDaysMax: number;
+  remoteType: RemoteType;
+  prefecture: string | null;
+  skills: string[];
+  publishedAt: string | null;
+  url: string;
+};
+
+function toProjectListItem(project: {
+  id: string;
+  title: string;
+  summary: string | null;
+  company: { name: string };
+  rateMin: number | null;
+  rateMax: number | null;
+  weeklyDaysMin: number;
+  weeklyDaysMax: number;
+  remoteType: RemoteType;
+  prefecture: string | null;
+  publishedAt: Date | null;
+  skills: { skill: { name: string } }[];
+}): ProjectListItem {
+  return {
+    id: project.id,
+    title: project.title,
+    summary: project.summary,
+    companyName: project.company.name,
+    rateMin: project.rateMin,
+    rateMax: project.rateMax,
+    weeklyDaysMin: project.weeklyDaysMin,
+    weeklyDaysMax: project.weeklyDaysMax,
+    remoteType: project.remoteType,
+    prefecture: project.prefecture,
+    skills: project.skills.map(({ skill }) => skill.name),
+    publishedAt: toIsoString(project.publishedAt),
+    url: projectUrl(project.id),
+  };
+}
+
+async function getProjects({
+  q,
+  jobText,
+  skillText,
+  prefecture,
+  rateMin,
+  rateMax,
+  days,
+  remote,
+  features,
+  sort,
+  page,
+}: {
+  q?: string;
+  jobText?: string[];
+  skillText?: string[];
+  prefecture?: string[];
+  rateMin?: number;
+  rateMax?: number;
+  days?: number[];
+  remote?: RemoteType[];
+  features?: string[];
+  sort?: "new" | "rate";
+  page?: number;
+}) {
+  const parsed = parseProjectSearch({
+    q,
+    jobText,
+    skillText,
+    prefecture,
+    rateMin: rateMin ? String(rateMin) : undefined,
+    rateMax: rateMax ? String(rateMax) : undefined,
+    days: days?.map(String),
+    remote,
+    features,
+    sort,
+    page: page ? String(page) : undefined,
+  });
+  const where = buildProjectWhere(parsed);
+  const skip = (parsed.page - 1) * PAGE_SIZE;
+
+  const [total, projects] = await Promise.all([
+    prisma.project.count({ where }),
+    prisma.project.findMany({
+      where,
+      orderBy: buildProjectOrderBy(parsed.sort),
+      skip,
+      take: PAGE_SIZE,
+      include: {
+        company: { select: { name: true } },
+        skills: { include: { skill: { select: { name: true } } } },
+      },
+    }),
+  ]);
+
+  return {
+    projects: projects.map(toProjectListItem),
+    page: parsed.page,
+    pageSize: PAGE_SIZE,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+  };
+}
+
+function myProjectOutput(project: {
+  id: string;
+  title: string;
+  status: ProjectStatus;
+  updatedAt: Date;
+  publishedAt: Date | null;
+  weeklyDaysMin: number;
+  weeklyDaysMax: number;
+  remoteType: RemoteType;
+  rateMin: number | null;
+  rateMax: number | null;
+  skills: { skill: { name: string } }[];
+}) {
+  return {
+    projectId: project.id,
+    title: project.title,
+    status: project.status,
+    updatedAt: project.updatedAt.toISOString(),
+    publishedAt: toIsoString(project.publishedAt),
+    weeklyDaysMin: project.weeklyDaysMin,
+    weeklyDaysMax: project.weeklyDaysMax,
+    remoteType: project.remoteType,
+    rateMin: project.rateMin,
+    rateMax: project.rateMax,
+    skills: project.skills.map(({ skill }) => skill.name),
+    editUrl: projectEditUrl(project.id),
+    publicUrl: project.status === "OPEN" ? projectUrl(project.id) : null,
+  };
+}
+
+function draftMutationOutput(projectId: string) {
+  return {
+    projectId,
+    status: "DRAFT",
+    editUrl: projectEditUrl(projectId),
+    nextStep: "Review the draft in FlowLink and publish it from the web UI when ready.",
+  };
+}
+
+function companyProfileOutput(company: {
+  id: string;
+  name: string;
+  industry: string | null;
+  location: string | null;
+  website: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  updatedAt: Date;
+}) {
+  return {
+    companyId: company.id,
+    name: company.name,
+    industry: company.industry,
+    location: company.location,
+    website: company.website,
+    description: company.description,
+    logoUrl: company.logoUrl,
+    updatedAt: company.updatedAt.toISOString(),
+    settingsUrl: new URL("/company/settings", getAppUrl()).toString(),
+  };
+}
+
+function engineerProfileOutput(profile: {
+  id: string;
+  displayName: string;
+  title: string[];
+  bio: string | null;
+  location: string | null;
+  yearsOfExperience: number | null;
+  desiredRateMin: number | null;
+  desiredRateMax: number | null;
+  desiredWeeklyDays: number[];
+  remotePreference: RemoteType | null;
+  workStatus: WorkStatus;
+  githubUrl: string | null;
+  portfolioUrl: string | null;
+  isPublic: boolean;
+  updatedAt: Date;
+  skills: { skill: { name: string } }[];
+  workHistories: {
+    projectName: string;
+    role: string | null;
+    startYearMonth: string | null;
+    endYearMonth: string | null;
+    techStack: string | null;
+    description: string | null;
+  }[];
+}) {
+  return {
+    engineerProfileId: profile.id,
+    displayName: profile.displayName,
+    title: profile.title,
+    bio: profile.bio,
+    location: profile.location,
+    yearsOfExperience: profile.yearsOfExperience,
+    desiredRateMin: profile.desiredRateMin,
+    desiredRateMax: profile.desiredRateMax,
+    desiredWeeklyDays: profile.desiredWeeklyDays,
+    remotePreference: profile.remotePreference,
+    workStatus: profile.workStatus,
+    githubUrl: profile.githubUrl,
+    portfolioUrl: profile.portfolioUrl,
+    isPublic: profile.isPublic,
+    skills: profile.skills.map(({ skill }) => skill.name),
+    workHistories: profile.workHistories,
+    updatedAt: profile.updatedAt.toISOString(),
+    settingsUrl: new URL("/settings/profile", getAppUrl()).toString(),
+  };
+}
+
+function publicEngineerListItem(profile: {
+  id: string;
+  displayName: string;
+  title: string[];
+  bio: string | null;
+  location: string | null;
+  yearsOfExperience: number | null;
+  desiredRateMin: number | null;
+  desiredRateMax: number | null;
+  desiredWeeklyDays: number[];
+  remotePreference: RemoteType | null;
+  workStatus: WorkStatus;
+  updatedAt: Date;
+  skills: { skill: { name: string } }[];
+}) {
+  return {
+    engineerProfileId: profile.id,
+    displayName: profile.displayName,
+    title: profile.title,
+    bio: profile.bio,
+    location: profile.location,
+    yearsOfExperience: profile.yearsOfExperience,
+    desiredRateMin: profile.desiredRateMin,
+    desiredRateMax: profile.desiredRateMax,
+    desiredWeeklyDays: profile.desiredWeeklyDays,
+    remotePreference: profile.remotePreference,
+    workStatus: profile.workStatus,
+    skills: profile.skills.map(({ skill }) => skill.name),
+    updatedAt: profile.updatedAt.toISOString(),
+    profileUrl: companyEngineerProfileUrl(profile.id),
+  };
+}
+
+function publicEngineerDetail(profile: Parameters<typeof publicEngineerListItem>[0] & {
+  githubUrl: string | null;
+  portfolioUrl: string | null;
+  workHistories: {
+    projectName: string;
+    role: string | null;
+    startYearMonth: string | null;
+    endYearMonth: string | null;
+    techStack: string | null;
+    description: string | null;
+  }[];
+}) {
+  return {
+    ...publicEngineerListItem(profile),
+    githubUrl: profile.githubUrl,
+    portfolioUrl: profile.portfolioUrl,
+    workHistories: profile.workHistories,
+  };
+}
+
+async function getEngineers({
+  q,
+  jobText,
+  skillText,
+  days,
+  rateMin,
+  rateMax,
+  remote,
+  availableOnly,
+  page,
+}: {
+  q?: string;
+  jobText?: string[];
+  skillText?: string[];
+  days?: number[];
+  rateMin?: number;
+  rateMax?: number;
+  remote?: RemoteType[];
+  availableOnly?: boolean;
+  page?: number;
+}) {
+  const parsed = parseEngineerSearch({
+    q,
+    jobText,
+    skillText,
+    days: days?.map(String),
+    rateMin: rateMin ? String(rateMin) : undefined,
+    rateMax: rateMax ? String(rateMax) : undefined,
+    remote,
+    availableOnly: availableOnly ? "on" : undefined,
+    page: page ? String(page) : undefined,
+  });
+  const where = buildEngineerWhere(parsed);
+  const skip = (parsed.page - 1) * ENGINEER_PAGE_SIZE;
+
+  const [total, engineers] = await Promise.all([
+    prisma.engineerProfile.count({ where }),
+    prisma.engineerProfile.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: ENGINEER_PAGE_SIZE,
+      include: { skills: { include: { skill: { select: { name: true } } } } },
+    }),
+  ]);
+
+  return {
+    engineers: engineers.map(publicEngineerListItem),
+    page: parsed.page,
+    pageSize: ENGINEER_PAGE_SIZE,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / ENGINEER_PAGE_SIZE)),
+  };
+}
+
+function projectInputFromExisting(project: {
+  title: string;
+  summary: string | null;
+  jobCategory: string;
+  rateMin: number | null;
+  rateMax: number | null;
+  weeklyDaysMin: number;
+  weeklyDaysMax: number;
+  remoteType: RemoteType;
+  location: string | null;
+  prefecture: string | null;
+  industry: string | null;
+  contractType: string;
+  merits: string | null;
+  background: string | null;
+  description: string;
+  requiredSkillsText: string | null;
+  preferredSkillsText: string | null;
+  idealCandidate: string | null;
+  devEnvironment: string | null;
+}) {
+  return {
+    title: project.title,
+    summary: project.summary ?? undefined,
+    jobCategory: project.jobCategory,
+    rateMin: project.rateMin ?? undefined,
+    rateMax: project.rateMax ?? undefined,
+    weeklyDaysMin: project.weeklyDaysMin,
+    weeklyDaysMax: project.weeklyDaysMax,
+    remoteType: project.remoteType,
+    location: project.location ?? undefined,
+    prefecture: project.prefecture ?? undefined,
+    industry: project.industry ?? undefined,
+    contractType: project.contractType,
+    merits: project.merits ?? undefined,
+    background: project.background ?? undefined,
+    description: project.description,
+    requiredSkillsText: project.requiredSkillsText ?? undefined,
+    preferredSkillsText: project.preferredSkillsText ?? undefined,
+    idealCandidate: project.idealCandidate ?? undefined,
+    devEnvironment: project.devEnvironment ?? undefined,
+  };
+}
+
+function createEndpointMcpHandler(endpoint: McpEndpoint) {
+  const endpointConfig = MCP_ENDPOINT_CONFIG[endpoint];
+
+  return createMcpHandler(
+  (server) => {
+    installEndpointToolFilter(server, endpoint);
+
+    const weeklyDaysSchema = z
+      .number()
+      .int()
+      .describe("Working days per week. Supported values are FlowLink weekly day options.")
+      .refine((value) => (WEEKLY_DAYS_OPTIONS as readonly number[]).includes(value), {
+        message: "Unsupported weekly day value.",
+      });
+
+    server.registerTool(
+      "search_projects",
+      {
+        title: "Search projects",
+        description: "Search FlowLink projects that are currently open to applications.",
+        inputSchema: {
+          q: z.string().trim().describe("Free-text keyword query searched against public project content.").optional(),
+          jobText: z.array(z.string().trim().min(1)).describe("Job category or role keywords to filter by.").optional(),
+          skillText: z.array(z.string().trim().min(1)).describe("Skill names or technology keywords to filter by.").optional(),
+          prefecture: z.array(z.enum(PREFECTURES)).describe("Japanese prefectures to filter project location by.").optional(),
+          rateMin: z.number().int().positive().describe("Minimum monthly rate in JPY.").optional(),
+          rateMax: z.number().int().positive().describe("Maximum monthly rate in JPY.").optional(),
+          days: z.array(weeklyDaysSchema).describe("Acceptable working days per week.").optional(),
+          remote: z.array(z.enum(remoteTypeValues)).describe("Remote work styles to include.").optional(),
+          features: z.array(z.string().trim().min(1)).describe("Feature tags or project attributes to filter by.").optional(),
+          sort: z.enum(["new", "rate"]).describe("Sort order: new for newest projects, rate for highest rate first.").optional(),
+          page: z.number().int().positive().describe("1-based result page number.").optional(),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
+      },
+      async (input) => {
+        const authResult = await requireToolAuth("public_project:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const output = await getProjects(input);
+          await auditMcpTool({ auth: authResult.auth, toolName: "search_projects", outcome: "success" });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP search_projects failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "search_projects", outcome: "error" });
+          return protectedToolError("FlowLink project data is temporarily unavailable.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "get_project",
+      {
+        title: "Get project",
+        description: "Get details for a single open FlowLink project.",
+        inputSchema: {
+          projectId: z.string().trim().min(1).describe("FlowLink project ID returned by search_projects."),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
+      },
+      async ({ projectId }) => {
+        const authResult = await requireToolAuth("public_project:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const project = await prisma.project.findFirst({
+            where: { id: projectId, status: "OPEN" },
+            include: {
+              company: {
+                select: {
+                  name: true,
+                  description: true,
+                  industry: true,
+                  website: true,
+                  location: true,
+                },
+              },
+              skills: { include: { skill: { select: { name: true } } } },
+            },
+          });
+
+          if (!project) {
+            await auditMcpTool({
+              auth: authResult.auth,
+              toolName: "get_project",
+              outcome: "not_found",
+              projectId,
+            });
+            return protectedToolError("Open project not found.", 404);
+          }
+
+          const output = {
+            ...toProjectListItem(project),
+            jobCategory: project.jobCategory,
+            location: project.location,
+            contractType: project.contractType,
+            industry: project.industry,
+            merits: project.merits,
+            background: project.background,
+            description: project.description,
+            requiredSkillsText: project.requiredSkillsText,
+            preferredSkillsText: project.preferredSkillsText,
+            idealCandidate: project.idealCandidate,
+            devEnvironment: project.devEnvironment,
+            features: project.features,
+            company: project.company,
+          };
+
+          await auditMcpTool({ auth: authResult.auth, toolName: "get_project", outcome: "success", projectId });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP get_project failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "get_project", outcome: "error", projectId });
+          return protectedToolError("FlowLink project data is temporarily unavailable.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "list_project_filter_options",
+      {
+        title: "List project filter options",
+        description: "List supported project search filter values.",
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
+      },
+      async () => {
+        const authResult = await requireToolAuth("public_project:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const skills = await prisma.skill.findMany({
+            orderBy: { name: "asc" },
+            select: { id: true, name: true, category: true },
+          });
+          const output = {
+            prefectures: PREFECTURES,
+            weeklyDays: WEEKLY_DAYS_OPTIONS,
+            remoteTypes: remoteTypeValues,
+            skills,
+          };
+
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "list_project_filter_options",
+            outcome: "success",
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP list_project_filter_options failed", error);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "list_project_filter_options",
+            outcome: "error",
+          });
+          return protectedToolError("FlowLink project data is temporarily unavailable.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "search_engineers",
+      {
+        title: "Search engineers",
+        description: "Search public FlowLink engineer profiles. Requires a company account and engineer_search:read scope.",
+        inputSchema: {
+          q: z.string().trim().describe("Free-text keyword query searched against public engineer profile content.").optional(),
+          jobText: z.array(z.string().trim().min(1)).describe("Engineer title or role keywords to filter by.").optional(),
+          skillText: z.array(z.string().trim().min(1)).describe("Skill names or technology keywords to filter by.").optional(),
+          days: z.array(weeklyDaysSchema).describe("Desired working days per week to include.").optional(),
+          rateMin: z.number().int().positive().describe("Minimum monthly desired rate in JPY.").optional(),
+          rateMax: z.number().int().positive().describe("Maximum monthly desired rate in JPY.").optional(),
+          remote: z.array(z.enum(remoteTypeValues)).describe("Preferred remote work styles to include.").optional(),
+          availableOnly: z.boolean().describe("When true, include only engineers open to work or offers.").optional(),
+          page: z.number().int().positive().describe("1-based result page number.").optional(),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireCompanyToolAuth("engineer_search:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const output = await getEngineers(input);
+          await auditMcpTool({ auth: authResult.auth, toolName: "search_engineers", outcome: "success" });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP search_engineers failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "search_engineers", outcome: "error" });
+          return protectedToolError("FlowLink engineer data is temporarily unavailable.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "get_engineer",
+      {
+        title: "Get engineer",
+        description: "Get details for a single public FlowLink engineer profile. Requires a company account and engineer_search:read scope.",
+        inputSchema: {
+          engineerProfileId: z.string().trim().min(1).describe("FlowLink engineer profile ID returned by search_engineers."),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async ({ engineerProfileId }) => {
+        const authResult = await requireCompanyToolAuth("engineer_search:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const profile = await prisma.engineerProfile.findFirst({
+            where: { id: engineerProfileId, isPublic: true },
+            include: {
+              skills: { include: { skill: { select: { name: true } } } },
+              workHistories: {
+                orderBy: { startYearMonth: "desc" },
+                select: {
+                  projectName: true,
+                  role: true,
+                  startYearMonth: true,
+                  endYearMonth: true,
+                  techStack: true,
+                  description: true,
+                },
+              },
+            },
+          });
+
+          if (!profile) {
+            await auditMcpTool({ auth: authResult.auth, toolName: "get_engineer", outcome: "not_found" });
+            return protectedToolError("Public engineer profile not found.", 404);
+          }
+
+          const output = { engineer: publicEngineerDetail(profile) };
+          await auditMcpTool({ auth: authResult.auth, toolName: "get_engineer", outcome: "success" });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP get_engineer failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "get_engineer", outcome: "error" });
+          return protectedToolError("FlowLink engineer data is temporarily unavailable.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "list_engineer_filter_options",
+      {
+        title: "List engineer filter options",
+        description: "List supported engineer search filter values. Requires a company account and engineer_search:read scope.",
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async () => {
+        const authResult = await requireCompanyToolAuth("engineer_search:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const skills = await prisma.skill.findMany({
+            orderBy: [{ category: "asc" }, { name: "asc" }],
+            select: { id: true, name: true, category: true },
+          });
+          const output = {
+            jobCategories: JOB_CATEGORIES,
+            prefectures: PREFECTURES,
+            weeklyDays: WEEKLY_DAYS_OPTIONS,
+            remoteTypes: remoteTypeValues,
+            workStatuses: [WorkStatus.AVAILABLE, WorkStatus.OPEN_TO_OFFERS, WorkStatus.UNAVAILABLE],
+            skills,
+          };
+
+          await auditMcpTool({ auth: authResult.auth, toolName: "list_engineer_filter_options", outcome: "success" });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP list_engineer_filter_options failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "list_engineer_filter_options", outcome: "error" });
+          return protectedToolError("FlowLink engineer filter options are temporarily unavailable.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "list_my_projects",
+      {
+        title: "List my company projects",
+        description: "List projects owned by the authenticated company.",
+        inputSchema: {
+          status: z.enum(["DRAFT", "OPEN", "CLOSED"]).describe("Optional project status filter.").optional(),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async ({ status }) => {
+        const authResult = await requireCompanyToolAuth("company_project:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const projects = await prisma.project.findMany({
+            where: { companyId: authResult.auth.companyId, ...(status ? { status } : {}) },
+            orderBy: { updatedAt: "desc" },
+            include: { skills: { include: { skill: { select: { name: true } } } } },
+          });
+          const output = { projects: projects.map(myProjectOutput) };
+          await auditMcpTool({ auth: authResult.auth, toolName: "list_my_projects", outcome: "success" });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP list_my_projects failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "list_my_projects", outcome: "error" });
+          return protectedToolError("Failed to list projects.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "get_my_company_profile",
+      {
+        title: "Get my company profile",
+        description: "Get the authenticated user's company profile, if one exists.",
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async () => {
+        const authResult = await requireToolAuth("company_profile:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const membership = await prisma.companyMember.findUnique({
+          where: { userId: authResult.auth.userId },
+          include: { company: true },
+        });
+        const output = membership
+          ? { profile: companyProfileOutput(membership.company) }
+          : {
+              profile: null,
+              nextStep: "Call register_my_company_profile to complete company onboarding.",
+            };
+        await auditMcpTool({ auth: authResult.auth, toolName: "get_my_company_profile", outcome: "success" });
+        return {
+          content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+          structuredContent: output,
+        };
+      },
+    );
+
+    server.registerTool(
+      "register_my_company_profile",
+      {
+        title: "Register my company profile",
+        description: "Register a company profile for an authenticated user that has not completed onboarding.",
+        inputSchema: mcpCompanyProfileInputSchema,
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireToolAuth("company_profile:write");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const parsed = companyProfileInputSchema.safeParse(input);
+        if (!parsed.success) {
+          return protectedToolError(parsed.error.issues[0]?.message ?? "Invalid company profile input.", 400);
+        }
+
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: authResult.auth.userId },
+            include: { companyMember: true, engineerProfile: true },
+          });
+          if (!user) return protectedToolError("User not found.", 404);
+          if (user.companyMember) {
+            return protectedToolError("Company profile already exists. Use update_my_company_profile.", 409);
+          }
+          if (user.engineerProfile) {
+            return protectedToolError("This account is already registered as an engineer.", 403);
+          }
+
+          const company = await prisma.$transaction(async (tx) => {
+            const userUpdate =
+              parsed.data.emailNotificationsEnabled === undefined
+                ? { role: "COMPANY" as const }
+                : {
+                    role: "COMPANY" as const,
+                    emailNotificationsEnabled: parsed.data.emailNotificationsEnabled,
+                  };
+
+            await tx.user.update({
+              where: { id: user.id },
+              data: userUpdate,
+            });
+
+            const created = await tx.company.create({
+              data: {
+                name: parsed.data.name,
+                industry: parsed.data.industry ?? null,
+                location: parsed.data.location ?? null,
+                website: parsed.data.website || null,
+                description: parsed.data.description ?? null,
+              },
+            });
+            await tx.companyMember.create({
+              data: { userId: user.id, companyId: created.id },
+            });
+            return created;
+          });
+
+          const output = {
+            profile: companyProfileOutput(company),
+            nextStep: "Use create_project_draft to create a project draft when ready.",
+          };
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "register_my_company_profile",
+            outcome: "success",
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP register_my_company_profile failed", error);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "register_my_company_profile",
+            outcome: "error",
+          });
+          return protectedToolError("Failed to register company profile.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "update_my_company_profile",
+      {
+        title: "Update my company profile",
+        description: "Update the authenticated user's existing company profile.",
+        inputSchema: mcpCompanyProfileInputSchema,
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireToolAuth("company_profile:write");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const parsed = companyProfileInputSchema.safeParse(input);
+        if (!parsed.success) {
+          return protectedToolError(parsed.error.issues[0]?.message ?? "Invalid company profile input.", 400);
+        }
+
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: authResult.auth.userId },
+            include: { companyMember: true, engineerProfile: true },
+          });
+          if (!user) return protectedToolError("User not found.", 404);
+          if (user.engineerProfile && !user.companyMember) {
+            return protectedToolError("This account is registered as an engineer.", 403);
+          }
+          if (!user.companyMember) {
+            return protectedToolError("Company profile does not exist. Use register_my_company_profile.", 404);
+          }
+          const companyId = user.companyMember.companyId;
+
+          const company = await prisma.$transaction(async (tx) => {
+            if (parsed.data.emailNotificationsEnabled !== undefined) {
+              await tx.user.update({
+                where: { id: user.id },
+                data: { emailNotificationsEnabled: parsed.data.emailNotificationsEnabled },
+              });
+            }
+
+            return tx.company.update({
+              where: { id: companyId },
+              data: {
+                name: parsed.data.name,
+                industry: parsed.data.industry ?? null,
+                location: parsed.data.location ?? null,
+                website: parsed.data.website || null,
+                description: parsed.data.description ?? null,
+              },
+            });
+          });
+
+          const output = {
+            profile: companyProfileOutput(company),
+            nextStep: "Use create_project_draft to create a project draft when ready.",
+          };
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "update_my_company_profile",
+            outcome: "success",
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP update_my_company_profile failed", error);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "update_my_company_profile",
+            outcome: "error",
+          });
+          return protectedToolError("Failed to update company profile.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "get_my_engineer_profile",
+      {
+        title: "Get my engineer profile",
+        description: "Get the authenticated user's engineer profile, if one exists.",
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: false,
+        },
+      },
+      async () => {
+        const authResult = await requireToolAuth("engineer_profile:read");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const profile = await prisma.engineerProfile.findUnique({
+          where: { userId: authResult.auth.userId },
+          include: {
+            skills: { include: { skill: { select: { name: true } } } },
+            workHistories: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                projectName: true,
+                role: true,
+                startYearMonth: true,
+                endYearMonth: true,
+                techStack: true,
+                description: true,
+              },
+            },
+          },
+        });
+        const output = profile
+          ? { profile: engineerProfileOutput(profile) }
+          : {
+              profile: null,
+              nextStep: "Call register_my_engineer_profile to complete engineer onboarding.",
+            };
+        await auditMcpTool({ auth: authResult.auth, toolName: "get_my_engineer_profile", outcome: "success" });
+        return {
+          content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+          structuredContent: output,
+        };
+      },
+    );
+
+    server.registerTool(
+      "register_my_engineer_profile",
+      {
+        title: "Register my engineer profile",
+        description: "Register an engineer profile for an authenticated user that has not completed onboarding.",
+        inputSchema: mcpEngineerProfileInputSchema,
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireToolAuth("engineer_profile:write");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const parsed = engineerProfileInputSchema.safeParse(input);
+        if (!parsed.success) {
+          return protectedToolError(parsed.error.issues[0]?.message ?? "Invalid engineer profile input.", 400);
+        }
+
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: authResult.auth.userId },
+            include: { companyMember: true, engineerProfile: true },
+          });
+          if (!user) return protectedToolError("User not found.", 404);
+          if (user.engineerProfile) {
+            return protectedToolError("Engineer profile already exists. Use update_my_engineer_profile.", 409);
+          }
+          if (user.companyMember) {
+            return protectedToolError("This account is already registered as a company.", 403);
+          }
+
+          const profile = await prisma.$transaction(async (tx) => {
+            const resolvedSkills = await resolveProfileSkillIds({
+              db: tx,
+              skillIds: input.skillIds,
+              skillNames: input.skillNames,
+            });
+            if (resolvedSkills.error) throw new Error(resolvedSkills.error);
+
+            const userUpdate =
+              parsed.data.emailNotificationsEnabled === undefined
+                ? { role: "ENGINEER" as const }
+                : {
+                    role: "ENGINEER" as const,
+                    emailNotificationsEnabled: parsed.data.emailNotificationsEnabled,
+                  };
+            await tx.user.update({
+              where: { id: user.id },
+              data: userUpdate,
+            });
+
+            const profileData = {
+              displayName: parsed.data.displayName,
+              title: parsed.data.title,
+              bio: parsed.data.bio ?? null,
+              location: parsed.data.location ?? null,
+              yearsOfExperience: parsed.data.yearsOfExperience ?? null,
+              desiredRateMin: parsed.data.desiredRateMin ?? null,
+              desiredRateMax: parsed.data.desiredRateMax ?? null,
+              desiredWeeklyDays: parsed.data.desiredWeeklyDays,
+              remotePreference: parsed.data.remotePreference ?? null,
+              workStatus: parsed.data.workStatus,
+              githubUrl: parsed.data.githubUrl || null,
+              portfolioUrl: parsed.data.portfolioUrl || null,
+              isPublic: parsed.data.isPublic ?? false,
+            };
+
+            const savedProfile = await tx.engineerProfile.create({
+              data: {
+                userId: user.id,
+                ...profileData,
+              },
+            });
+
+            await tx.engineerSkill.deleteMany({ where: { engineerProfileId: savedProfile.id } });
+            if (resolvedSkills.skillIds.length > 0) {
+              await tx.engineerSkill.createMany({
+                data: resolvedSkills.skillIds.map((skillId) => ({
+                  engineerProfileId: savedProfile.id,
+                  skillId,
+                })),
+              });
+            }
+
+            await tx.workHistory.deleteMany({ where: { engineerProfileId: savedProfile.id } });
+            if (parsed.data.workHistories && parsed.data.workHistories.length > 0) {
+              await tx.workHistory.createMany({
+                data: parsed.data.workHistories.map((history) => ({
+                  engineerProfileId: savedProfile.id,
+                  projectName: history.projectName,
+                  role: history.role || null,
+                  startYearMonth: history.startYearMonth || null,
+                  endYearMonth: history.endYearMonth || null,
+                  techStack: history.techStack || null,
+                  description: history.description || null,
+                })),
+              });
+            }
+
+            return tx.engineerProfile.findUniqueOrThrow({
+              where: { id: savedProfile.id },
+              include: {
+                skills: { include: { skill: { select: { name: true } } } },
+                workHistories: {
+                  orderBy: { createdAt: "asc" },
+                  select: {
+                    projectName: true,
+                    role: true,
+                    startYearMonth: true,
+                    endYearMonth: true,
+                    techStack: true,
+                    description: true,
+                  },
+                },
+              },
+            });
+          });
+
+          const output = {
+            profile: engineerProfileOutput(profile),
+            nextStep: profile.isPublic
+              ? "Your engineer profile is visible to companies."
+              : "Set isPublic to true when you want companies to discover this profile.",
+          };
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "register_my_engineer_profile",
+            outcome: "success",
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP register_my_engineer_profile failed", error);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "register_my_engineer_profile",
+            outcome: "error",
+          });
+          return protectedToolError(error instanceof Error ? error.message : "Failed to register engineer profile.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "update_my_engineer_profile",
+      {
+        title: "Update my engineer profile",
+        description: "Update the authenticated user's existing engineer profile.",
+        inputSchema: mcpEngineerProfileInputSchema,
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireToolAuth("engineer_profile:write");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const parsed = engineerProfileInputSchema.safeParse(input);
+        if (!parsed.success) {
+          return protectedToolError(parsed.error.issues[0]?.message ?? "Invalid engineer profile input.", 400);
+        }
+
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: authResult.auth.userId },
+            include: { companyMember: true, engineerProfile: true },
+          });
+          if (!user) return protectedToolError("User not found.", 404);
+          if (user.companyMember && !user.engineerProfile) {
+            return protectedToolError("This account is registered as a company.", 403);
+          }
+          if (!user.engineerProfile) {
+            return protectedToolError("Engineer profile does not exist. Use register_my_engineer_profile.", 404);
+          }
+          const engineerProfileId = user.engineerProfile.id;
+
+          const profile = await prisma.$transaction(async (tx) => {
+            const resolvedSkills = await resolveProfileSkillIds({
+              db: tx,
+              skillIds: input.skillIds,
+              skillNames: input.skillNames,
+            });
+            if (resolvedSkills.error) throw new Error(resolvedSkills.error);
+
+            if (parsed.data.emailNotificationsEnabled !== undefined) {
+              await tx.user.update({
+                where: { id: user.id },
+                data: { emailNotificationsEnabled: parsed.data.emailNotificationsEnabled },
+              });
+            }
+
+            const profileData = {
+              displayName: parsed.data.displayName,
+              title: parsed.data.title,
+              bio: parsed.data.bio ?? null,
+              location: parsed.data.location ?? null,
+              yearsOfExperience: parsed.data.yearsOfExperience ?? null,
+              desiredRateMin: parsed.data.desiredRateMin ?? null,
+              desiredRateMax: parsed.data.desiredRateMax ?? null,
+              desiredWeeklyDays: parsed.data.desiredWeeklyDays,
+              remotePreference: parsed.data.remotePreference ?? null,
+              workStatus: parsed.data.workStatus,
+              githubUrl: parsed.data.githubUrl || null,
+              portfolioUrl: parsed.data.portfolioUrl || null,
+              isPublic: parsed.data.isPublic ?? false,
+            };
+
+            const savedProfile = await tx.engineerProfile.update({
+              where: { id: engineerProfileId },
+              data: profileData,
+            });
+
+            await tx.engineerSkill.deleteMany({ where: { engineerProfileId: savedProfile.id } });
+            if (resolvedSkills.skillIds.length > 0) {
+              await tx.engineerSkill.createMany({
+                data: resolvedSkills.skillIds.map((skillId) => ({
+                  engineerProfileId: savedProfile.id,
+                  skillId,
+                })),
+              });
+            }
+
+            await tx.workHistory.deleteMany({ where: { engineerProfileId: savedProfile.id } });
+            if (parsed.data.workHistories && parsed.data.workHistories.length > 0) {
+              await tx.workHistory.createMany({
+                data: parsed.data.workHistories.map((history) => ({
+                  engineerProfileId: savedProfile.id,
+                  projectName: history.projectName,
+                  role: history.role || null,
+                  startYearMonth: history.startYearMonth || null,
+                  endYearMonth: history.endYearMonth || null,
+                  techStack: history.techStack || null,
+                  description: history.description || null,
+                })),
+              });
+            }
+
+            return tx.engineerProfile.findUniqueOrThrow({
+              where: { id: savedProfile.id },
+              include: {
+                skills: { include: { skill: { select: { name: true } } } },
+                workHistories: {
+                  orderBy: { createdAt: "asc" },
+                  select: {
+                    projectName: true,
+                    role: true,
+                    startYearMonth: true,
+                    endYearMonth: true,
+                    techStack: true,
+                    description: true,
+                  },
+                },
+              },
+            });
+          });
+
+          const output = {
+            profile: engineerProfileOutput(profile),
+            nextStep: profile.isPublic
+              ? "Your engineer profile is visible to companies."
+              : "Set isPublic to true when you want companies to discover this profile.",
+          };
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "update_my_engineer_profile",
+            outcome: "success",
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP update_my_engineer_profile failed", error);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "update_my_engineer_profile",
+            outcome: "error",
+          });
+          return protectedToolError(error instanceof Error ? error.message : "Failed to update engineer profile.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "create_project_draft",
+      {
+        title: "Create project draft",
+        description: "Create a DRAFT project for the authenticated company. MCP cannot publish projects.",
+        inputSchema: mcpProjectInputSchema,
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireCompanyToolAuth("company_project:write");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        const parsed = projectInputSchema.safeParse(input);
+        if (!parsed.success) {
+          return protectedToolError(parsed.error.issues[0]?.message ?? "Invalid project input.", 400);
+        }
+
+        try {
+          const project = await prisma.$transaction(async (tx) => {
+            const resolvedSkills = await resolveProjectSkillIds({
+              db: tx,
+              skillIds: input.skillIds,
+              skillNames: input.skillNames,
+            });
+            if (resolvedSkills.error) throw new Error(resolvedSkills.error);
+
+            return tx.project.create({
+              data: {
+                ...parsed.data,
+                contractType: parsed.data.contractType ?? DEFAULT_CONTRACT_TYPE,
+                companyId: authResult.auth.companyId,
+                status: "DRAFT",
+                publishedAt: null,
+                features: input.features ?? [],
+                skills: { create: resolvedSkills.skillIds.map((skillId) => ({ skillId })) },
+              },
+              select: { id: true },
+            });
+          });
+
+          const output = draftMutationOutput(project.id);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "create_project_draft",
+            outcome: "success",
+            projectId: project.id,
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP create_project_draft failed", error);
+          await auditMcpTool({ auth: authResult.auth, toolName: "create_project_draft", outcome: "error" });
+          return protectedToolError(error instanceof Error ? error.message : "Failed to create draft.", 500);
+        }
+      },
+    );
+
+    server.registerTool(
+      "update_project_draft",
+      {
+        title: "Update project draft",
+        description: "Update a DRAFT project owned by the authenticated company. OPEN and CLOSED projects cannot be edited from MCP.",
+        inputSchema: {
+          projectId: z.string().trim().min(1).describe("Draft project ID owned by the authenticated company."),
+          ...mcpProjectUpdateInputSchema,
+        },
+        annotations: {
+          readOnlyHint: false,
+          openWorldHint: false,
+        },
+      },
+      async (input) => {
+        const authResult = await requireCompanyToolAuth("company_project:write");
+        if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
+
+        try {
+          const existing = await prisma.project.findFirst({
+            where: { id: input.projectId, companyId: authResult.auth.companyId },
+            include: { skills: { select: { skillId: true } } },
+          });
+          if (!existing) return protectedToolError("Project not found.", 404);
+          if (existing.status !== "DRAFT") {
+            return protectedToolError("Only DRAFT projects can be updated from MCP.", 403);
+          }
+
+          const mergedInput = {
+            ...projectInputFromExisting(existing),
+            ...Object.fromEntries(
+              Object.entries(input).filter(
+                ([key, value]) =>
+                  value !== undefined && !["projectId", "features", "skillIds", "skillNames"].includes(key),
+              ),
+            ),
+          };
+          const parsed = projectInputSchema.safeParse(mergedInput);
+          if (!parsed.success) {
+            return protectedToolError(parsed.error.issues[0]?.message ?? "Invalid project input.", 400);
+          }
+
+          await prisma.$transaction(async (tx) => {
+            const shouldReplaceSkills = input.skillIds !== undefined || input.skillNames !== undefined;
+            const resolvedSkills = shouldReplaceSkills
+              ? await resolveProjectSkillIds({
+                  db: tx,
+                  skillIds: input.skillIds,
+                  skillNames: input.skillNames,
+                })
+              : { skillIds: existing.skills.map(({ skillId }) => skillId) };
+            if (resolvedSkills.error) throw new Error(resolvedSkills.error);
+
+            if (shouldReplaceSkills) {
+              await tx.projectSkill.deleteMany({ where: { projectId: existing.id } });
+            }
+            await tx.project.update({
+              where: { id: existing.id },
+              data: {
+                ...parsed.data,
+                contractType: parsed.data.contractType ?? DEFAULT_CONTRACT_TYPE,
+                status: "DRAFT",
+                publishedAt: null,
+                features: input.features ?? existing.features,
+                ...(shouldReplaceSkills
+                  ? { skills: { create: resolvedSkills.skillIds.map((skillId) => ({ skillId })) } }
+                  : {}),
+              },
+            });
+          });
+
+          const output = draftMutationOutput(existing.id);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "update_project_draft",
+            outcome: "success",
+            projectId: existing.id,
+          });
+          return {
+            content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+            structuredContent: output,
+          };
+        } catch (error) {
+          console.error("MCP update_project_draft failed", error);
+          await auditMcpTool({
+            auth: authResult.auth,
+            toolName: "update_project_draft",
+            outcome: "error",
+            projectId: input.projectId,
+          });
+          return protectedToolError(error instanceof Error ? error.message : "Failed to update draft.", 500);
+        }
+      },
+    );
+  },
+  {
+    serverInfo: {
+      name: endpointConfig.name,
+      version: "0.2.0",
+    },
+    instructions: endpointConfig.instructions,
+  },
+  {
+    streamableHttpEndpoint: `/api/mcp/${endpoint}`,
+    disableSse: true,
+    maxDuration: 60,
+  },
+  );
+}
+
+async function maybeRejectUnauthorizedMcpRequest(request: Request, endpoint: McpEndpoint) {
+  if (request.method !== "POST") return null;
+
+  const body = (await request.clone().json().catch(() => null)) as
+    | { id?: unknown; method?: string; params?: { name?: string } }
+    | null;
+  const toolName = body?.method === "tools/call" ? body.params?.name : undefined;
+  const requiredScope = getRequiredMcpToolScope(endpoint, toolName);
+
+  const auth = await getBearerAuthInfo(request);
+  if (!auth) {
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        id: body?.id ?? null,
+        error: {
+          code: -32001,
+          message: "Authentication required.",
+          data: {
+            resourceMetadataUrl: getMcpResourceMetadataUrl(request, endpoint),
+          },
+        },
+      },
+      {
+        status: 401,
+        headers: authChallengeHeaders(request, { scope: requiredScope }),
+      },
+    );
+  }
+
+  if (!toolName) return null;
+  if (!requiredScope) return null;
+
+  const authResult = await requireMcpScope(request, requiredScope);
+  if (authResult.ok) return null;
+
+  return Response.json(
+    {
+      jsonrpc: "2.0",
+      id: body?.id ?? null,
+      error: {
+        code: authResult.status === 401 ? -32001 : -32003,
+        message: authResult.message,
+        data: {
+          resourceMetadataUrl: getMcpResourceMetadataUrl(request, endpoint),
+        },
+      },
+    },
+    {
+      status: authResult.status,
+      headers:
+        authResult.status === 401
+          ? authChallengeHeaders(request, { scope: requiredScope })
+          : authChallengeHeaders(request, {
+              status: 403,
+              scope: requiredScope,
+              errorDescription: authResult.message,
+            }),
+    },
+  );
+}
+
+export function createFlowLinkMcpRouteHandler(endpoint: McpEndpoint) {
+  const handler = createEndpointMcpHandler(endpoint);
+
+  return async function routeHandler(request: Request) {
+    const authRejection = await maybeRejectUnauthorizedMcpRequest(request, endpoint);
+    if (authRejection) return authRejection;
+    return withMcpRequestContext(request, () => handler(request));
+  };
+}
+
+export async function legacyMcpRouteHandler() {
+  return Response.json(legacyMcpEndpointResponse, {
+    status: 410,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}

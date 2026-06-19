@@ -1,0 +1,227 @@
+import Link from "next/link";
+import Image from "next/image";
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
+import { auth } from "@/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardBody } from "@/components/ui/card";
+import { FlowLinkMark } from "@/components/flow-link-logo";
+import {
+  createOAuthConsentToken,
+  getDefaultScopesForMcpResource,
+  getAllowedScopesForSubject,
+  isMcpResourceAllowedForSubject,
+  isValidMcpResource,
+  normalizeScopes,
+  OAUTH_SCOPES,
+  scopeString,
+  type OAuthScope,
+  type OAuthSubjectKind,
+} from "@/lib/mcp-oauth";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+
+type AuthorizeParams = {
+  response_type?: string;
+  client_id?: string;
+  redirect_uri?: string;
+  resource?: string;
+  scope?: string;
+  state?: string;
+  code_challenge?: string;
+  code_challenge_method?: string;
+};
+
+export default async function OAuthAuthorizePage({
+  searchParams,
+}: {
+  searchParams: Promise<AuthorizeParams>;
+}) {
+  const params = await searchParams;
+  const validation = await validateAuthorizeParams(params);
+  if (!validation.ok) return <AuthorizeError message={validation.message} />;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value) query.set(key, value);
+    }
+    redirect(`/login?callbackUrl=${encodeURIComponent(`/oauth/authorize?${query.toString()}`)}`);
+  }
+
+  const [membership, engineerProfile] = await Promise.all([
+    prisma.companyMember.findUnique({
+      where: { userId: session.user.id },
+      include: { company: { select: { name: true } } },
+    }),
+    prisma.engineerProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { displayName: true },
+    }),
+  ]);
+  const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
+  if (!isMcpResourceAllowedForSubject(params.resource!, subjectKind)) {
+    return <AuthorizeError message="このMCP接続先は、現在ログインしているアカウント種別では利用できません。" />;
+  }
+
+  const allowedScopes = getAllowedScopesForSubject(subjectKind);
+  const visibleScopes = validation.scopes.filter((scope) => allowedScopes.includes(scope));
+  const consentToken = createOAuthConsentToken({
+    userId: session.user.id,
+    clientId: validation.client.clientId,
+    redirectUri: params.redirect_uri!,
+    resource: params.resource!,
+    scope: scopeString(validation.scopes),
+    codeChallenge: params.code_challenge!,
+    codeChallengeMethod: "S256",
+  });
+
+  const clientName = validation.client.clientName ?? "MCPクライアント";
+  const clientLogoUri = validation.client.logoUri;
+  const accountName = membership?.company.name ?? engineerProfile?.displayName ?? session.user.email ?? "このアカウント";
+
+  return (
+    <main className="mx-auto max-w-xl px-4 py-12">
+      <div className="flex items-center justify-center gap-3">
+        <OAuthAppIcon name="FlowLink" mark={<FlowLinkMark className="h-10 w-12" />} />
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">
+          ↔
+        </span>
+        <OAuthAppIcon src={clientLogoUri} name={clientName} />
+      </div>
+      <h1 className="mt-5 text-center text-2xl font-black text-slate-900">FlowLink MCP連携</h1>
+      <p className="mt-2 text-center text-sm text-slate-600">
+        {clientName} が {accountName} へのアクセス許可をリクエストしています。
+      </p>
+
+      <Card className="mt-6">
+        <CardBody className="p-6">
+          <form method="post" action="/oauth/authorize/confirm" className="space-y-5">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">要求された権限</h2>
+              <div className="mt-3 space-y-2">
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                  <span className="block font-semibold text-slate-900">公開案件の検索</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed">
+                    公開案件の検索・詳細取得・検索条件の参照ができます。
+                  </span>
+                </div>
+
+                {visibleScopes.map((scope) => (
+                  <div
+                    key={scope}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    <span className="block font-semibold text-slate-900">{SCOPE_LABELS[scope]}</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed">{SCOPE_DESCRIPTIONS[scope]}</span>
+                  </div>
+                ))}
+              </div>
+
+              {subjectKind === "company" && visibleScopes.some((scope) => scope.startsWith("company_project:")) ? (
+                <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                  MCPから案件を公開することはできません。公開はFlowLinkの画面から行ってください。
+                </p>
+              ) : null}
+            </div>
+
+            {Object.entries(params).map(([key, value]) =>
+              value ? <input key={key} type="hidden" name={key} value={value} /> : null,
+            )}
+            <input type="hidden" name="consent_token" value={consentToken} />
+            <div className="flex items-center gap-3">
+              <Button type="submit">許可する</Button>
+              <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-slate-900">
+                キャンセル
+              </Link>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
+    </main>
+  );
+}
+
+function OAuthAppIcon({ mark, src, name }: { mark?: ReactNode; src?: string | null; name: string }) {
+  return (
+    <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {mark ?? (src ? (
+        <Image
+          src={src}
+          alt={`${name} アイコン`}
+          width={64}
+          height={64}
+          className="h-full w-full object-contain p-2"
+          unoptimized
+        />
+      ) : (
+        <span className="text-xl font-black text-slate-700">{name.trim().charAt(0) || "M"}</span>
+      ))}
+    </span>
+  );
+}
+
+const SCOPE_LABELS = {
+  "company_profile:read": "企業プロフィールの表示",
+  "company_profile:write": "企業プロフィールの登録・更新",
+  "engineer_profile:read": "エンジニアプロフィールの表示",
+  "engineer_profile:write": "エンジニアプロフィールの登録・更新",
+  "engineer_search:read": "エンジニア検索",
+  "public_project:read": "公開案件の検索・表示",
+  "company_project:read": "自社案件の表示",
+  "company_project:write": "案件下書きの作成・更新",
+} satisfies Record<OAuthScope, string>;
+
+const SCOPE_DESCRIPTIONS = {
+  "company_profile:read": "このアカウントに紐づく企業プロフィールを表示します。",
+  "company_profile:write": "企業登録を完了するか、既存の企業プロフィールを更新します。",
+  "engineer_profile:read": "このアカウントに紐づくエンジニアプロフィールを表示します。",
+  "engineer_profile:write": "エンジニア登録を完了するか、既存のエンジニアプロフィールを更新します。",
+  "engineer_search:read": "公開中のエンジニアプロフィールを検索・閲覧します。",
+  "public_project:read": "公開中の案件を検索・閲覧します。",
+  "company_project:read": "自社が登録した案件を表示します。",
+  "company_project:write": "自社案件の下書きを作成・更新します。公開はWeb画面からのみ行えます。",
+} satisfies Record<OAuthScope, string>;
+
+async function validateAuthorizeParams(params: AuthorizeParams) {
+  if (params.response_type !== "code") return { ok: false as const, message: "未対応のresponse_typeです。" };
+  if (!params.client_id) return { ok: false as const, message: "client_idが必要です。" };
+  if (!params.redirect_uri) return { ok: false as const, message: "redirect_uriが必要です。" };
+  if (!params.resource) return { ok: false as const, message: "resourceが必要です。" };
+  if (!isValidMcpResource(params.resource)) {
+    return { ok: false as const, message: "未対応のresourceです。" };
+  }
+  if (!params.code_challenge) return { ok: false as const, message: "code_challengeが必要です。" };
+  if (params.code_challenge_method !== "S256") {
+    return { ok: false as const, message: "PKCEはS256のみ対応しています。" };
+  }
+
+  const client = await prisma.oAuthClient.findUnique({ where: { clientId: params.client_id } });
+  if (!client) return { ok: false as const, message: "不明なクライアントです。" };
+  if (!client.redirectUris.includes(params.redirect_uri)) {
+    return { ok: false as const, message: "このクライアントに登録されていないredirect_uriです。" };
+  }
+
+  const scopes = normalizeScopes(params.scope, getDefaultScopesForMcpResource(params.resource));
+  if (!scopes) return { ok: false as const, message: "未対応のscopeです。" };
+
+  const clientScopes = normalizeScopes(client.scope, [...OAUTH_SCOPES]);
+  if (!clientScopes || scopes.some((scope) => !clientScopes.includes(scope))) {
+    return { ok: false as const, message: "このクライアントに登録されていないscopeが含まれています。" };
+  }
+
+  return { ok: true as const, client, scopes };
+}
+
+function AuthorizeError({ message }: { message: string }) {
+  return (
+    <main className="mx-auto max-w-xl px-4 py-12">
+      <h1 className="text-2xl font-black text-slate-900">FlowLink MCP連携に失敗しました</h1>
+      <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {message}
+      </p>
+    </main>
+  );
+}

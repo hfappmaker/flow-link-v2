@@ -56,9 +56,11 @@ const buttonClass =
 export function OAuthButtons({
   availability,
   disabled = false,
+  redirectTo = "/post-login",
 }: {
   availability: OAuthAvailability;
   disabled?: boolean;
+  redirectTo?: string;
 }) {
   const items = [
     { key: "google", id: "google", label: "Googleで続ける", icon: <GoogleIcon />, enabled: availability.google },
@@ -82,7 +84,7 @@ export function OAuthButtons({
           type="button"
           className={buttonClass}
           disabled={disabled}
-          onClick={() => signIn(item.id, { redirectTo: "/post-login" })}
+          onClick={() => signIn(item.id, { redirectTo })}
         >
           {item.icon}
           {item.label}

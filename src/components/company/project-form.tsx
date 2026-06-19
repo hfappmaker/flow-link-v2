@@ -99,6 +99,7 @@ export function ProjectForm({
   project?: ProjectWithSkills;
 }) {
   const [state, action, pending] = useActionState(project ? updateProject : createProject, {});
+  const initialPublish = project?.status === "DRAFT" ? "draft" : "open";
   const selectedSkillIds = new Set(project?.skills.map((s) => s.skillId) ?? []);
   const selectedFeatures = new Set(project?.features ?? []);
 
@@ -109,7 +110,27 @@ export function ProjectForm({
   }
 
   return (
-    <form action={action} className="space-y-8">
+    <form
+      action={action}
+      className="space-y-8"
+      onSubmit={(event) => {
+        if (!project || !["OPEN", "DRAFT"].includes(project.status)) return;
+
+        const formData = new FormData(event.currentTarget);
+        const nextPublish = formData.get("publish");
+        if (nextPublish !== "open" && nextPublish !== "draft") return;
+        if (nextPublish === initialPublish) return;
+
+        const message =
+          nextPublish === "open"
+            ? "この案件を公開します。公開するとエンジニアに表示されます。よろしいですか？"
+            : "この案件を下書きとして保存します。公開中の案件はエンジニアに表示されなくなります。よろしいですか？";
+
+        if (!window.confirm(message)) {
+          event.preventDefault();
+        }
+      }}
+    >
       {project ? <input type="hidden" name="projectId" value={project.id} /> : null}
       {state.error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
