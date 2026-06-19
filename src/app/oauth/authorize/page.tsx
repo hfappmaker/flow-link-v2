@@ -120,7 +120,7 @@ export default async function OAuthAuthorizePage({
                 ))}
               </div>
 
-              {subjectKind === "company" && visibleScopes.some((scope) => scope.startsWith("project:")) ? (
+              {subjectKind === "company" && visibleScopes.some((scope) => scope.startsWith("company_project:")) ? (
                 <p className="mt-3 text-xs leading-relaxed text-slate-500">
                   MCPから案件を公開することはできません。公開はFlowLinkの画面から行ってください。
                 </p>
@@ -169,8 +169,9 @@ const SCOPE_LABELS = {
   "engineer_profile:read": "エンジニアプロフィールの表示",
   "engineer_profile:write": "エンジニアプロフィールの登録・更新",
   "engineer_search:read": "エンジニア検索",
-  "project:read": "自社案件の表示",
-  "project:write": "案件下書きの作成・更新",
+  "public_project:read": "公開案件の検索・表示",
+  "company_project:read": "自社案件の表示",
+  "company_project:write": "案件下書きの作成・更新",
 } satisfies Record<OAuthScope, string>;
 
 const SCOPE_DESCRIPTIONS = {
@@ -179,8 +180,9 @@ const SCOPE_DESCRIPTIONS = {
   "engineer_profile:read": "このアカウントに紐づくエンジニアプロフィールを表示します。",
   "engineer_profile:write": "エンジニア登録を完了するか、既存のエンジニアプロフィールを更新します。",
   "engineer_search:read": "公開中のエンジニアプロフィールを検索・閲覧します。",
-  "project:read": "自社が登録した案件を表示します。",
-  "project:write": "自社案件の下書きを作成・更新します。公開はWeb画面からのみ行えます。",
+  "public_project:read": "公開中の案件を検索・閲覧します。",
+  "company_project:read": "自社が登録した案件を表示します。",
+  "company_project:write": "自社案件の下書きを作成・更新します。公開はWeb画面からのみ行えます。",
 } satisfies Record<OAuthScope, string>;
 
 async function validateAuthorizeParams(params: AuthorizeParams) {

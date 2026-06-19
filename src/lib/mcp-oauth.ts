@@ -7,8 +7,9 @@ export const OAUTH_SCOPES = [
   "engineer_profile:read",
   "engineer_profile:write",
   "engineer_search:read",
-  "project:read",
-  "project:write",
+  "public_project:read",
+  "company_project:read",
+  "company_project:write",
 ] as const;
 export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 
@@ -19,11 +20,12 @@ const PROTECTED_RESOURCE_SCOPES = {
   company: [
     "company_profile:read",
     "company_profile:write",
-    "project:read",
-    "project:write",
+    "public_project:read",
+    "company_project:read",
+    "company_project:write",
     "engineer_search:read",
   ],
-  engineer: ["engineer_profile:read", "engineer_profile:write"],
+  engineer: ["public_project:read", "engineer_profile:read", "engineer_profile:write"],
 } satisfies Record<McpEndpoint, OAuthScope[]>;
 
 export const AUTHORIZATION_CODE_TTL_SECONDS = 5 * 60;
@@ -205,10 +207,10 @@ export function getProtectedResourceMetadata(requestOrOrigin?: Request | string)
 
 export function getDefaultScopesForMcpResource(resource: string) {
   const normalized = normalizeOAuthResource(resource);
-  if (!normalized) return ["project:read"] satisfies OAuthScope[];
+  if (!normalized) return ["public_project:read"] satisfies OAuthScope[];
 
   const endpoint = parseMcpEndpointFromPath(new URL(normalized).pathname);
-  return endpoint ? PROTECTED_RESOURCE_SCOPES[endpoint] : (["project:read"] satisfies OAuthScope[]);
+  return endpoint ? PROTECTED_RESOURCE_SCOPES[endpoint] : (["public_project:read"] satisfies OAuthScope[]);
 }
 
 function quoteWwwAuthenticateValue(value: string) {
@@ -382,7 +384,7 @@ function timingSafeEqual(a: string, b: string) {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
-export function normalizeScopes(scope: string | undefined | null, fallback: OAuthScope[] = ["project:read"]) {
+export function normalizeScopes(scope: string | undefined | null, fallback: OAuthScope[] = ["public_project:read"]) {
   const rawScopes = (scope ?? "")
     .split(/\s+/)
     .map((value) => value.trim())
@@ -409,13 +411,16 @@ export function getAllowedScopesForSubject(kind: OAuthSubjectKind) {
   if (kind === "company") {
     return OAUTH_SCOPES.filter(
       (scope) =>
+        scope.startsWith("public_project:") ||
         scope.startsWith("company_profile:") ||
-        scope.startsWith("engineer_search:") ||
-        scope.startsWith("project:"),
+        scope.startsWith("company_project:") ||
+        scope.startsWith("engineer_search:"),
     );
   }
   if (kind === "engineer") {
-    return OAUTH_SCOPES.filter((scope) => scope.startsWith("engineer_profile:"));
+    return OAUTH_SCOPES.filter(
+      (scope) => scope.startsWith("public_project:") || scope.startsWith("engineer_profile:"),
+    );
   }
   return OAUTH_SCOPES.filter(
     (scope) => scope.startsWith("company_profile:") || scope.startsWith("engineer_profile:"),

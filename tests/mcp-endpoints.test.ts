@@ -33,9 +33,9 @@ describe("MCP endpoint tool grouping", () => {
   });
 
   it("returns required scopes only for tools on the requested endpoint", () => {
-    assert.equal(getRequiredMcpToolScope("company", "search_projects"), undefined);
-    assert.equal(getRequiredMcpToolScope("engineer", "search_projects"), undefined);
-    assert.equal(getRequiredMcpToolScope("company", "create_project_draft"), "project:write");
+    assert.equal(getRequiredMcpToolScope("company", "search_projects"), "public_project:read");
+    assert.equal(getRequiredMcpToolScope("engineer", "search_projects"), "public_project:read");
+    assert.equal(getRequiredMcpToolScope("company", "create_project_draft"), "company_project:write");
     assert.equal(getRequiredMcpToolScope("company", "search_engineers"), "engineer_search:read");
     assert.equal(getRequiredMcpToolScope("engineer", "update_my_engineer_profile"), "engineer_profile:write");
     assert.equal(getRequiredMcpToolScope("engineer", "create_project_draft"), undefined);

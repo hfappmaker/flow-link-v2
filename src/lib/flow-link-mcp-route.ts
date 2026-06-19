@@ -31,9 +31,12 @@ import { prisma } from "@/lib/prisma";
 
 const DEFAULT_CONTRACT_TYPE = "業務委託";
 const PROTECTED_TOOL_SCOPES = {
-  list_my_projects: "project:read",
-  create_project_draft: "project:write",
-  update_project_draft: "project:write",
+  search_projects: "public_project:read",
+  get_project: "public_project:read",
+  list_project_filter_options: "public_project:read",
+  list_my_projects: "company_project:read",
+  create_project_draft: "company_project:write",
+  update_project_draft: "company_project:write",
   get_my_company_profile: "company_profile:read",
   register_my_company_profile: "company_profile:write",
   update_my_company_profile: "company_profile:write",
@@ -234,20 +237,6 @@ function authChallengeHeaders(
       errorDescription: options?.errorDescription,
     }),
   };
-}
-
-async function requireMcpAuth() {
-  const request = getMcpRequest();
-  if (!request) {
-    return { ok: false as const, status: 401, message: "Authentication required." };
-  }
-
-  const auth = await getBearerAuthInfo(request);
-  if (!auth) {
-    return { ok: false as const, status: 401, message: "Authentication required." };
-  }
-
-  return { ok: true as const, auth };
 }
 
 async function requireToolAuth(requiredScope: OAuthScope) {
@@ -687,7 +676,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       "search_projects",
       {
         title: "Search projects",
-        description: "Search FlowLink projects that are currently open to applications. Requires login but no scope.",
+        description: "Search FlowLink projects that are currently open to applications.",
         inputSchema: {
           q: z.string().trim().describe("Free-text keyword query searched against public project content.").optional(),
           jobText: z.array(z.string().trim().min(1)).describe("Job category or role keywords to filter by.").optional(),
@@ -707,7 +696,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
         },
       },
       async (input) => {
-        const authResult = await requireMcpAuth();
+        const authResult = await requireToolAuth("public_project:read");
         if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
 
         try {
@@ -729,7 +718,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       "get_project",
       {
         title: "Get project",
-        description: "Get details for a single open FlowLink project. Requires login but no scope.",
+        description: "Get details for a single open FlowLink project.",
         inputSchema: {
           projectId: z.string().trim().min(1).describe("FlowLink project ID returned by search_projects."),
         },
@@ -739,7 +728,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
         },
       },
       async ({ projectId }) => {
-        const authResult = await requireMcpAuth();
+        const authResult = await requireToolAuth("public_project:read");
         if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
 
         try {
@@ -803,14 +792,14 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       "list_project_filter_options",
       {
         title: "List project filter options",
-        description: "List supported project search filter values. Requires login but no scope.",
+        description: "List supported project search filter values.",
         annotations: {
           readOnlyHint: true,
           openWorldHint: true,
         },
       },
       async () => {
-        const authResult = await requireMcpAuth();
+        const authResult = await requireToolAuth("public_project:read");
         if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
 
         try {
@@ -996,7 +985,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
         },
       },
       async ({ status }) => {
-        const authResult = await requireCompanyToolAuth("project:read");
+        const authResult = await requireCompanyToolAuth("company_project:read");
         if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
 
         try {
@@ -1562,7 +1551,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
         },
       },
       async (input) => {
-        const authResult = await requireCompanyToolAuth("project:write");
+        const authResult = await requireCompanyToolAuth("company_project:write");
         if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
 
         const parsed = projectInputSchema.safeParse(input);
@@ -1627,7 +1616,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
         },
       },
       async (input) => {
-        const authResult = await requireCompanyToolAuth("project:write");
+        const authResult = await requireCompanyToolAuth("company_project:write");
         if (!authResult.ok) return protectedToolError(authResult.message, authResult.status);
 
         try {

@@ -41,8 +41,9 @@ describe("MCP OAuth helpers", () => {
         "engineer_profile:read",
         "engineer_profile:write",
         "engineer_search:read",
-        "project:read",
-        "project:write",
+        "public_project:read",
+        "company_project:read",
+        "company_project:write",
       ]);
       assert.deepEqual(authMetadata.code_challenge_methods_supported, ["S256"]);
 
@@ -52,8 +53,9 @@ describe("MCP OAuth helpers", () => {
       assert.deepEqual(resourceMetadata.scopes_supported, [
         "company_profile:read",
         "company_profile:write",
-        "project:read",
-        "project:write",
+        "public_project:read",
+        "company_project:read",
+        "company_project:write",
         "engineer_search:read",
       ]);
 
@@ -62,6 +64,7 @@ describe("MCP OAuth helpers", () => {
       );
       assert.equal(engineerResourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp/engineer");
       assert.deepEqual(engineerResourceMetadata.scopes_supported, [
+        "public_project:read",
         "engineer_profile:read",
         "engineer_profile:write",
       ]);
@@ -94,8 +97,9 @@ describe("MCP OAuth helpers", () => {
       assert.deepEqual(resourceMetadata.scopes_supported, [
         "company_profile:read",
         "company_profile:write",
-        "project:read",
-        "project:write",
+        "public_project:read",
+        "company_project:read",
+        "company_project:write",
         "engineer_search:read",
       ]);
     } finally {
@@ -128,11 +132,11 @@ describe("MCP OAuth helpers", () => {
   });
 
   it("normalizes only supported scopes", () => {
-    assert.deepEqual(normalizeScopes("project:read project:write project:read"), [
-      "project:read",
-      "project:write",
+    assert.deepEqual(normalizeScopes("public_project:read company_project:write public_project:read"), [
+      "public_project:read",
+      "company_project:write",
     ]);
-    assert.deepEqual(normalizeScopes(undefined), ["project:read"]);
+    assert.deepEqual(normalizeScopes(undefined), ["public_project:read"]);
     assert.deepEqual(normalizeScopes("company_profile:read company_profile:write"), [
       "company_profile:read",
       "company_profile:write",
@@ -142,6 +146,8 @@ describe("MCP OAuth helpers", () => {
       "engineer_profile:write",
     ]);
     assert.deepEqual(normalizeScopes("engineer_search:read"), ["engineer_search:read"]);
+    assert.equal(normalizeScopes("project:read"), null);
+    assert.equal(normalizeScopes("project:write"), null);
     assert.equal(normalizeScopes("project:publish"), null);
     assert.equal(normalizeScopes("project:edit"), null);
     assert.equal(normalizeScopes("profile:read"), null);
@@ -189,10 +195,10 @@ describe("MCP OAuth helpers", () => {
     assert.equal(
       getWwwAuthenticateHeader(request, {
         error: "insufficient_scope",
-        scope: "project:write",
-        errorDescription: "Missing required scope: project:write",
+        scope: "company_project:write",
+        errorDescription: "Missing required scope: company_project:write",
       }),
-      'Bearer error="insufficient_scope", scope="project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company", error_description="Missing required scope: project:write"',
+      'Bearer error="insufficient_scope", scope="company_project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company", error_description="Missing required scope: company_project:write"',
     );
   });
 
@@ -249,7 +255,7 @@ describe("MCP OAuth helpers", () => {
         userId: "user-1",
         companyId: "company-1",
         resource: "https://flowlink.flowtech.co.jp/api/mcp/company",
-        scope: "project:read project:write",
+        scope: "public_project:read company_project:write",
       });
 
       const auth = verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp/company"));
@@ -258,7 +264,7 @@ describe("MCP OAuth helpers", () => {
         userId: "user-1",
         companyId: "company-1",
         resource: "https://flowlink.flowtech.co.jp/api/mcp/company",
-        scopes: ["project:read", "project:write"],
+        scopes: ["public_project:read", "company_project:write"],
       });
       assert.equal(verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp/engineer")), null);
       assert.equal(verifyMcpAccessToken(`${token}x`, new Request("https://flowlink.flowtech.co.jp/api/mcp/company")), null);
@@ -282,7 +288,7 @@ describe("MCP OAuth helpers", () => {
         clientId: "client-1",
         redirectUri: "https://example.com/callback",
         resource: "https://flowlink.flowtech.co.jp/api/mcp/engineer",
-        scope: "project:read",
+        scope: "public_project:read",
         codeChallenge: "challenge",
         codeChallengeMethod: "S256",
       });
@@ -290,7 +296,7 @@ describe("MCP OAuth helpers", () => {
       const consent = verifyOAuthConsentToken(token);
       assert.equal(consent?.userId, "user-1");
       assert.equal(consent?.clientId, "client-1");
-      assert.equal(consent?.scope, "project:read");
+      assert.equal(consent?.scope, "public_project:read");
       assert.equal(verifyOAuthConsentToken(`${token}x`), null);
     } finally {
       if (previousSecret === undefined) delete process.env.AUTH_SECRET;

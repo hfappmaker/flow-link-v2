@@ -68,8 +68,9 @@ export async function POST(request: Request) {
     "engineer_profile:read",
     "engineer_profile:write",
     "engineer_search:read",
-    "project:read",
-    "project:write",
+    "public_project:read",
+    "company_project:read",
+    "company_project:write",
   ]);
   if (!scopes) return oauthError("invalid_scope", "Unsupported scope.", 400);
 
