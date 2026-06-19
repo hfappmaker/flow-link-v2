@@ -505,6 +505,108 @@ export function FormPageSkeleton({ columns = 2 }: { columns?: 1 | 2 }) {
   );
 }
 
+export function CompanyProjectFormSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <Skeleton className="h-8 w-52 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-[34rem] max-w-full" />
+      <Skeleton className="mt-2 h-4 w-[26rem] max-w-full sm:hidden" />
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-8">
+          <FormSectionSkeleton titleWidth="w-20">
+            <FieldSkeleton />
+            <div>
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="mt-2 h-24 w-full rounded-lg" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldSkeleton />
+              <FieldSkeleton />
+            </div>
+          </FormSectionSkeleton>
+
+          <FormSectionSkeleton titleWidth="w-14">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <FieldSkeleton key={index} />
+              ))}
+            </div>
+            <div>
+              <Skeleton className="mb-2 h-3 w-32" />
+              <ChipRowSkeleton count={7} />
+            </div>
+          </FormSectionSkeleton>
+
+          <FormSectionSkeleton titleWidth="w-40">
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index}>
+                  <Skeleton className="mb-2 h-3 w-24" />
+                  <ChipRowSkeleton count={index === 1 ? 7 : 5} />
+                </div>
+              ))}
+            </div>
+            <div>
+              <Skeleton className="h-3 w-24" />
+              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/60 px-2 py-2">
+                <ChipRowSkeleton count={3} />
+              </div>
+              <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+            </div>
+          </FormSectionSkeleton>
+
+          <FormSectionSkeleton titleWidth="w-20">
+            <div>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-36 w-full rounded-lg" />
+            </div>
+            <div>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-28 w-full rounded-lg" />
+            </div>
+            <div>
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="mt-2 h-28 w-full rounded-lg" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="mt-2 h-32 w-full rounded-lg" />
+              </div>
+              <div>
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="mt-2 h-32 w-full rounded-lg" />
+              </div>
+            </div>
+            <div>
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="mt-2 h-24 w-full rounded-lg" />
+            </div>
+            <div>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-2 h-24 w-full rounded-lg" />
+            </div>
+          </FormSectionSkeleton>
+
+          <section className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-6">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <Skeleton className="h-11 w-40 rounded-lg sm:ml-auto" />
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FormSectionSkeleton({
   titleWidth = "w-28",
   children,
