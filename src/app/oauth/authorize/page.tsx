@@ -58,7 +58,6 @@ export default async function OAuthAuthorizePage({
   ]);
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedScopes = getAllowedScopesForSubject(subjectKind);
-  const grantedScopes = validation.scopes.filter((scope) => allowedScopes.includes(scope));
   const consentToken = createOAuthConsentToken({
     userId: session.user.id,
     clientId: validation.client.clientId,
@@ -85,11 +84,10 @@ export default async function OAuthAuthorizePage({
             <div>
               <h2 className="text-base font-bold text-slate-900">要求された権限</h2>
               <div className="mt-3 space-y-2">
-                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-                  <span className="block font-semibold text-blue-950">公開案件の検索</span>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                  <span className="block font-semibold text-slate-900">公開案件の検索</span>
                   <span className="mt-0.5 block text-xs leading-relaxed">
                     ログイン済みのMCPクライアントから、公開案件の検索・詳細取得・検索条件の参照ができます。
-                    この項目は常に有効で、scopeは不要です。
                   </span>
                 </div>
 
@@ -121,10 +119,6 @@ export default async function OAuthAuthorizePage({
                   MCPから案件を公開することはできません。公開はFlowLinkの画面から行ってください。
                 </p>
               ) : null}
-              <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                実際に付与される権限は、ログイン中のアカウント種別に応じてFlowLink側で制限されます。
-                今回付与される権限は {grantedScopes.length} 件です。
-              </p>
             </div>
 
             {Object.entries(params).map(([key, value]) =>
