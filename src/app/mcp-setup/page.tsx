@@ -42,7 +42,7 @@ export default function McpSetupPage() {
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
             <p className="font-bold">利用にはFlowLinkへのログインが必要です。</p>
             <p className="mt-1">
-              MCPクライアントにURLを設定すると、接続時にFlowLinkのOAuth認可画面が開きます。ログイン後、利用するツールに必要な権限を許可してください。
+              MCPクライアントにURLを設定すると、接続時にFlowLinkのOAuth認可画面が開きます。ログイン後、表示された権限内容を確認して許可してください。
             </p>
           </div>
 
