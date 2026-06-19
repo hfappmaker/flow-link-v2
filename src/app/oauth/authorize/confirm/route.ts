@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const url = new URL(redirectUri);
   url.searchParams.set("code", code);
   if (state) url.searchParams.set("state", state);
-  return NextResponse.redirect(url, { status: 303 });
+  return redirectToOAuthClient(url, { success: true });
 }
 
 async function validateRequest({
@@ -151,10 +151,127 @@ function redirectWithError(redirectUri: string, error: string, state: string) {
   }
   url.searchParams.set("error", error);
   if (state) url.searchParams.set("state", state);
-  return NextResponse.redirect(url, { status: 303 });
+  return redirectToOAuthClient(url, { success: false });
 }
 
 function stringValue(form: FormData, key: string) {
   const value = form.get(key);
   return typeof value === "string" ? value : "";
+}
+
+function redirectToOAuthClient(url: URL, { success }: { success: boolean }) {
+  if (["http:", "https:"].includes(url.protocol)) {
+    return NextResponse.redirect(url, { status: 303 });
+  }
+
+  return new NextResponse(oAuthClientCallbackHtml(url, success), {
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+}
+
+function oAuthClientCallbackHtml(url: URL, success: boolean) {
+  const callbackUrl = url.toString();
+  const title = success ? "FlowLink MCP連携が完了しました" : "FlowLink MCP連携を完了できませんでした";
+  const message = success
+    ? "MCPクライアントに認証結果を戻しています。このタブは閉じても大丈夫です。"
+    : "MCPクライアントにエラー内容を戻しています。このタブは閉じても大丈夫です。";
+
+  return `<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        align-items: center;
+        background: #f8fafc;
+        color: #0f172a;
+        display: flex;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+      }
+      main {
+        max-width: 520px;
+        padding: 32px;
+        text-align: center;
+      }
+      .mark {
+        align-items: center;
+        background: ${success ? "#16a34a" : "#dc2626"};
+        border-radius: 999px;
+        color: white;
+        display: inline-flex;
+        font-size: 28px;
+        font-weight: 800;
+        height: 64px;
+        justify-content: center;
+        width: 64px;
+      }
+      h1 {
+        font-size: 28px;
+        line-height: 1.25;
+        margin: 24px 0 12px;
+      }
+      p {
+        color: #475569;
+        font-size: 15px;
+        line-height: 1.8;
+        margin: 0;
+      }
+      a {
+        align-items: center;
+        background: #2563eb;
+        border-radius: 8px;
+        color: white;
+        display: inline-flex;
+        font-size: 14px;
+        font-weight: 700;
+        justify-content: center;
+        margin-top: 24px;
+        min-height: 44px;
+        padding: 0 18px;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark">${success ? "✓" : "!"}</div>
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(message)}</p>
+      <a href="${escapeHtml(callbackUrl)}">MCPクライアントを開く</a>
+    </main>
+    <script>
+      window.setTimeout(function () {
+        window.location.href = ${JSON.stringify(callbackUrl)};
+      }, 100);
+    </script>
+  </body>
+</html>`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
 }
