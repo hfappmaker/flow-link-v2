@@ -12,6 +12,14 @@ export const OAUTH_SCOPES = [
 ] as const;
 export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 
+export const MCP_ENDPOINTS = ["company", "engineer"] as const;
+export type McpEndpoint = (typeof MCP_ENDPOINTS)[number];
+
+const PROTECTED_RESOURCE_SCOPES = {
+  company: ["company_profile:read", "project:read", "engineer_search:read"],
+  engineer: ["engineer_profile:read"],
+} satisfies Record<McpEndpoint, OAuthScope[]>;
+
 export const AUTHORIZATION_CODE_TTL_SECONDS = 5 * 60;
 export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -67,8 +75,53 @@ export function isAllowedOAuthOrigin(origin: string) {
   }
 }
 
-export function getMcpResourceUrl(requestOrOrigin?: Request | string) {
-  return `${getOAuthIssuer(requestOrOrigin)}/api/mcp`;
+function isMcpEndpoint(value: string | undefined): value is McpEndpoint {
+  return MCP_ENDPOINTS.includes(value as McpEndpoint);
+}
+
+export function getMcpEndpointFromRequest(requestOrOrigin?: Request | string): McpEndpoint {
+  if (requestOrOrigin && typeof requestOrOrigin !== "string") {
+    const url = new URL(requestOrOrigin.url);
+    const endpoint = parseMcpEndpointFromPath(url.pathname);
+    if (endpoint) return endpoint;
+  }
+
+  if (typeof requestOrOrigin === "string") {
+    try {
+      const url = new URL(requestOrOrigin);
+      const endpoint = parseMcpEndpointFromPath(url.pathname);
+      if (endpoint) return endpoint;
+    } catch {
+      // A plain origin string has no persona path, so use the company endpoint.
+    }
+  }
+
+  return "company";
+}
+
+function parseMcpEndpointFromPath(pathname: string) {
+  const directMatch = pathname.match(/^\/api\/mcp\/([^/]+)$/);
+  if (isMcpEndpoint(directMatch?.[1])) return directMatch[1];
+
+  const metadataMatch = pathname.match(/^\/\.well-known\/oauth-protected-resource\/api\/mcp\/([^/]+)$/);
+  if (isMcpEndpoint(metadataMatch?.[1])) return metadataMatch[1];
+
+  return null;
+}
+
+export function getMcpResourceUrl(requestOrOrigin?: Request | string, endpoint = getMcpEndpointFromRequest(requestOrOrigin)) {
+  return `${getOAuthIssuer(requestOrOrigin)}/api/mcp/${endpoint}`;
+}
+
+export function getMcpResourceUrls(requestOrOrigin?: Request | string) {
+  return MCP_ENDPOINTS.map((endpoint) => getMcpResourceUrl(requestOrOrigin, endpoint));
+}
+
+export function getMcpResourceMetadataUrl(
+  requestOrOrigin?: Request | string,
+  endpoint = getMcpEndpointFromRequest(requestOrOrigin),
+) {
+  return `${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`;
 }
 
 export function normalizeOAuthResource(value: string) {
@@ -89,10 +142,11 @@ export function isValidMcpResource(value: string) {
   if (!normalized) return false;
 
   const url = new URL(normalized);
-  if (url.pathname !== "/api/mcp") return false;
+  const endpoint = parseMcpEndpointFromPath(url.pathname);
+  if (!endpoint) return false;
   if (!isAllowedOAuthOrigin(url.origin)) return false;
 
-  return normalized === normalizeOAuthResource(getMcpResourceUrl(url.origin));
+  return normalized === normalizeOAuthResource(getMcpResourceUrl(url.origin, endpoint));
 }
 
 export function isSameOAuthResource(left: string, right: string) {
@@ -109,7 +163,7 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
     token_endpoint: `${issuer}/oauth/token`,
     registration_endpoint: `${issuer}/oauth/register`,
     revocation_endpoint: `${issuer}/oauth/revoke`,
-    protected_resources: [getMcpResourceUrl(issuer)],
+    protected_resources: getMcpResourceUrls(issuer),
     scopes_supported: OAUTH_SCOPES,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
@@ -120,12 +174,21 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
 
 export function getProtectedResourceMetadata(requestOrOrigin?: Request | string) {
   const issuer = getOAuthIssuer(requestOrOrigin);
+  const endpoint = getMcpEndpointFromRequest(requestOrOrigin);
   return {
-    resource: getMcpResourceUrl(issuer),
+    resource: getMcpResourceUrl(issuer, endpoint),
     authorization_servers: [issuer],
-    scopes_supported: OAUTH_SCOPES,
+    scopes_supported: PROTECTED_RESOURCE_SCOPES[endpoint],
     bearer_methods_supported: ["header"],
   };
+}
+
+export function getDefaultScopesForMcpResource(resource: string) {
+  const normalized = normalizeOAuthResource(resource);
+  if (!normalized) return ["project:read"] satisfies OAuthScope[];
+
+  const endpoint = parseMcpEndpointFromPath(new URL(normalized).pathname);
+  return endpoint ? PROTECTED_RESOURCE_SCOPES[endpoint] : (["project:read"] satisfies OAuthScope[]);
 }
 
 function quoteWwwAuthenticateValue(value: string) {
@@ -147,7 +210,7 @@ export function getWwwAuthenticateHeader(
     params.push(`scope=${quoteWwwAuthenticateValue(scope)}`);
   }
   params.push(
-    `resource_metadata=${quoteWwwAuthenticateValue(`${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource/api/mcp`)}`,
+    `resource_metadata=${quoteWwwAuthenticateValue(getMcpResourceMetadataUrl(requestOrOrigin))}`,
   );
   if (options?.errorDescription) {
     params.push(`error_description=${quoteWwwAuthenticateValue(options.errorDescription)}`);

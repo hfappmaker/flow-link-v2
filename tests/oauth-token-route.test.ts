@@ -7,7 +7,7 @@ describe("OAuth token endpoint", () => {
     const body = new URLSearchParams({
       grant_type: "refresh_token",
       client_id: "cursor-client",
-      resource: "https://flowlink.flowtech.co.jp/api/mcp",
+      resource: "https://flowlink.flowtech.co.jp/api/mcp/company",
     });
     const response = await POST(
       new Request("https://flowlink.flowtech.co.jp/oauth/token", {

@@ -29,7 +29,10 @@ describe("MCP OAuth helpers", () => {
       assert.equal(authMetadata.issuer, "https://flowlink.flowtech.co.jp");
       assert.equal(authMetadata.authorization_endpoint, "https://flowlink.flowtech.co.jp/oauth/authorize");
       assert.equal(authMetadata.revocation_endpoint, "https://flowlink.flowtech.co.jp/oauth/revoke");
-      assert.deepEqual(authMetadata.protected_resources, ["https://flowlink.flowtech.co.jp/api/mcp"]);
+      assert.deepEqual(authMetadata.protected_resources, [
+        "https://flowlink.flowtech.co.jp/api/mcp/company",
+        "https://flowlink.flowtech.co.jp/api/mcp/engineer",
+      ]);
       assert.deepEqual(authMetadata.scopes_supported, [
         "company_profile:read",
         "company_profile:write",
@@ -42,8 +45,13 @@ describe("MCP OAuth helpers", () => {
       assert.deepEqual(authMetadata.code_challenge_methods_supported, ["S256"]);
 
       const resourceMetadata = getProtectedResourceMetadata();
-      assert.equal(resourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp");
+      assert.equal(resourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp/company");
       assert.deepEqual(resourceMetadata.authorization_servers, ["https://flowlink.flowtech.co.jp"]);
+      assert.deepEqual(resourceMetadata.scopes_supported, [
+        "company_profile:read",
+        "project:read",
+        "engineer_search:read",
+      ]);
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
       else process.env.OAUTH_ISSUER = previousIssuer;
@@ -57,7 +65,9 @@ describe("MCP OAuth helpers", () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
 
     try {
-      const request = new Request("https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource");
+      const request = new Request(
+        "https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company",
+      );
       const authMetadata = getOAuthMetadata(request);
       assert.equal(authMetadata.issuer, "https://flow-link-v2-git-develop-example.vercel.app");
       assert.equal(
@@ -66,8 +76,13 @@ describe("MCP OAuth helpers", () => {
       );
 
       const resourceMetadata = getProtectedResourceMetadata(request);
-      assert.equal(resourceMetadata.resource, "https://flow-link-v2-git-develop-example.vercel.app/api/mcp");
+      assert.equal(resourceMetadata.resource, "https://flow-link-v2-git-develop-example.vercel.app/api/mcp/company");
       assert.deepEqual(resourceMetadata.authorization_servers, ["https://flow-link-v2-git-develop-example.vercel.app"]);
+      assert.deepEqual(resourceMetadata.scopes_supported, [
+        "company_profile:read",
+        "project:read",
+        "engineer_search:read",
+      ]);
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
       else process.env.OAUTH_ISSUER = previousIssuer;
@@ -88,7 +103,7 @@ describe("MCP OAuth helpers", () => {
       assert.equal(authMetadata.issuer, "https://flowlink.flowtech.co.jp");
 
       const resourceMetadata = getProtectedResourceMetadata(request);
-      assert.equal(resourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp");
+      assert.equal(resourceMetadata.resource, "https://flowlink.flowtech.co.jp/api/mcp/company");
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
       else process.env.OAUTH_ISSUER = previousIssuer;
@@ -128,21 +143,28 @@ describe("MCP OAuth helpers", () => {
       normalizeOAuthResource("HTTPS://FLOW-LINK-V2-GIT-DEVELOP-EXAMPLE.VERCEL.APP/api/mcp"),
       "https://flow-link-v2-git-develop-example.vercel.app/api/mcp",
     );
-    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp"), true);
-    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp#token"), false);
+    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp"), false);
+    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp/company"), true);
+    assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/mcp/company#token"), false);
     assert.equal(isValidMcpResource("https://flow-link-v2-git-develop-example.vercel.app/api/other"), false);
-    assert.equal(isSameOAuthResource("HTTPS://FLOW-LINK-V2-GIT-DEVELOP-EXAMPLE.VERCEL.APP/api/mcp", "https://flow-link-v2-git-develop-example.vercel.app/api/mcp"), true);
+    assert.equal(
+      isSameOAuthResource(
+        "HTTPS://FLOW-LINK-V2-GIT-DEVELOP-EXAMPLE.VERCEL.APP/api/mcp/company",
+        "https://flow-link-v2-git-develop-example.vercel.app/api/mcp/company",
+      ),
+      true,
+    );
   });
 
   it("builds WWW-Authenticate challenges with MCP resource metadata and scope", () => {
-    const request = new Request("https://flow-link-v2-git-develop-example.vercel.app/api/mcp");
+    const request = new Request("https://flow-link-v2-git-develop-example.vercel.app/api/mcp/company");
     assert.equal(
       getWwwAuthenticateHeader(request, {
         error: "insufficient_scope",
         scope: "project:write",
         errorDescription: "Missing required scope: project:write",
       }),
-      'Bearer error="insufficient_scope", scope="project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp", error_description="Missing required scope: project:write"',
+      'Bearer error="insufficient_scope", scope="project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company", error_description="Missing required scope: project:write"',
     );
   });
 
@@ -198,21 +220,22 @@ describe("MCP OAuth helpers", () => {
         clientId: "client-1",
         userId: "user-1",
         companyId: "company-1",
-        resource: "https://flowlink.flowtech.co.jp/api/mcp",
+        resource: "https://flowlink.flowtech.co.jp/api/mcp/company",
         scope: "project:read project:write",
       });
 
-      const auth = verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp"));
+      const auth = verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp/company"));
       assert.deepEqual(auth, {
         clientId: "client-1",
         userId: "user-1",
         companyId: "company-1",
-        resource: "https://flowlink.flowtech.co.jp/api/mcp",
+        resource: "https://flowlink.flowtech.co.jp/api/mcp/company",
         scopes: ["project:read", "project:write"],
       });
-      assert.equal(verifyMcpAccessToken(`${token}x`, new Request("https://flowlink.flowtech.co.jp/api/mcp")), null);
+      assert.equal(verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp/engineer")), null);
+      assert.equal(verifyMcpAccessToken(`${token}x`, new Request("https://flowlink.flowtech.co.jp/api/mcp/company")), null);
       process.env.AUTH_SECRET = "different-secret";
-      assert.equal(verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp")), null);
+      assert.equal(verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp/company")), null);
     } finally {
       if (previousSecret === undefined) delete process.env.AUTH_SECRET;
       else process.env.AUTH_SECRET = previousSecret;
@@ -230,7 +253,7 @@ describe("MCP OAuth helpers", () => {
         userId: "user-1",
         clientId: "client-1",
         redirectUri: "https://example.com/callback",
-        resource: "https://flowlink.flowtech.co.jp/api/mcp",
+        resource: "https://flowlink.flowtech.co.jp/api/mcp/engineer",
         scope: "project:read",
         codeChallenge: "challenge",
         codeChallengeMethod: "S256",

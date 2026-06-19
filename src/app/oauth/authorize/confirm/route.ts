@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import {
   AUTHORIZATION_CODE_TTL_SECONDS,
   filterAllowedScopes,
+  getDefaultScopesForMcpResource,
   hashToken,
   isValidMcpResource,
   normalizeOAuthResource,
@@ -115,7 +116,7 @@ async function validateRequest({
     return { ok: false as const, error: "invalid_request" };
   }
 
-  const requestedScopes = normalizeScopes(requestedScope, ["company_profile:read"]);
+  const requestedScopes = normalizeScopes(requestedScope, getDefaultScopesForMcpResource(resource));
   const clientScopes = normalizeScopes(client.scope, [...OAUTH_SCOPES]);
   if (!requestedScopes || !clientScopes || requestedScopes.some((scope) => !clientScopes.includes(scope))) {
     return { ok: false as const, error: "invalid_scope" };

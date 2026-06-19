@@ -8,6 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { FlowLinkMark } from "@/components/flow-link-logo";
 import {
   createOAuthConsentToken,
+  getDefaultScopesForMcpResource,
   getAllowedScopesForSubject,
   isValidMcpResource,
   normalizeScopes,
@@ -196,7 +197,7 @@ async function validateAuthorizeParams(params: AuthorizeParams) {
     return { ok: false as const, message: "このクライアントに登録されていないredirect_uriです。" };
   }
 
-  const scopes = normalizeScopes(params.scope, ["company_profile:read"]);
+  const scopes = normalizeScopes(params.scope, getDefaultScopesForMcpResource(params.resource));
   if (!scopes) return { ok: false as const, message: "未対応のscopeです。" };
 
   const clientScopes = normalizeScopes(client.scope, [...OAUTH_SCOPES]);
