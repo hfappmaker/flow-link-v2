@@ -15,10 +15,10 @@ import {
   WORK_STATUS_LABELS,
 } from "@/lib/constants";
 
-function CustomSkillTagsInput() {
+function CustomSkillTagsInput({ initialTags }: { initialTags: string[] }) {
   const inputId = useId();
   const [inputValue, setInputValue] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(initialTags);
 
   const addTags = (rawValue: string) => {
     const nextTags = rawValue
@@ -567,7 +567,7 @@ export function EngineerProfileForm({
             </div>
           </div>
         ))}
-        <CustomSkillTagsInput />
+        <CustomSkillTagsInput initialTags={profile.customSkillNames} />
       </section>
 
       <WorkHistoryFields histories={workHistories} />

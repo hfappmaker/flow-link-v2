@@ -216,8 +216,9 @@ model EngineerProfile {
   portfolioUrl      String?
   isPublic          Boolean     @default(false) // 企業からの検索・スカウトを許可
 
-  skills        EngineerSkill[]
-  workHistories WorkHistory[]
+  skills           EngineerSkill[]
+  customSkillNames String[] @default([])
+  workHistories    WorkHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

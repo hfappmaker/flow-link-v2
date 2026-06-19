@@ -12,6 +12,7 @@ import { ScoutStatusBadge } from "@/components/status-badges";
 import { buttonClasses } from "@/components/ui/button";
 import { REMOTE_TYPE_LABELS, WORK_STATUS_LABELS } from "@/lib/constants";
 import { formatDesiredWeeklyDays, formatEngineerTitles, formatRateRange, formatRelative } from "@/lib/format";
+import { uniqueSkillNames } from "@/lib/skill-tags";
 
 export const metadata: Metadata = { title: "エンジニアプロフィール" };
 
@@ -120,13 +121,13 @@ export default async function EngineerDetailPage({
                 </div>
               ) : null}
 
-              {profile.skills.length > 0 ? (
+              {uniqueSkillNames(profile.skills, profile.customSkillNames).length > 0 ? (
                 <div className="mt-4">
                   <p className="mb-2 text-xs font-bold tracking-wide text-slate-500">スキル</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {profile.skills.map(({ skill }) => (
-                      <Badge key={skill.id} tone="gray">
-                        {skill.name}
+                    {uniqueSkillNames(profile.skills, profile.customSkillNames).map((skillName) => (
+                      <Badge key={skillName} tone="gray">
+                        {skillName}
                       </Badge>
                     ))}
                   </div>

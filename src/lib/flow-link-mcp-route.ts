@@ -28,6 +28,7 @@ import {
   resolveProfileSkillIds,
 } from "@/lib/profile-input";
 import { prisma } from "@/lib/prisma";
+import { uniqueSkillNames } from "@/lib/skill-tags";
 
 const DEFAULT_CONTRACT_TYPE = "業務委託";
 const PROTECTED_TOOL_SCOPES = {
@@ -180,7 +181,7 @@ const mcpEngineerProfileInputSchema = {
   isPublic: z.boolean().describe("Whether the engineer profile is visible to companies.").optional(),
   emailNotificationsEnabled: z.boolean().describe("Whether FlowLink email notifications are enabled for the user.").optional(),
   skillIds: z.array(z.string().trim().min(1)).max(50).describe("Existing FlowLink skill IDs to attach.").optional(),
-  skillNames: z.array(z.string().trim().min(1).max(50)).max(20).describe("Skill names to resolve and attach when IDs are not known.").optional(),
+  skillNames: z.array(z.string().trim().min(1).max(50)).max(20).describe("Profile-specific skill tags to attach without adding them to FlowLink's shared skill master.").optional(),
   workHistories: z.array(mcpWorkHistoryInputSchema).max(20).describe("Past work history entries.").optional(),
 };
 
@@ -474,6 +475,7 @@ function engineerProfileOutput(profile: {
   isPublic: boolean;
   updatedAt: Date;
   skills: { skill: { name: string } }[];
+  customSkillNames: string[];
   workHistories: {
     projectName: string;
     role: string | null;
@@ -498,7 +500,8 @@ function engineerProfileOutput(profile: {
     githubUrl: profile.githubUrl,
     portfolioUrl: profile.portfolioUrl,
     isPublic: profile.isPublic,
-    skills: profile.skills.map(({ skill }) => skill.name),
+    skills: uniqueSkillNames(profile.skills, profile.customSkillNames),
+    customSkillNames: profile.customSkillNames,
     workHistories: profile.workHistories,
     updatedAt: profile.updatedAt.toISOString(),
     settingsUrl: new URL("/settings/profile", getAppUrl()).toString(),
@@ -519,6 +522,7 @@ function publicEngineerListItem(profile: {
   workStatus: WorkStatus;
   updatedAt: Date;
   skills: { skill: { name: string } }[];
+  customSkillNames: string[];
 }) {
   return {
     engineerProfileId: profile.id,
@@ -532,7 +536,7 @@ function publicEngineerListItem(profile: {
     desiredWeeklyDays: profile.desiredWeeklyDays,
     remotePreference: profile.remotePreference,
     workStatus: profile.workStatus,
-    skills: profile.skills.map(({ skill }) => skill.name),
+    skills: uniqueSkillNames(profile.skills, profile.customSkillNames),
     updatedAt: profile.updatedAt.toISOString(),
     profileUrl: companyEngineerProfileUrl(profile.id),
   };
@@ -1286,7 +1290,6 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
 
           const profile = await prisma.$transaction(async (tx) => {
             const resolvedSkills = await resolveProfileSkillIds({
-              db: tx,
               skillIds: input.skillIds,
               skillNames: input.skillNames,
             });
@@ -1318,6 +1321,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
               githubUrl: parsed.data.githubUrl || null,
               portfolioUrl: parsed.data.portfolioUrl || null,
               isPublic: parsed.data.isPublic ?? false,
+              customSkillNames: resolvedSkills.customSkillNames,
             };
 
             const savedProfile = await tx.engineerProfile.create({
@@ -1434,7 +1438,6 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
 
           const profile = await prisma.$transaction(async (tx) => {
             const resolvedSkills = await resolveProfileSkillIds({
-              db: tx,
               skillIds: input.skillIds,
               skillNames: input.skillNames,
             });
@@ -1461,6 +1464,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
               githubUrl: parsed.data.githubUrl || null,
               portfolioUrl: parsed.data.portfolioUrl || null,
               isPublic: parsed.data.isPublic ?? false,
+              customSkillNames: resolvedSkills.customSkillNames,
             };
 
             const savedProfile = await tx.engineerProfile.update({

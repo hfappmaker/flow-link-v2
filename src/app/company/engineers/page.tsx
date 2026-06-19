@@ -9,6 +9,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { buttonClasses } from "@/components/ui/button";
 import { EngineerFilters } from "@/components/company/engineer-filters";
 import { REMOTE_TYPE_LABELS, WORK_STATUS_LABELS } from "@/lib/constants";
+import { uniqueSkillNames } from "@/lib/skill-tags";
 import {
   buildEngineerSearchQueryString,
   buildEngineerWhere,
@@ -32,6 +33,10 @@ function isEngineerSkillMatched(
   skillTexts: string[],
 ) {
   return selectedSkillIds.includes(skill.id) || includesSearchText(skill.name, skillTexts);
+}
+
+function isSkillNameMatched(name: string, skillTexts: string[]) {
+  return includesSearchText(name, skillTexts);
 }
 
 function isEngineerTitleMatched(title: string, selectedTitles: string[], titleTexts: string[]) {
@@ -131,19 +136,29 @@ export default async function EngineerSearchPage({
                           .filter(Boolean)
                           .join(" / ")}
                       </p>
-                      {e.skills.length > 0 ? (
+                      {uniqueSkillNames(e.skills, e.customSkillNames).length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {[...e.skills]
+                          {[
+                            ...e.skills.map(({ skill }) => ({
+                              key: skill.id,
+                              name: skill.name,
+                              matched: isEngineerSkillMatched(skill, parsed.skill, parsed.skillText),
+                            })),
+                            ...e.customSkillNames.map((name) => ({
+                              key: `custom-${name}`,
+                              name,
+                              matched: isSkillNameMatched(name, parsed.skillText),
+                            })),
+                          ]
                             .sort((a, b) => {
-                              const aMatched = isEngineerSkillMatched(a.skill, parsed.skill, parsed.skillText);
-                              const bMatched = isEngineerSkillMatched(b.skill, parsed.skill, parsed.skillText);
-                              return Number(bMatched) - Number(aMatched);
+                              return Number(b.matched) - Number(a.matched);
                             })
+                            .filter((item, index, items) => items.findIndex((other) => other.name === item.name) === index)
                             .slice(0, 10)
-                            .map(({ skill }) => (
+                            .map((skill) => (
                               <Badge
-                                key={skill.id}
-                                tone={isEngineerSkillMatched(skill, parsed.skill, parsed.skillText) ? "blue" : "gray"}
+                                key={skill.key}
+                                tone={skill.matched ? "blue" : "gray"}
                               >
                                 {skill.name}
                               </Badge>

@@ -58,6 +58,7 @@ describe("engineer search helpers", () => {
             { displayName: { contains: "React", mode: "insensitive" } },
             { bio: { contains: "React", mode: "insensitive" } },
             { title: { has: "React" } },
+            { customSkillNames: { has: "React" } },
             {
               skills: {
                 some: {
@@ -77,6 +78,7 @@ describe("engineer search helpers", () => {
                 },
               },
             },
+            { customSkillNames: { has: "GraphQL" } },
           ],
         },
         { desiredWeeklyDays: { hasSome: [4] } },

@@ -70,6 +70,7 @@ export function buildEngineerWhere(parsed: ParsedEngineerSearch): Prisma.Enginee
         { displayName: { contains: parsed.q, mode: "insensitive" } },
         { bio: { contains: parsed.q, mode: "insensitive" } },
         { title: { has: parsed.q } },
+        { customSkillNames: { has: parsed.q } },
         { skills: { some: { skill: { name: { contains: parsed.q, mode: "insensitive" } } } } },
       ],
     });
@@ -92,6 +93,7 @@ export function buildEngineerWhere(parsed: ParsedEngineerSearch): Prisma.Enginee
         },
       },
     });
+    skillFilters.push({ customSkillNames: { has: skillText } });
   }
   if (skillFilters.length > 0) and.push({ OR: skillFilters });
 

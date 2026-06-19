@@ -11,6 +11,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { ApplicationStatusBadge } from "@/components/status-badges";
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { formatEngineerTitles, formatRelative } from "@/lib/format";
+import { uniqueSkillNames } from "@/lib/skill-tags";
 
 export const metadata: Metadata = { title: "応募者管理" };
 
@@ -81,11 +82,11 @@ export default async function ApplicantsPage({
                         {formatRelative(a.createdAt)}に応募
                       </span>
                     </div>
-                    {profile && profile.skills.length > 0 ? (
+                    {profile && uniqueSkillNames(profile.skills, profile.customSkillNames).length > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {profile.skills.slice(0, 8).map(({ skill }) => (
-                          <Badge key={skill.id} tone="gray">
-                            {skill.name}
+                        {uniqueSkillNames(profile.skills, profile.customSkillNames).slice(0, 8).map((skillName) => (
+                          <Badge key={skillName} tone="gray">
+                            {skillName}
                           </Badge>
                         ))}
                       </div>

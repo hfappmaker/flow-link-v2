@@ -152,18 +152,6 @@ export async function updateEngineerProfile(
   const selectedSkillIds = [...new Set(formData.getAll("skills").map(String).filter(Boolean))];
 
   await prisma.$transaction(async (tx) => {
-    const customSkillIds = await Promise.all(
-      customSkills.names.map((name) =>
-        tx.skill.upsert({
-          where: { name },
-          update: {},
-          create: { name, category: "OTHER" },
-          select: { id: true },
-        }),
-      ),
-    );
-    const skillIds = [...new Set([...selectedSkillIds, ...customSkillIds.map((skill) => skill.id)])];
-
     await tx.engineerProfile.update({
       where: { id: profile.id },
       data: {
@@ -180,6 +168,7 @@ export async function updateEngineerProfile(
         githubUrl: parsed.data.githubUrl || null,
         portfolioUrl: parsed.data.portfolioUrl || null,
         isPublic: formData.get("isPublic") === "on",
+        customSkillNames: customSkills.names,
       },
     });
     await tx.user.update({
@@ -187,9 +176,9 @@ export async function updateEngineerProfile(
       data: { emailNotificationsEnabled: formData.get("emailNotificationsEnabled") === "on" },
     });
     await tx.engineerSkill.deleteMany({ where: { engineerProfileId: profile.id } });
-    if (skillIds.length > 0) {
+    if (selectedSkillIds.length > 0) {
       await tx.engineerSkill.createMany({
-        data: skillIds.map((skillId) => ({ engineerProfileId: profile.id, skillId })),
+        data: selectedSkillIds.map((skillId) => ({ engineerProfileId: profile.id, skillId })),
       });
     }
     await tx.workHistory.deleteMany({ where: { engineerProfileId: profile.id } });
@@ -301,6 +290,7 @@ export async function deleteAccount(_prev: ActionState, formData: FormData): Pro
           workStatus: "UNAVAILABLE",
           githubUrl: null,
           portfolioUrl: null,
+          customSkillNames: [],
           isPublic: false,
         },
       });
