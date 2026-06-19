@@ -281,33 +281,18 @@ function oAuthClientCallbackHtml(
         line-height: 1.8;
         margin: 0;
       }
-      a {
-        align-items: center;
-        background: #2563eb;
-        border-radius: 8px;
-        color: white;
-        display: inline-flex;
-        font-size: 14px;
-        font-weight: 700;
-        justify-content: center;
-        margin-top: 24px;
-        min-height: 44px;
-        padding: 0 18px;
-        text-decoration: none;
-      }
     </style>
   </head>
   <body>
     <main>
       <div class="app-row">
-        ${htmlAppIcon("/flow-link-icon.png", "FlowLink")}
+        ${htmlAppIcon("/flow-link-mark.svg", "FlowLink")}
         <div class="link-mark">↔</div>
         ${htmlAppIcon(clientLogoUri, displayClientName)}
       </div>
       <div class="mark" aria-hidden="true">${success ? "✓" : "!"}</div>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(message)}</p>
-      <a href="${escapeHtml(callbackUrl)}">${escapeHtml(displayClientName)}を開く</a>
     </main>
     <script>
       window.setTimeout(function () {

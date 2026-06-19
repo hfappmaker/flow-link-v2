@@ -8,7 +8,7 @@ type FlowLinkLogoProps = {
   showText?: boolean;
 };
 
-function FlowLinkMark({ className }: { className?: string }) {
+export function FlowLinkMark({ className }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"

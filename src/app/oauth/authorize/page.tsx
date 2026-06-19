@@ -1,9 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
+import { FlowLinkMark } from "@/components/flow-link-logo";
 import {
   createOAuthConsentToken,
   getAllowedScopesForSubject,
@@ -77,7 +79,7 @@ export default async function OAuthAuthorizePage({
   return (
     <main className="mx-auto max-w-xl px-4 py-12">
       <div className="flex items-center justify-center gap-3">
-        <OAuthAppIcon src="/flow-link-icon.png" name="FlowLink" />
+        <OAuthAppIcon name="FlowLink" mark={<FlowLinkMark className="h-10 w-12" />} />
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">
           ↔
         </span>
@@ -136,10 +138,10 @@ export default async function OAuthAuthorizePage({
   );
 }
 
-function OAuthAppIcon({ src, name }: { src?: string | null; name: string }) {
+function OAuthAppIcon({ mark, src, name }: { mark?: ReactNode; src?: string | null; name: string }) {
   return (
     <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {src ? (
+      {mark ?? (src ? (
         <Image
           src={src}
           alt={`${name} アイコン`}
@@ -150,7 +152,7 @@ function OAuthAppIcon({ src, name }: { src?: string | null; name: string }) {
         />
       ) : (
         <span className="text-xl font-black text-slate-700">{name.trim().charAt(0) || "M"}</span>
-      )}
+      ))}
     </span>
   );
 }
