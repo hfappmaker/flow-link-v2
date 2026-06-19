@@ -7,10 +7,10 @@ import { buttonClasses } from "@/components/ui/button";
 const mcpServers = [
   {
     key: "company",
-    title: "Company MCP",
+    title: "企業向け MCP",
     url: "https://flowlink.flowtech.co.jp/api/mcp/company",
     icon: <Building2 className="h-5 w-5 text-emerald-600" />,
-    description: "Company tools for project search, engineer search, profile management, and draft project management.",
+    description: "案件検索、エンジニア検索、企業プロフィール管理、案件下書き管理に使う企業向けツールです。",
     tools: [
       "search_projects",
       "get_project",
@@ -28,10 +28,10 @@ const mcpServers = [
   },
   {
     key: "engineer",
-    title: "Engineer MCP",
+    title: "エンジニア向け MCP",
     url: "https://flowlink.flowtech.co.jp/api/mcp/engineer",
     icon: <UserRound className="h-5 w-5 text-blue-600" />,
-    description: "Engineer tools for project search and profile management.",
+    description: "案件検索とエンジニアプロフィール管理に使うエンジニア向けツールです。",
     tools: [
       "search_projects",
       "get_project",
@@ -44,8 +44,8 @@ const mcpServers = [
 ];
 
 export const metadata: Metadata = {
-  title: "MCP Setup",
-  description: "FlowLink MCP server URLs and tool groups.",
+  title: "MCP設定",
+  description: "FlowLink MCPのサーバーURLとツール一覧です。",
 };
 
 export default function McpSetupPage() {
@@ -58,10 +58,10 @@ export default function McpSetupPage() {
             FlowLink MCP
           </p>
           <h1 className="mt-5 max-w-3xl text-3xl leading-tight font-black text-slate-900 sm:text-4xl">
-            MCP Server URLs
+            MCPサーバーURL
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
-            FlowLink MCP is split by persona so clients only discover the tools relevant to the selected workflow.
+            FlowLink MCPは利用者別に接続先を分けています。用途に合うURLをMCPクライアントに設定してください。
           </p>
 
           <div className="mt-8 grid gap-3">
@@ -93,7 +93,7 @@ export default function McpSetupPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/projects" className={buttonClasses("primary")}>
             <Search className="h-4 w-4" />
-            Browse Projects
+            案件を探す
           </Link>
         </div>
       </section>
