@@ -217,18 +217,6 @@ function oAuthClientCallbackHtml(
         padding: 32px;
         text-align: center;
       }
-      .mark {
-        align-items: center;
-        background: ${success ? "#16a34a" : "#dc2626"};
-        border-radius: 999px;
-        color: white;
-        display: inline-flex;
-        font-size: 28px;
-        font-weight: 800;
-        height: 64px;
-        justify-content: center;
-        width: 64px;
-      }
       .app-row {
         align-items: center;
         display: flex;
@@ -258,13 +246,13 @@ function oAuthClientCallbackHtml(
         font-size: 24px;
         font-weight: 900;
       }
-      .link-mark {
+      .status-mark {
         align-items: center;
-        background: #0f172a;
+        background: ${success ? "#16a34a" : "#dc2626"};
         border-radius: 999px;
         color: #ffffff;
         display: flex;
-        font-size: 15px;
+        font-size: 18px;
         font-weight: 900;
         height: 32px;
         justify-content: center;
@@ -287,10 +275,9 @@ function oAuthClientCallbackHtml(
     <main>
       <div class="app-row">
         ${htmlAppIcon("/flow-link-mark.svg", "FlowLink")}
-        <div class="link-mark">↔</div>
+        <div class="status-mark">${success ? "✓" : "!"}</div>
         ${htmlAppIcon(clientLogoUri, displayClientName)}
       </div>
-      <div class="mark" aria-hidden="true">${success ? "✓" : "!"}</div>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(message)}</p>
     </main>
