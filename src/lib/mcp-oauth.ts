@@ -108,6 +108,7 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
     token_endpoint: `${issuer}/oauth/token`,
     registration_endpoint: `${issuer}/oauth/register`,
     revocation_endpoint: `${issuer}/oauth/revoke`,
+    protected_resources: [getMcpResourceUrl(issuer)],
     scopes_supported: OAUTH_SCOPES,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
@@ -145,7 +146,7 @@ export function getWwwAuthenticateHeader(
     params.push(`scope=${quoteWwwAuthenticateValue(scope)}`);
   }
   params.push(
-    `resource_metadata=${quoteWwwAuthenticateValue(`${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource`)}`,
+    `resource_metadata=${quoteWwwAuthenticateValue(`${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource/api/mcp`)}`,
   );
   if (options?.errorDescription) {
     params.push(`error_description=${quoteWwwAuthenticateValue(options.errorDescription)}`);

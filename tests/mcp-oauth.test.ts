@@ -28,6 +28,7 @@ describe("MCP OAuth helpers", () => {
       assert.equal(authMetadata.issuer, "https://flowlink.flowtech.co.jp");
       assert.equal(authMetadata.authorization_endpoint, "https://flowlink.flowtech.co.jp/oauth/authorize");
       assert.equal(authMetadata.revocation_endpoint, "https://flowlink.flowtech.co.jp/oauth/revoke");
+      assert.deepEqual(authMetadata.protected_resources, ["https://flowlink.flowtech.co.jp/api/mcp"]);
       assert.deepEqual(authMetadata.scopes_supported, [
         "company_profile:read",
         "company_profile:write",
@@ -132,7 +133,7 @@ describe("MCP OAuth helpers", () => {
         scope: "project:write",
         errorDescription: "Missing required scope: project:write",
       }),
-      'Bearer error="insufficient_scope", scope="project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource", error_description="Missing required scope: project:write"',
+      'Bearer error="insufficient_scope", scope="project:write", resource_metadata="https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp", error_description="Missing required scope: project:write"',
     );
   });
 

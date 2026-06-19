@@ -144,7 +144,7 @@ function protectedToolError(message: string, status = 401) {
           {
             error: message,
             status,
-            resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
+            resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource/api/mcp`,
           },
           null,
           2,
@@ -1433,7 +1433,7 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
           code: -32001,
           message: "Authentication required.",
           data: {
-            resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
+            resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource/api/mcp`,
           },
         },
       },
@@ -1455,7 +1455,7 @@ async function maybeRejectUnauthenticatedProtectedToolCall(request: Request) {
         code: authResult.status === 401 ? -32001 : -32003,
         message: authResult.message,
         data: {
-          resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource`,
+          resourceMetadataUrl: `${getOAuthIssuer(request)}/.well-known/oauth-protected-resource/api/mcp`,
         },
       },
     },
