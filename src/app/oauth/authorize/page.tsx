@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
@@ -70,12 +71,20 @@ export default async function OAuthAuthorizePage({
   });
 
   const clientName = validation.client.clientName ?? "MCPクライアント";
+  const clientLogoUri = validation.client.logoUri;
   const accountName = membership?.company.name ?? engineerProfile?.displayName ?? session.user.email ?? "このアカウント";
 
   return (
     <main className="mx-auto max-w-xl px-4 py-12">
-      <h1 className="text-2xl font-black text-slate-900">FlowLink MCP連携</h1>
-      <p className="mt-2 text-sm text-slate-600">
+      <div className="flex items-center justify-center gap-3">
+        <OAuthAppIcon src="/flow-link-icon.png" name="FlowLink" />
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">
+          ↔
+        </span>
+        <OAuthAppIcon src={clientLogoUri} name={clientName} />
+      </div>
+      <h1 className="mt-5 text-center text-2xl font-black text-slate-900">FlowLink MCP連携</h1>
+      <p className="mt-2 text-center text-sm text-slate-600">
         {clientName} が {accountName} へのアクセス許可をリクエストしています。
       </p>
 
@@ -124,6 +133,25 @@ export default async function OAuthAuthorizePage({
         </CardBody>
       </Card>
     </main>
+  );
+}
+
+function OAuthAppIcon({ src, name }: { src?: string | null; name: string }) {
+  return (
+    <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {src ? (
+        <Image
+          src={src}
+          alt={`${name} アイコン`}
+          width={64}
+          height={64}
+          className="h-full w-full object-contain p-2"
+          unoptimized
+        />
+      ) : (
+        <span className="text-xl font-black text-slate-700">{name.trim().charAt(0) || "M"}</span>
+      )}
+    </span>
   );
 }
 

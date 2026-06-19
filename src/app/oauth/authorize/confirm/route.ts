@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedGrantedScopes = filterAllowedScopes(validation.scopes, subjectKind);
   if (allowedGrantedScopes.length === 0) {
-    return redirectWithError(redirectUri, "access_denied", state);
+    return redirectWithError(redirectUri, "access_denied", state, validation.client);
   }
 
   const code = randomToken();
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const url = new URL(redirectUri);
   url.searchParams.set("code", code);
   if (state) url.searchParams.set("state", state);
-  return redirectToOAuthClient(url, { success: true });
+  return redirectToOAuthClient(url, { client: validation.client, success: true });
 }
 
 async function validateRequest({
@@ -135,14 +135,19 @@ async function validateRequest({
     return { ok: false as const, error: "invalid_request" };
   }
 
-  return { ok: true as const, resource: normalizedResource, scopes: requestedScopes };
+  return { ok: true as const, client, resource: normalizedResource, scopes: requestedScopes };
 }
 
 function isSameConsentResource(left: string, right: string) {
   return normalizeOAuthResource(left) === normalizeOAuthResource(right);
 }
 
-function redirectWithError(redirectUri: string, error: string, state: string) {
+function redirectWithError(
+  redirectUri: string,
+  error: string,
+  state: string,
+  client?: { clientName: string | null; logoUri: string | null },
+) {
   let url: URL;
   try {
     url = new URL(redirectUri);
@@ -151,7 +156,7 @@ function redirectWithError(redirectUri: string, error: string, state: string) {
   }
   url.searchParams.set("error", error);
   if (state) url.searchParams.set("state", state);
-  return redirectToOAuthClient(url, { success: false });
+  return redirectToOAuthClient(url, { client, success: false });
 }
 
 function stringValue(form: FormData, key: string) {
@@ -159,12 +164,15 @@ function stringValue(form: FormData, key: string) {
   return typeof value === "string" ? value : "";
 }
 
-function redirectToOAuthClient(url: URL, { success }: { success: boolean }) {
+function redirectToOAuthClient(
+  url: URL,
+  { client, success }: { client?: { clientName: string | null; logoUri: string | null }; success: boolean },
+) {
   if (["http:", "https:"].includes(url.protocol)) {
     return NextResponse.redirect(url, { status: 303 });
   }
 
-  return new NextResponse(oAuthClientCallbackHtml(url, success), {
+  return new NextResponse(oAuthClientCallbackHtml(url, { client, success }), {
     headers: {
       "Cache-Control": "no-store",
       "Content-Type": "text/html; charset=utf-8",
@@ -172,12 +180,17 @@ function redirectToOAuthClient(url: URL, { success }: { success: boolean }) {
   });
 }
 
-function oAuthClientCallbackHtml(url: URL, success: boolean) {
+function oAuthClientCallbackHtml(
+  url: URL,
+  { client, success }: { client?: { clientName: string | null; logoUri: string | null }; success: boolean },
+) {
   const callbackUrl = url.toString();
+  const displayClientName = client?.clientName?.trim() || "MCPクライアント";
+  const clientLogoUri = client?.logoUri ?? null;
   const title = success ? "FlowLink MCP連携が完了しました" : "FlowLink MCP連携を完了できませんでした";
   const message = success
-    ? "MCPクライアントに認証結果を戻しています。このタブは閉じても大丈夫です。"
-    : "MCPクライアントにエラー内容を戻しています。このタブは閉じても大丈夫です。";
+    ? `${displayClientName}に認証結果を戻しています。このタブは閉じても大丈夫です。`
+    : `${displayClientName}にエラー内容を戻しています。このタブは閉じても大丈夫です。`;
 
   return `<!doctype html>
 <html lang="ja">
@@ -216,6 +229,47 @@ function oAuthClientCallbackHtml(url: URL, success: boolean) {
         justify-content: center;
         width: 64px;
       }
+      .app-row {
+        align-items: center;
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+      }
+      .app-icon {
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+        display: flex;
+        height: 72px;
+        justify-content: center;
+        overflow: hidden;
+        width: 72px;
+      }
+      .app-icon img {
+        height: 100%;
+        object-fit: contain;
+        padding: 10px;
+        width: 100%;
+      }
+      .app-initial {
+        color: #334155;
+        font-size: 24px;
+        font-weight: 900;
+      }
+      .link-mark {
+        align-items: center;
+        background: #0f172a;
+        border-radius: 999px;
+        color: #ffffff;
+        display: flex;
+        font-size: 15px;
+        font-weight: 900;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+      }
       h1 {
         font-size: 28px;
         line-height: 1.25;
@@ -245,10 +299,15 @@ function oAuthClientCallbackHtml(url: URL, success: boolean) {
   </head>
   <body>
     <main>
-      <div class="mark">${success ? "✓" : "!"}</div>
+      <div class="app-row">
+        ${htmlAppIcon("/flow-link-icon.png", "FlowLink")}
+        <div class="link-mark">↔</div>
+        ${htmlAppIcon(clientLogoUri, displayClientName)}
+      </div>
+      <div class="mark" aria-hidden="true">${success ? "✓" : "!"}</div>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(message)}</p>
-      <a href="${escapeHtml(callbackUrl)}">MCPクライアントを開く</a>
+      <a href="${escapeHtml(callbackUrl)}">${escapeHtml(displayClientName)}を開く</a>
     </main>
     <script>
       window.setTimeout(function () {
@@ -257,6 +316,14 @@ function oAuthClientCallbackHtml(url: URL, success: boolean) {
     </script>
   </body>
 </html>`;
+}
+
+function htmlAppIcon(src: string | null | undefined, name: string) {
+  if (src) {
+    return `<div class="app-icon"><img src="${escapeHtml(src)}" alt="${escapeHtml(name)} アイコン" /></div>`;
+  }
+
+  return `<div class="app-icon"><span class="app-initial">${escapeHtml(name.trim().charAt(0) || "M")}</span></div>`;
 }
 
 function escapeHtml(value: string) {
