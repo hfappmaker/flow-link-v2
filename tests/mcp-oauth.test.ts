@@ -3,11 +3,13 @@ import { describe, it } from "node:test";
 import {
   createOAuthConsentToken,
   getAllowedScopesForSubject,
+  getMcpEndpointFromResource,
   getOAuthMetadata,
   getProtectedResourceMetadata,
   getWwwAuthenticateHeader,
   filterValidRedirectUris,
   issueMcpAccessToken,
+  isMcpResourceAllowedForSubject,
   isSameOAuthResource,
   isValidMcpResource,
   isValidRedirectUri,
@@ -136,6 +138,19 @@ describe("MCP OAuth helpers", () => {
     assert.equal(getAllowedScopesForSubject("company").includes("engineer_search:read"), true);
     assert.equal(getAllowedScopesForSubject("engineer").includes("engineer_search:read"), false);
     assert.equal(getAllowedScopesForSubject("unregistered").includes("engineer_search:read"), false);
+  });
+
+  it("allows MCP resources only for matching account personas", () => {
+    const companyResource = "https://flowlink.flowtech.co.jp/api/mcp/company";
+    const engineerResource = "https://flowlink.flowtech.co.jp/api/mcp/engineer";
+
+    assert.equal(getMcpEndpointFromResource(companyResource), "company");
+    assert.equal(getMcpEndpointFromResource(engineerResource), "engineer");
+    assert.equal(isMcpResourceAllowedForSubject(companyResource, "company"), true);
+    assert.equal(isMcpResourceAllowedForSubject(companyResource, "engineer"), false);
+    assert.equal(isMcpResourceAllowedForSubject(engineerResource, "engineer"), true);
+    assert.equal(isMcpResourceAllowedForSubject(engineerResource, "company"), false);
+    assert.equal(isMcpResourceAllowedForSubject(engineerResource, "unregistered"), false);
   });
 
   it("validates MCP resource indicators for audience binding", () => {

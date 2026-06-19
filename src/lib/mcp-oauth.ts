@@ -109,6 +109,20 @@ function parseMcpEndpointFromPath(pathname: string) {
   return null;
 }
 
+export function getMcpEndpointFromResource(resource: string) {
+  const normalized = normalizeOAuthResource(resource);
+  if (!normalized) return null;
+  return parseMcpEndpointFromPath(new URL(normalized).pathname);
+}
+
+export function isMcpResourceAllowedForSubject(resource: string, kind: OAuthSubjectKind) {
+  const endpoint = getMcpEndpointFromResource(resource);
+  if (!endpoint) return false;
+  if (endpoint === "company") return kind === "company";
+  if (endpoint === "engineer") return kind === "engineer";
+  return false;
+}
+
 export function getMcpResourceUrl(requestOrOrigin?: Request | string, endpoint = getMcpEndpointFromRequest(requestOrOrigin)) {
   return `${getOAuthIssuer(requestOrOrigin)}/api/mcp/${endpoint}`;
 }

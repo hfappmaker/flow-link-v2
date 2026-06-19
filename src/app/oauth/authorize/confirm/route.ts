@@ -5,6 +5,7 @@ import {
   filterAllowedScopes,
   getDefaultScopesForMcpResource,
   hashToken,
+  isMcpResourceAllowedForSubject,
   isValidMcpResource,
   normalizeOAuthResource,
   normalizeScopes,
@@ -56,6 +57,10 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
+  if (!isMcpResourceAllowedForSubject(validation.resource, subjectKind)) {
+    return redirectWithError(redirectUri, "access_denied", state, validation.client);
+  }
+
   const allowedGrantedScopes = filterAllowedScopes(validation.scopes, subjectKind);
   if (allowedGrantedScopes.length === 0) {
     return redirectWithError(redirectUri, "access_denied", state, validation.client);

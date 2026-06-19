@@ -4,12 +4,14 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
   hashToken,
   issueMcpAccessToken,
+  isMcpResourceAllowedForSubject,
   isSameOAuthResource,
   isValidMcpResource,
   normalizeOAuthResource,
   randomToken,
   secondsFromNow,
   verifyPkceS256,
+  type OAuthSubjectKind,
 } from "@/lib/mcp-oauth";
 import { prisma } from "@/lib/prisma";
 
@@ -95,6 +97,15 @@ async function exchangeAuthorizationCode(form: FormData) {
     return oauthError("invalid_grant", "PKCE verification failed.", 400);
   }
 
+  const subjectKind = await getTokenSubjectKind(codeRecord.userId, codeRecord.companyId);
+  if (!isMcpResourceAllowedForSubject(resource, subjectKind)) {
+    logTokenExchangeIssue("authorization_code_resource_forbidden_for_subject", {
+      resource,
+      subjectKind,
+    });
+    return oauthError("invalid_grant", "Authorization code is not valid for this resource.", 400);
+  }
+
   const refreshToken = randomToken();
   const tokenResource = normalizeOAuthResource(resource)!;
   const accessToken = issueMcpAccessToken({
@@ -169,6 +180,15 @@ async function refreshAccessToken(form: FormData) {
     return oauthError("invalid_grant", "Refresh token has expired.", 400);
   }
 
+  const subjectKind = await getTokenSubjectKind(tokenRecord.userId, tokenRecord.companyId);
+  if (!isMcpResourceAllowedForSubject(resource, subjectKind)) {
+    logTokenExchangeIssue("refresh_token_resource_forbidden_for_subject", {
+      resource,
+      subjectKind,
+    });
+    return oauthError("invalid_grant", "Refresh token is not valid for this resource.", 400);
+  }
+
   const nextRefreshToken = randomToken();
   const tokenResource = normalizeOAuthResource(resource)!;
   const accessToken = issueMcpAccessToken({
@@ -227,6 +247,16 @@ function oauthError(error: string, errorDescription: string, status: number) {
       },
     },
   );
+}
+
+async function getTokenSubjectKind(userId: string, companyId: string | null): Promise<OAuthSubjectKind> {
+  if (companyId) return "company";
+
+  const engineerProfile = await prisma.engineerProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  return engineerProfile ? "engineer" : "unregistered";
 }
 
 function logTokenExchangeIssue(reason: string, details: Record<string, unknown> = {}) {

@@ -10,6 +10,7 @@ import {
   createOAuthConsentToken,
   getDefaultScopesForMcpResource,
   getAllowedScopesForSubject,
+  isMcpResourceAllowedForSubject,
   isValidMcpResource,
   normalizeScopes,
   OAUTH_SCOPES,
@@ -61,6 +62,10 @@ export default async function OAuthAuthorizePage({
     }),
   ]);
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
+  if (!isMcpResourceAllowedForSubject(params.resource!, subjectKind)) {
+    return <AuthorizeError message="このMCP接続先は、現在ログインしているアカウント種別では利用できません。" />;
+  }
+
   const allowedScopes = getAllowedScopesForSubject(subjectKind);
   const visibleScopes = validation.scopes.filter((scope) => allowedScopes.includes(scope));
   const consentToken = createOAuthConsentToken({
