@@ -55,6 +55,10 @@ export default function McpPage() {
             企業向けエンジニア検索、企業案件の下書き作成・更新を利用できます。
           </p>
 
+          <p className="mt-5 inline-flex rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+            MCPの利用にはFlowLinkアカウントの登録とログインが必要です。
+          </p>
+
           <div className="mt-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
               MCP Server URL

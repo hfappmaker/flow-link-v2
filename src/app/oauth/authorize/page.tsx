@@ -103,7 +103,7 @@ export default async function OAuthAuthorizePage({
                 ))}
               </div>
 
-              {validation.scopes.some((scope) => scope.startsWith("project:")) ? (
+              {subjectKind === "company" && visibleScopes.some((scope) => scope.startsWith("project:")) ? (
                 <p className="mt-3 text-xs leading-relaxed text-slate-500">
                   MCPから案件を公開することはできません。公開はFlowLinkの画面から行ってください。
                 </p>
