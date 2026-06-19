@@ -647,6 +647,55 @@ export function EngineerProfileSettingsSkeleton() {
   );
 }
 
+export function CompanySettingsSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading</span>
+      <Skeleton className="h-8 w-44 max-w-full" />
+      <Skeleton className="mt-3 h-4 w-[34rem] max-w-full" />
+      <Skeleton className="mt-2 h-4 w-[28rem] max-w-full sm:hidden" />
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-4">
+          <FieldSkeleton />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldSkeleton />
+            <FieldSkeleton />
+          </div>
+          <FieldSkeleton />
+          <div>
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-2 h-36 w-full rounded-lg" />
+          </div>
+          <section className="space-y-3 border-t border-slate-200 pt-4">
+            <Skeleton className="h-5 w-24" />
+            <div className="flex items-start gap-3">
+              <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded" />
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-72 max-w-full" />
+                <Skeleton className="mt-2 h-3 w-[30rem] max-w-full" />
+              </div>
+            </div>
+          </section>
+          <Skeleton className="h-11 w-44 rounded-lg" />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-red-200 bg-white p-6 shadow-sm">
+        <Skeleton className="h-5 w-16 bg-red-100" />
+        <div className="mt-4 space-y-4">
+          <Skeleton className="h-20 w-full rounded-lg bg-red-100" />
+          <div className="flex items-start gap-3">
+            <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded bg-red-100" />
+            <Skeleton className="h-4 w-[28rem] max-w-full" />
+          </div>
+          <Skeleton className="h-10 w-28 rounded-lg bg-red-100" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PanelSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
