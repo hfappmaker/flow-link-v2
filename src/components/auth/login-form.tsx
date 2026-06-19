@@ -7,7 +7,13 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 
-type LoginNotice = "registered" | "verified" | "invalid-verification" | "reset";
+type LoginNotice =
+  | "registered"
+  | "verified"
+  | "invalid-verification"
+  | "reset"
+  | "oauth-canceled"
+  | "oauth-error";
 
 export function LoginForm({
   notice,
@@ -29,7 +35,11 @@ export function LoginForm({
           ? "認証リンクが無効、または有効期限が切れています。必要に応じて認証メールを再送してください。"
           : notice === "reset"
             ? "パスワードを更新しました。新しいパスワードでログインしてください。"
-            : null,
+            : notice === "oauth-canceled"
+              ? "外部アカウントでのログインをキャンセルしました。"
+              : notice === "oauth-error"
+                ? "外部アカウントでのログインを完了できませんでした。時間をおいて再度お試しください。"
+                : null,
   );
   const [pending, setPending] = useState(false);
   const [resendPending, setResendPending] = useState(false);
