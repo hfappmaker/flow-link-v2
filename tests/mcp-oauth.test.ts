@@ -152,22 +152,27 @@ describe("MCP OAuth helpers", () => {
     assert.equal(isValidRedirectUri("http://127.0.0.1:8787/callback"), true);
     assert.equal(isValidRedirectUri("http://example.com/callback"), false);
     assert.equal(isValidRedirectUri("cursor://anysphere.cursor-mcp/oauth/callback"), true);
-    assert.equal(isValidRedirectUri("cursor://example.com/oauth/callback"), false);
-    assert.equal(isValidRedirectUri("com.example.app:/oauth/callback"), false);
+    assert.equal(isValidRedirectUri("cursor://example.com/oauth/callback"), true);
+    assert.equal(isValidRedirectUri("com.example.app:/oauth/callback"), true);
+    assert.equal(isValidRedirectUri("data:text/plain,callback"), false);
+    assert.equal(isValidRedirectUri("blob:https://example.com/callback"), false);
     assert.equal(isValidRedirectUri("javascript:alert(1)"), false);
     assert.equal(isValidRedirectUri("file:///tmp/callback"), false);
     assert.equal(isValidRedirectUri("https://example.com/callback#fragment"), false);
   });
 
-  it("filters redirect URIs to HTTPS and loopback HTTP for dynamic registration input", () => {
+  it("filters redirect URIs to supported web and private-use schemes for dynamic registration input", () => {
     assert.deepEqual(
       filterValidRedirectUris([
         "cursor://anysphere.cursor-mcp/oauth/callback",
+        "com.example.app:/oauth/callback",
+        "javascript:alert(1)",
         "https://www.cursor.com/agents/mcp/oauth/callback",
         "http://localhost:8787/callback",
       ]),
       [
         "cursor://anysphere.cursor-mcp/oauth/callback",
+        "com.example.app:/oauth/callback",
         "https://www.cursor.com/agents/mcp/oauth/callback",
         "http://localhost:8787/callback",
       ],

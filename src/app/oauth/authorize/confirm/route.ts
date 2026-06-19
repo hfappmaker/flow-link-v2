@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const url = new URL(redirectUri);
   url.searchParams.set("code", code);
   if (state) url.searchParams.set("state", state);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, { status: 303 });
 }
 
 async function validateRequest({
@@ -151,7 +151,7 @@ function redirectWithError(redirectUri: string, error: string, state: string) {
   }
   url.searchParams.set("error", error);
   if (state) url.searchParams.set("state", state);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, { status: 303 });
 }
 
 function stringValue(form: FormData, key: string) {
