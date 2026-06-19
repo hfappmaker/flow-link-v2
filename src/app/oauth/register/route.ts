@@ -3,6 +3,11 @@ import { filterValidRedirectUris, normalizeScopes, randomToken, scopeString } fr
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
+const MAX_REDIRECT_URIS = 10;
+const MAX_METADATA_URL_LENGTH = 1000;
+const REGISTRATION_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const REGISTRATION_RATE_LIMIT_MAX = 20;
+const registrationAttempts = new Map<string, { count: number; resetAt: number }>();
 
 type ClientRegistrationRequest = {
   client_name?: string;
@@ -15,15 +20,21 @@ type ClientRegistrationRequest = {
   logo_uri?: string;
 };
 
-function optionalString(value: unknown) {
-  return typeof value === "string" ? value : undefined;
-}
-
 export async function POST(request: Request) {
+  const rateLimit = checkRegistrationRateLimit(request);
+  if (!rateLimit.ok) {
+    return oauthError("slow_down", "Too many client registrations. Try again later.", 429, {
+      "Retry-After": String(rateLimit.retryAfter),
+    });
+  }
+
   const body = (await request.json().catch(() => null)) as ClientRegistrationRequest | null;
   if (!body) return oauthError("invalid_client_metadata", "Request body must be JSON.", 400);
   if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
     return oauthError("invalid_redirect_uri", "redirect_uris is required.", 400);
+  }
+  if (body.redirect_uris.length > MAX_REDIRECT_URIS) {
+    return oauthError("invalid_redirect_uri", `redirect_uris must contain at most ${MAX_REDIRECT_URIS} entries.`, 400);
   }
   if (body.redirect_uris.some((uri) => typeof uri !== "string")) {
     return oauthError("invalid_redirect_uri", "redirect_uris must contain only strings.", 400);
@@ -45,6 +56,12 @@ export async function POST(request: Request) {
     return oauthError("invalid_client_metadata", "Only public PKCE clients are supported.", 400);
   }
 
+  const clientUri = optionalMetadataUrl(body.client_uri);
+  const logoUri = optionalMetadataUrl(body.logo_uri);
+  if (clientUri === null || logoUri === null) {
+    return oauthError("invalid_client_metadata", "client_uri and logo_uri must be HTTPS URLs when provided.", 400);
+  }
+
   const scopes = normalizeScopes(body.scope, [
     "company_profile:read",
     "company_profile:write",
@@ -64,8 +81,8 @@ export async function POST(request: Request) {
       responseTypes,
       tokenEndpointAuthMethod: "none",
       scope: scopeString(scopes),
-      clientUri: optionalString(body.client_uri),
-      logoUri: optionalString(body.logo_uri),
+      clientUri,
+      logoUri,
     },
   });
 
@@ -85,6 +102,39 @@ export async function POST(request: Request) {
   );
 }
 
-function oauthError(error: string, errorDescription: string, status: number) {
-  return NextResponse.json({ error, error_description: errorDescription }, { status });
+function optionalMetadataUrl(value: unknown) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || value.length > MAX_METADATA_URL_LENGTH) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.hash) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function checkRegistrationRateLimit(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const key = forwardedFor || request.headers.get("x-real-ip") || "unknown";
+  const now = Date.now();
+  const current = registrationAttempts.get(key);
+  if (!current || current.resetAt <= now) {
+    registrationAttempts.set(key, { count: 1, resetAt: now + REGISTRATION_RATE_LIMIT_WINDOW_MS });
+    return { ok: true as const };
+  }
+
+  if (current.count >= REGISTRATION_RATE_LIMIT_MAX) {
+    return {
+      ok: false as const,
+      retryAfter: Math.ceil((current.resetAt - now) / 1000),
+    };
+  }
+
+  current.count += 1;
+  return { ok: true as const };
+}
+
+function oauthError(error: string, errorDescription: string, status: number, headers?: HeadersInit) {
+  return NextResponse.json({ error, error_description: errorDescription }, { status, headers });
 }

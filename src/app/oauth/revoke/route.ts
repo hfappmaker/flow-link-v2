@@ -14,24 +14,14 @@ export async function POST(request: Request) {
 
   const tokenHash = hashToken(token);
   const now = new Date();
-  await Promise.all([
-    prisma.oAuthAccessToken.updateMany({
-      where: {
-        tokenHash,
-        ...(clientId ? { clientId } : {}),
-        revokedAt: null,
-      },
-      data: { revokedAt: now },
-    }),
-    prisma.oAuthRefreshToken.updateMany({
-      where: {
-        tokenHash,
-        ...(clientId ? { clientId } : {}),
-        revokedAt: null,
-      },
-      data: { revokedAt: now },
-    }),
-  ]);
+  await prisma.oAuthRefreshToken.updateMany({
+    where: {
+      tokenHash,
+      ...(clientId ? { clientId } : {}),
+      revokedAt: null,
+    },
+    data: { revokedAt: now },
+  });
 
   return NextResponse.json({}, { status: 200 });
 }

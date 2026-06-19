@@ -3,6 +3,7 @@ import {
   ACCESS_TOKEN_TTL_SECONDS,
   REFRESH_TOKEN_TTL_SECONDS,
   hashToken,
+  issueMcpAccessToken,
   isSameOAuthResource,
   isValidMcpResource,
   normalizeOAuthResource,
@@ -94,25 +95,20 @@ async function exchangeAuthorizationCode(form: FormData) {
     return oauthError("invalid_grant", "PKCE verification failed.", 400);
   }
 
-  const accessToken = randomToken();
   const refreshToken = randomToken();
   const tokenResource = normalizeOAuthResource(resource)!;
+  const accessToken = issueMcpAccessToken({
+    clientId,
+    userId: codeRecord.userId,
+    companyId: codeRecord.companyId,
+    resource: tokenResource,
+    scope: codeRecord.scope,
+  });
 
   await prisma.$transaction([
     prisma.oAuthAuthorizationCode.update({
       where: { id: codeRecord.id },
       data: { usedAt: new Date() },
-    }),
-    prisma.oAuthAccessToken.create({
-      data: {
-        tokenHash: hashToken(accessToken),
-        clientId,
-        userId: codeRecord.userId,
-        companyId: codeRecord.companyId,
-        resource: tokenResource,
-        scope: codeRecord.scope,
-        expiresAt: secondsFromNow(ACCESS_TOKEN_TTL_SECONDS),
-      },
     }),
     prisma.oAuthRefreshToken.create({
       data: {
@@ -173,24 +169,19 @@ async function refreshAccessToken(form: FormData) {
     return oauthError("invalid_grant", "Refresh token has expired.", 400);
   }
 
-  const accessToken = randomToken();
   const nextRefreshToken = randomToken();
   const tokenResource = normalizeOAuthResource(resource)!;
+  const accessToken = issueMcpAccessToken({
+    clientId,
+    userId: tokenRecord.userId,
+    companyId: tokenRecord.companyId,
+    resource: tokenResource,
+    scope: tokenRecord.scope,
+  });
   await prisma.$transaction([
     prisma.oAuthRefreshToken.update({
       where: { id: tokenRecord.id },
       data: { revokedAt: new Date(), lastUsedAt: new Date() },
-    }),
-    prisma.oAuthAccessToken.create({
-      data: {
-        tokenHash: hashToken(accessToken),
-        clientId,
-        userId: tokenRecord.userId,
-        companyId: tokenRecord.companyId,
-        resource: tokenResource,
-        scope: tokenRecord.scope,
-        expiresAt: secondsFromNow(ACCESS_TOKEN_TTL_SECONDS),
-      },
     }),
     prisma.oAuthRefreshToken.create({
       data: {

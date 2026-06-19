@@ -1,16 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  createOAuthConsentToken,
   getOAuthMetadata,
   getProtectedResourceMetadata,
   getWwwAuthenticateHeader,
   filterValidRedirectUris,
+  issueMcpAccessToken,
   isSameOAuthResource,
   isValidMcpResource,
   isValidRedirectUri,
   normalizeOAuthResource,
   normalizeScopes,
   sha256Base64Url,
+  verifyMcpAccessToken,
+  verifyOAuthConsentToken,
   verifyPkceS256,
 } from "../src/lib/mcp-oauth";
 
@@ -165,5 +169,65 @@ describe("MCP OAuth helpers", () => {
 
     assert.equal(verifyPkceS256(verifier, challenge), true);
     assert.equal(verifyPkceS256(`${verifier}x`, challenge), false);
+  });
+
+  it("issues and verifies JWT MCP access tokens", () => {
+    const previousSecret = process.env.AUTH_SECRET;
+    const previousIssuer = process.env.OAUTH_ISSUER;
+    process.env.AUTH_SECRET = "test-secret";
+    process.env.OAUTH_ISSUER = "https://flowlink.flowtech.co.jp";
+
+    try {
+      const token = issueMcpAccessToken({
+        clientId: "client-1",
+        userId: "user-1",
+        companyId: "company-1",
+        resource: "https://flowlink.flowtech.co.jp/api/mcp",
+        scope: "project:read project:write",
+      });
+
+      const auth = verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp"));
+      assert.deepEqual(auth, {
+        clientId: "client-1",
+        userId: "user-1",
+        companyId: "company-1",
+        resource: "https://flowlink.flowtech.co.jp/api/mcp",
+        scopes: ["project:read", "project:write"],
+      });
+      assert.equal(verifyMcpAccessToken(`${token}x`, new Request("https://flowlink.flowtech.co.jp/api/mcp")), null);
+      process.env.AUTH_SECRET = "different-secret";
+      assert.equal(verifyMcpAccessToken(token, new Request("https://flowlink.flowtech.co.jp/api/mcp")), null);
+    } finally {
+      if (previousSecret === undefined) delete process.env.AUTH_SECRET;
+      else process.env.AUTH_SECRET = previousSecret;
+      if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
+      else process.env.OAUTH_ISSUER = previousIssuer;
+    }
+  });
+
+  it("signs OAuth consent tokens for authorize confirmation", () => {
+    const previousSecret = process.env.AUTH_SECRET;
+    process.env.AUTH_SECRET = "test-secret";
+
+    try {
+      const token = createOAuthConsentToken({
+        userId: "user-1",
+        clientId: "client-1",
+        redirectUri: "https://example.com/callback",
+        resource: "https://flowlink.flowtech.co.jp/api/mcp",
+        scope: "project:read",
+        codeChallenge: "challenge",
+        codeChallengeMethod: "S256",
+      });
+
+      const consent = verifyOAuthConsentToken(token);
+      assert.equal(consent?.userId, "user-1");
+      assert.equal(consent?.clientId, "client-1");
+      assert.equal(consent?.scope, "project:read");
+      assert.equal(verifyOAuthConsentToken(`${token}x`), null);
+    } finally {
+      if (previousSecret === undefined) delete process.env.AUTH_SECRET;
+      else process.env.AUTH_SECRET = previousSecret;
+    }
   });
 });

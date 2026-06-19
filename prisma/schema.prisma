@@ -119,27 +119,6 @@ model OAuthAuthorizationCode {
   @@index([expiresAt])
 }
 
-model OAuthAccessToken {
-  id         String    @id @default(cuid())
-  tokenHash  String    @unique
-  clientId   String
-  userId     String
-  companyId  String?
-  resource   String
-  scope      String
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  lastUsedAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@index([clientId])
-  @@index([userId])
-  @@index([companyId])
-  @@index([resource])
-  @@index([expiresAt])
-}
-
 model OAuthRefreshToken {
   id         String    @id @default(cuid())
   tokenHash  String    @unique

@@ -4,10 +4,12 @@ import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import {
+  createOAuthConsentToken,
   getAllowedScopesForSubject,
   isValidMcpResource,
   normalizeScopes,
   OAUTH_SCOPES,
+  scopeString,
   type OAuthScope,
   type OAuthSubjectKind,
 } from "@/lib/mcp-oauth";
@@ -57,6 +59,15 @@ export default async function OAuthAuthorizePage({
   const subjectKind: OAuthSubjectKind = membership ? "company" : engineerProfile ? "engineer" : "unregistered";
   const allowedScopes = getAllowedScopesForSubject(subjectKind);
   const grantedScopes = validation.scopes.filter((scope) => allowedScopes.includes(scope));
+  const consentToken = createOAuthConsentToken({
+    userId: session.user.id,
+    clientId: validation.client.clientId,
+    redirectUri: params.redirect_uri!,
+    resource: params.resource!,
+    scope: scopeString(validation.scopes),
+    codeChallenge: params.code_challenge!,
+    codeChallengeMethod: "S256",
+  });
 
   const clientName = validation.client.clientName ?? "MCPクライアント";
   const accountName = membership?.company.name ?? engineerProfile?.displayName ?? session.user.email ?? "このアカウント";
@@ -119,6 +130,7 @@ export default async function OAuthAuthorizePage({
             {Object.entries(params).map(([key, value]) =>
               value ? <input key={key} type="hidden" name={key} value={value} /> : null,
             )}
+            <input type="hidden" name="consent_token" value={consentToken} />
             <div className="flex items-center gap-3">
               <Button type="submit">許可する</Button>
               <Link href="/" className="text-sm font-semibold text-slate-500 hover:text-slate-900">

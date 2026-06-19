@@ -11,6 +11,7 @@ import {
   randomToken,
   scopeString,
   secondsFromNow,
+  verifyOAuthConsentToken,
   type OAuthSubjectKind,
 } from "@/lib/mcp-oauth";
 import { prisma } from "@/lib/prisma";
@@ -30,8 +31,10 @@ export async function POST(request: Request) {
   const state = stringValue(form, "state");
   const codeChallenge = stringValue(form, "code_challenge");
   const codeChallengeMethod = stringValue(form, "code_challenge_method");
+  const consentToken = stringValue(form, "consent_token");
 
   const validation = await validateRequest({
+    userId: session.user.id,
     responseType,
     clientId,
     redirectUri,
@@ -39,6 +42,7 @@ export async function POST(request: Request) {
     requestedScope,
     codeChallenge,
     codeChallengeMethod,
+    consentToken,
   });
   if (!validation.ok) return redirectWithError(redirectUri, validation.error, state);
 
@@ -79,6 +83,7 @@ export async function POST(request: Request) {
 }
 
 async function validateRequest({
+  userId,
   responseType,
   clientId,
   redirectUri,
@@ -86,7 +91,9 @@ async function validateRequest({
   requestedScope,
   codeChallenge,
   codeChallengeMethod,
+  consentToken,
 }: {
+  userId: string;
   responseType: string;
   clientId: string;
   redirectUri: string;
@@ -94,9 +101,10 @@ async function validateRequest({
   requestedScope: string;
   codeChallenge: string;
   codeChallengeMethod: string;
+  consentToken: string;
 }) {
   if (responseType !== "code") return { ok: false as const, error: "unsupported_response_type" };
-  if (!clientId || !redirectUri || !resource || !codeChallenge) {
+  if (!clientId || !redirectUri || !resource || !codeChallenge || !consentToken) {
     return { ok: false as const, error: "invalid_request" };
   }
   if (!isValidMcpResource(resource)) return { ok: false as const, error: "invalid_target" };
@@ -112,8 +120,26 @@ async function validateRequest({
   if (!requestedScopes || !clientScopes || requestedScopes.some((scope) => !clientScopes.includes(scope))) {
     return { ok: false as const, error: "invalid_scope" };
   }
+  const normalizedResource = normalizeOAuthResource(resource)!;
+  const consent = verifyOAuthConsentToken(consentToken);
+  if (
+    !consent ||
+    consent.userId !== userId ||
+    consent.clientId !== clientId ||
+    consent.redirectUri !== redirectUri ||
+    !isSameConsentResource(consent.resource, normalizedResource) ||
+    consent.scope !== scopeString(requestedScopes) ||
+    consent.codeChallenge !== codeChallenge ||
+    consent.codeChallengeMethod !== "S256"
+  ) {
+    return { ok: false as const, error: "invalid_request" };
+  }
 
-  return { ok: true as const, resource: normalizeOAuthResource(resource)!, scopes: requestedScopes };
+  return { ok: true as const, resource: normalizedResource, scopes: requestedScopes };
+}
+
+function isSameConsentResource(left: string, right: string) {
+  return normalizeOAuthResource(left) === normalizeOAuthResource(right);
 }
 
 function redirectWithError(redirectUri: string, error: string, state: string) {

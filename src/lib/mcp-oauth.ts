@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import { getAppUrl } from "@/lib/app-url";
-import { prisma } from "@/lib/prisma";
 
 export const OAUTH_SCOPES = [
   "company_profile:read",
@@ -15,6 +14,7 @@ export type OAuthScope = (typeof OAUTH_SCOPES)[number];
 export const AUTHORIZATION_CODE_TTL_SECONDS = 5 * 60;
 export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+export const CONSENT_TOKEN_TTL_SECONDS = 10 * 60;
 
 export type McpAuthInfo = {
   clientId: string;
@@ -165,6 +165,122 @@ export function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+function base64UrlJson(value: unknown) {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+function parseBase64UrlJson(value: string) {
+  try {
+    return JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function signHmac(value: string, secret: string) {
+  return crypto.createHmac("sha256", secret).update(value).digest("base64url");
+}
+
+function getOAuthTokenSecret() {
+  const secret = process.env.MCP_OAUTH_JWT_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error("MCP OAuth JWT signing requires MCP_OAUTH_JWT_SECRET or AUTH_SECRET.");
+  }
+  return secret;
+}
+
+function currentUnixTime() {
+  return Math.floor(Date.now() / 1000);
+}
+
+type McpAccessTokenClaims = {
+  typ: "mcp_access_token";
+  iss: string;
+  aud: string;
+  sub: string;
+  client_id: string;
+  company_id: string | null;
+  scope: string;
+  iat: number;
+  exp: number;
+};
+
+export function issueMcpAccessToken({
+  clientId,
+  userId,
+  companyId,
+  resource,
+  scope,
+}: {
+  clientId: string;
+  userId: string;
+  companyId: string | null;
+  resource: string;
+  scope: string;
+}) {
+  const now = currentUnixTime();
+  const header = base64UrlJson({ alg: "HS256", typ: "JWT" });
+  const normalizedResource = normalizeOAuthResource(resource);
+  if (!normalizedResource) throw new Error("Cannot issue MCP access token for an invalid resource.");
+  const issuer = getOAuthIssuer(new URL(normalizedResource).origin);
+  const payload = base64UrlJson({
+    typ: "mcp_access_token",
+    iss: issuer,
+    aud: normalizedResource,
+    sub: userId,
+    client_id: clientId,
+    company_id: companyId,
+    scope,
+    iat: now,
+    exp: now + ACCESS_TOKEN_TTL_SECONDS,
+  } satisfies McpAccessTokenClaims);
+  const signingInput = `${header}.${payload}`;
+  return `${signingInput}.${signHmac(signingInput, getOAuthTokenSecret())}`;
+}
+
+function isMcpAccessTokenClaims(value: unknown): value is McpAccessTokenClaims {
+  if (!value || typeof value !== "object") return false;
+  const claims = value as Record<string, unknown>;
+  return (
+    claims.typ === "mcp_access_token" &&
+    typeof claims.iss === "string" &&
+    typeof claims.aud === "string" &&
+    typeof claims.sub === "string" &&
+    typeof claims.client_id === "string" &&
+    (typeof claims.company_id === "string" || claims.company_id === null) &&
+    typeof claims.scope === "string" &&
+    typeof claims.iat === "number" &&
+    typeof claims.exp === "number"
+  );
+}
+
+export function verifyMcpAccessToken(token: string, requestOrOrigin?: Request | string) {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  const [header, payload, signature] = parts;
+  const signingInput = `${header}.${payload}`;
+  const expectedSignature = signHmac(signingInput, getOAuthTokenSecret());
+  if (!timingSafeEqual(signature, expectedSignature)) return null;
+
+  const claims = parseBase64UrlJson(payload);
+  if (!isMcpAccessTokenClaims(claims)) return null;
+  if (claims.exp <= currentUnixTime()) return null;
+  if (!isSameOAuthResource(claims.aud, getMcpResourceUrl(requestOrOrigin))) return null;
+  if (claims.iss !== getOAuthIssuer(requestOrOrigin)) return null;
+
+  const scopes = normalizeScopes(claims.scope, []);
+  if (!scopes) return null;
+
+  return {
+    clientId: claims.client_id,
+    userId: claims.sub,
+    companyId: claims.company_id,
+    resource: normalizeOAuthResource(claims.aud)!,
+    scopes,
+  } satisfies McpAuthInfo;
+}
+
 export function sha256Base64Url(value: string) {
   return crypto.createHash("sha256").update(value).digest("base64url");
 }
@@ -223,6 +339,54 @@ export function filterAllowedScopes(scopes: OAuthScope[], kind: OAuthSubjectKind
   return scopes.filter((scope) => allowedScopes.includes(scope));
 }
 
+type OAuthConsentClaims = {
+  typ: "mcp_consent";
+  userId: string;
+  clientId: string;
+  redirectUri: string;
+  resource: string;
+  scope: string;
+  codeChallenge: string;
+  codeChallengeMethod: "S256";
+  exp: number;
+};
+
+export function createOAuthConsentToken(claims: Omit<OAuthConsentClaims, "typ" | "exp">) {
+  const payload = base64UrlJson({
+    typ: "mcp_consent",
+    ...claims,
+    exp: currentUnixTime() + CONSENT_TOKEN_TTL_SECONDS,
+  } satisfies OAuthConsentClaims);
+  return `${payload}.${signHmac(payload, getOAuthTokenSecret())}`;
+}
+
+function isOAuthConsentClaims(value: unknown): value is OAuthConsentClaims {
+  if (!value || typeof value !== "object") return false;
+  const claims = value as Record<string, unknown>;
+  return (
+    claims.typ === "mcp_consent" &&
+    typeof claims.userId === "string" &&
+    typeof claims.clientId === "string" &&
+    typeof claims.redirectUri === "string" &&
+    typeof claims.resource === "string" &&
+    typeof claims.scope === "string" &&
+    typeof claims.codeChallenge === "string" &&
+    claims.codeChallengeMethod === "S256" &&
+    typeof claims.exp === "number"
+  );
+}
+
+export function verifyOAuthConsentToken(token: string) {
+  const [payload, signature, extra] = token.split(".");
+  if (!payload || !signature || extra) return null;
+  if (!timingSafeEqual(signature, signHmac(payload, getOAuthTokenSecret()))) return null;
+
+  const claims = parseBase64UrlJson(payload);
+  if (!isOAuthConsentClaims(claims)) return null;
+  if (claims.exp <= currentUnixTime()) return null;
+  return claims;
+}
+
 export function isValidRedirectUri(value: string) {
   try {
     const url = new URL(value);
@@ -258,43 +422,7 @@ export async function getBearerAuthInfo(request: Request) {
   const match = authorization?.match(/^Bearer\s+(.+)$/i);
   if (!match) return null;
 
-  const tokenHash = hashToken(match[1].trim());
-  const accessToken = await prisma.oAuthAccessToken.findUnique({
-    where: { tokenHash },
-    select: {
-      id: true,
-      clientId: true,
-      userId: true,
-      companyId: true,
-      resource: true,
-      scope: true,
-      expiresAt: true,
-      revokedAt: true,
-    },
-  });
-
-  if (!accessToken) return null;
-  if (accessToken.revokedAt) return null;
-  if (accessToken.expiresAt <= new Date()) return null;
-  if (!isSameOAuthResource(accessToken.resource, getMcpResourceUrl(request))) return null;
-
-  const scopes = normalizeScopes(accessToken.scope, []);
-  if (!scopes) return null;
-
-  prisma.oAuthAccessToken
-    .update({
-      where: { id: accessToken.id },
-      data: { lastUsedAt: new Date() },
-    })
-    .catch((error) => console.error("Failed to update MCP OAuth token lastUsedAt", error));
-
-  return {
-    clientId: accessToken.clientId,
-    userId: accessToken.userId,
-    companyId: accessToken.companyId,
-    resource: accessToken.resource,
-    scopes,
-  } satisfies McpAuthInfo;
+  return verifyMcpAccessToken(match[1].trim(), request);
 }
 
 export async function requireMcpScope(request: Request | null, requiredScope: OAuthScope) {
