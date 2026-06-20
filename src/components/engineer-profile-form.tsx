@@ -601,11 +601,11 @@ export function EngineerProfileForm({
           </div>
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">希望稼働日数</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="flex flex-wrap gap-2">
               {WEEKLY_DAYS_OPTIONS.map((days) => (
                 <label
                   key={days}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition-colors has-checked:border-blue-600 has-checked:bg-blue-50 has-checked:text-blue-700"
+                  className="inline-flex min-h-10 min-w-24 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors has-checked:border-blue-600 has-checked:bg-blue-50 has-checked:text-blue-700"
                 >
                   <input
                     type="checkbox"
@@ -613,7 +613,7 @@ export function EngineerProfileForm({
                     value={days}
                     checked={selectedWeeklyDays.includes(days)}
                     onChange={(event) => toggleWeeklyDay(days, event.currentTarget.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                   週{days}日
                 </label>
