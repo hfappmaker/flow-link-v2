@@ -146,6 +146,18 @@ export function getMcpResourceMetadataUrl(
   return `${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`;
 }
 
+function withVercelProtectionBypass(url: string, issuer: string) {
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (!bypassSecret) return url;
+
+  const issuerUrl = new URL(issuer);
+  if (!issuerUrl.hostname.endsWith(".vercel.app")) return url;
+
+  const endpointUrl = new URL(url);
+  endpointUrl.searchParams.set("x-vercel-protection-bypass", bypassSecret);
+  return endpointUrl.toString();
+}
+
 export function normalizeOAuthResource(value: string) {
   try {
     const url = new URL(value);
@@ -182,7 +194,7 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
   return {
     issuer,
     authorization_endpoint: `${issuer}/oauth/authorize`,
-    token_endpoint: `${issuer}/oauth/token`,
+    token_endpoint: withVercelProtectionBypass(`${issuer}/oauth/token`, issuer),
     registration_endpoint: `${issuer}/oauth/register`,
     revocation_endpoint: `${issuer}/oauth/revoke`,
     protected_resources: getMcpResourceUrls(issuer),

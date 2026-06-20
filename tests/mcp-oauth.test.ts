@@ -77,8 +77,10 @@ describe("MCP OAuth helpers", () => {
   it("uses the request origin when OAUTH_ISSUER is not configured", () => {
     const previousIssuer = process.env.OAUTH_ISSUER;
     const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const previousBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
     delete process.env.OAUTH_ISSUER;
     delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
     try {
       const request = new Request(
@@ -107,6 +109,39 @@ describe("MCP OAuth helpers", () => {
       else process.env.OAUTH_ISSUER = previousIssuer;
       if (previousAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
       else process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+      if (previousBypassSecret === undefined) delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+      else process.env.VERCEL_AUTOMATION_BYPASS_SECRET = previousBypassSecret;
+    }
+  });
+
+  it("adds the Vercel protection bypass query to preview token metadata when configured", () => {
+    const previousIssuer = process.env.OAUTH_ISSUER;
+    const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const previousBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    delete process.env.OAUTH_ISSUER;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET = "preview-secret";
+
+    try {
+      const request = new Request(
+        "https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company",
+      );
+      const authMetadata = getOAuthMetadata(request);
+      assert.equal(
+        authMetadata.token_endpoint,
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/token?x-vercel-protection-bypass=preview-secret",
+      );
+      assert.equal(
+        authMetadata.authorization_endpoint,
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize",
+      );
+    } finally {
+      if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
+      else process.env.OAUTH_ISSUER = previousIssuer;
+      if (previousAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+      if (previousBypassSecret === undefined) delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+      else process.env.VERCEL_AUTOMATION_BYPASS_SECRET = previousBypassSecret;
     }
   });
 
