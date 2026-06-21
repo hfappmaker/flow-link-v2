@@ -197,6 +197,12 @@ async function refreshAccessToken(form: FormData) {
     return oauthError("invalid_grant", "Refresh token is not valid for this resource.", 400);
   }
 
+  console.info("[MCP OAuth token] refreshed access token", {
+    hasResource: Boolean(resource),
+    requestResource: resource || null,
+    tokenResource,
+  });
+
   const nextRefreshToken = randomToken();
   const accessToken = issueMcpAccessToken({
     clientId,
