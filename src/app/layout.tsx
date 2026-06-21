@@ -14,44 +14,57 @@ const notoSansJP = Noto_Sans_JP({
   weight: ["400", "500", "700", "900"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.flowtech.co.jp";
-const siteIcon = "/flow-link-mark.svg";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://flowlink.flowtech.co.jp";
+const siteIcon = "/favicon.ico";
+const siteAppleIcon = "/apple-touch-icon.png";
+const siteIcon192 = "/flow-link-icon-192.png";
+const siteIcon512 = "/flow-link-icon-512.png";
 const siteImage = "/flow-link-og.png";
 const siteImageUrl = new URL(siteImage, siteUrl).toString();
 const siteDescription =
   "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
+const siteTitle = "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム",
+    default: siteTitle,
     template: "%s | FlowLink",
   },
   description: siteDescription,
-  icons: {
-    icon: siteIcon,
-    shortcut: siteIcon,
-    apple: siteIcon,
+  applicationName: "FlowLink",
+  alternates: {
+    canonical: siteUrl,
   },
+  icons: {
+    icon: [
+      { url: siteIcon, sizes: "any" },
+      { url: siteIcon192, type: "image/png", sizes: "192x192" },
+      { url: siteIcon512, type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: siteIcon,
+    apple: [{ url: siteAppleIcon, type: "image/png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
   openGraph: {
     type: "website",
     locale: "ja_JP",
     url: siteUrl,
     siteName: "FlowLink",
-    title: "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム",
+    title: siteTitle,
     description: siteDescription,
     images: [
       {
         url: siteImage,
-        width: 512,
-        height: 512,
+        width: 1200,
+        height: 630,
         alt: "FlowLink",
       },
     ],
   },
   twitter: {
-    card: "summary",
-    title: "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム",
+    card: "summary_large_image",
+    title: siteTitle,
     description: siteDescription,
     images: [siteImage],
   },
