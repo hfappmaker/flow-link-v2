@@ -50,6 +50,7 @@ export function ProjectCard({
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        {project.isSample ? <Badge tone="amber">サンプル案件</Badge> : null}
         {project.publishedAt && isNew(project.publishedAt) ? <Badge tone="red">NEW</Badge> : null}
         {project.publishedAt ? <span>{formatDate(project.publishedAt)} 掲載</span> : null}
         <Badge tone="outline">{project.jobCategory}</Badge>
@@ -95,6 +96,12 @@ export function ProjectCard({
 
       {project.summary ? (
         <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-slate-600">{project.summary}</p>
+      ) : null}
+
+      {project.isSample ? (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+          この案件はマッチング体験用のサンプルです。実際の募集案件ではありません。
+        </p>
       ) : null}
 
       {project.features.length > 0 ? (

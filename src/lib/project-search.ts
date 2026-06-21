@@ -16,6 +16,7 @@ export type ProjectSearchParams = {
   days?: string | string[];
   remote?: string | string[];
   features?: string | string[];
+  sample?: string;
   sort?: string;
   page?: string;
 };
@@ -49,6 +50,7 @@ export function parseProjectSearch(params: ProjectSearchParams) {
   );
   const rateMin = Number.parseInt(params.rateMin ?? "", 10) || undefined;
   const rateMax = Number.parseInt(params.rateMax ?? "", 10) || undefined;
+  const sample = params.sample === "include" ? "include" : "exclude";
 
   return {
     q: params.q?.trim() || undefined,
@@ -62,6 +64,7 @@ export function parseProjectSearch(params: ProjectSearchParams) {
     days,
     remote,
     features,
+    sample,
     sort,
     page,
   };
@@ -118,6 +121,7 @@ export function buildProjectWhere(parsed: ParsedProjectSearch): Prisma.ProjectWh
   }
   if (parsed.remote.length > 0) and.push({ remoteType: { in: parsed.remote } });
   if (parsed.features.length > 0) and.push({ features: { hasEvery: parsed.features } });
+  if (parsed.sample === "exclude") and.push({ isSample: false });
 
   if (and.length > 0) where.AND = and;
   return where;
@@ -148,6 +152,7 @@ export function buildSearchQueryString(
   for (const d of parsed.days) sp.append("days", String(d));
   for (const r of parsed.remote) sp.append("remote", r);
   for (const f of parsed.features) sp.append("features", f);
+  if (parsed.sample === "include") sp.set("sample", "include");
 
   const sort = overrides.sort ?? parsed.sort;
   if (sort !== "new") sp.set("sort", sort);

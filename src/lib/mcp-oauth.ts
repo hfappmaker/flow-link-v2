@@ -143,7 +143,8 @@ export function getMcpResourceMetadataUrl(
   requestOrOrigin?: Request | string,
   endpoint = getMcpEndpointFromRequest(requestOrOrigin),
 ) {
-  return `${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`;
+  const issuer = getOAuthIssuer(requestOrOrigin);
+  return `${issuer}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`;
 }
 
 export function normalizeOAuthResource(value: string) {
@@ -342,30 +343,44 @@ function isMcpAccessTokenClaims(value: unknown): value is McpAccessTokenClaims {
 }
 
 export function verifyMcpAccessToken(token: string, requestOrOrigin?: Request | string) {
+  return verifyMcpAccessTokenDetailed(token, requestOrOrigin).auth;
+}
+
+function verifyMcpAccessTokenDetailed(token: string, requestOrOrigin?: Request | string) {
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3) return { auth: null, reason: "malformed_token" };
 
   const [header, payload, signature] = parts;
   const signingInput = `${header}.${payload}`;
   const expectedSignature = signHmac(signingInput, getOAuthTokenSecret());
-  if (!timingSafeEqual(signature, expectedSignature)) return null;
+  if (!timingSafeEqual(signature, expectedSignature)) return { auth: null, reason: "signature_mismatch" };
 
   const claims = parseBase64UrlJson(payload);
-  if (!isMcpAccessTokenClaims(claims)) return null;
-  if (claims.exp <= currentUnixTime()) return null;
-  if (!isSameOAuthResource(claims.aud, getMcpResourceUrl(requestOrOrigin))) return null;
-  if (claims.iss !== getOAuthIssuer(requestOrOrigin)) return null;
+  if (!isMcpAccessTokenClaims(claims)) return { auth: null, reason: "invalid_claims" };
+  if (claims.exp <= currentUnixTime()) return { auth: null, reason: "expired_token", claims };
+
+  const expectedResource = getMcpResourceUrl(requestOrOrigin);
+  if (!isSameOAuthResource(claims.aud, expectedResource)) {
+    return { auth: null, reason: "audience_mismatch", claims, expectedResource };
+  }
+
+  const expectedIssuer = getOAuthIssuer(requestOrOrigin);
+  if (claims.iss !== expectedIssuer) return { auth: null, reason: "issuer_mismatch", claims, expectedIssuer };
 
   const scopes = normalizeScopes(claims.scope, []);
-  if (!scopes) return null;
+  if (!scopes) return { auth: null, reason: "invalid_scope_claim", claims };
 
   return {
-    clientId: claims.client_id,
-    userId: claims.sub,
-    companyId: claims.company_id,
-    resource: normalizeOAuthResource(claims.aud)!,
-    scopes,
-  } satisfies McpAuthInfo;
+    auth: {
+      clientId: claims.client_id,
+      userId: claims.sub,
+      companyId: claims.company_id,
+      resource: normalizeOAuthResource(claims.aud)!,
+      scopes,
+    } satisfies McpAuthInfo,
+    reason: null,
+    claims,
+  };
 }
 
 export function sha256Base64Url(value: string) {
@@ -513,9 +528,36 @@ export function filterValidRedirectUris(values: string[]) {
 export async function getBearerAuthInfo(request: Request) {
   const authorization = request.headers.get("authorization");
   const match = authorization?.match(/^Bearer\s+(.+)$/i);
-  if (!match) return null;
+  if (!match) {
+    logMcpBearerAuthFailure(request, "missing_bearer_token", {
+      hasAuthorizationHeader: Boolean(authorization),
+    });
+    return null;
+  }
 
-  return verifyMcpAccessToken(match[1].trim(), request);
+  const verification = verifyMcpAccessTokenDetailed(match[1].trim(), request);
+  if (!verification.auth) {
+    logMcpBearerAuthFailure(request, verification.reason, {
+      tokenAudience: verification.claims?.aud,
+      tokenIssuer: verification.claims?.iss,
+      tokenClientId: verification.claims?.client_id,
+      expectedResource: verification.expectedResource,
+      expectedIssuer: verification.expectedIssuer,
+    });
+  }
+  return verification.auth;
+}
+
+function logMcpBearerAuthFailure(request: Request, reason: string | null, details: Record<string, unknown> = {}) {
+  const requestUrl = new URL(request.url);
+  console.warn("[MCP OAuth] bearer authentication failed", {
+    reason,
+    method: request.method,
+    pathname: requestUrl.pathname,
+    hasQuery: requestUrl.searchParams.size > 0,
+    queryKeys: [...requestUrl.searchParams.keys()],
+    ...details,
+  });
 }
 
 export async function requireMcpScope(request: Request | null, requiredScope: OAuthScope) {

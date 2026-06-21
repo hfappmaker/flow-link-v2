@@ -20,6 +20,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ id: stri
     include: { company: { select: { name: true } } },
   });
   if (!project || project.status !== "OPEN") notFound();
+  if (project.isSample) redirect(`/projects/${project.id}`);
 
   const existing = await prisma.application.findUnique({
     where: { projectId_engineerUserId: { projectId: id, engineerUserId: user.id } },

@@ -95,7 +95,12 @@ export default async function ProjectDetailPage({
       <p className="text-center text-xl font-black text-blue-700">
         {formatRateRange(project.rateMin, project.rateMax)}
       </p>
-      {!isOpen ? (
+      {project.isSample ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-800">
+          <p className="font-semibold">これはサンプル案件です</p>
+          <p className="mt-1 text-xs">実際の募集案件ではないため、この案件への応募はできません。</p>
+        </div>
+      ) : !isOpen ? (
         <p className="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-500">
           この案件は募集を終了しました
         </p>
@@ -145,6 +150,7 @@ export default async function ProjectDetailPage({
       </nav>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        {project.isSample ? <Badge tone="amber">サンプル案件</Badge> : null}
         {project.publishedAt && isNew(project.publishedAt) ? <Badge tone="red">NEW</Badge> : null}
         {project.publishedAt ? (
           <span className="text-xs text-slate-500">{formatDate(project.publishedAt)} 掲載</span>
@@ -152,6 +158,15 @@ export default async function ProjectDetailPage({
         {!isOpen ? <Badge tone="gray">募集終了</Badge> : null}
       </div>
       <h1 className="mt-2 text-2xl leading-snug font-black text-slate-900">{project.title}</h1>
+
+      {project.isSample ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-800">
+          <p className="font-bold">この案件はマッチング体験と希望条件確認のためのサンプルです。</p>
+          <p className="mt-1">
+            実際の募集案件ではありません。応募・商談に進むための案件ではなく、プロフィールや希望条件との相性を確認する目的で表示しています。
+          </p>
+        </div>
+      ) : null}
 
       {project.summary ? (
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600">{project.summary}</p>

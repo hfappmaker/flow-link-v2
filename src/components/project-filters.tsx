@@ -229,6 +229,13 @@ export function ProjectFilters({
         <Input name="q" defaultValue={parsed.q ?? ""} placeholder="キーワードで検索" />
       </FilterSection>
 
+      <FilterSection title="サンプル案件">
+        <Select name="sample" defaultValue={parsed.sample}>
+          <option value="exclude">サンプル案件を除外</option>
+          <option value="include">サンプル案件を含める</option>
+        </Select>
+      </FilterSection>
+
       <FilterSection title="募集職種">
         <div className="space-y-3">
           <SearchTagInput
