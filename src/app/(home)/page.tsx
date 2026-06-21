@@ -16,7 +16,7 @@ export default async function HomePage() {
       skills: { include: { skill: true } },
     },
   });
-  const projectCount = await prisma.project.count({ where: { status: "OPEN" } });
+  const projectCount = await prisma.project.count({ where: { status: "OPEN", isSample: false } });
   const engineerCount = await prisma.engineerProfile.count({
     where: {
       user: { deletedAt: null },
