@@ -149,9 +149,7 @@ describe("MCP OAuth helpers", () => {
         "https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       const resourceMetadata = getProtectedResourceMetadata(request);
-      assert.deepEqual(resourceMetadata.authorization_servers, [
-        "https://flow-link-v2-git-develop-example.vercel.app/?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
-      ]);
+      assert.deepEqual(resourceMetadata.authorization_servers, ["https://flow-link-v2-git-develop-example.vercel.app"]);
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
       else process.env.OAUTH_ISSUER = previousIssuer;
