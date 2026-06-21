@@ -195,10 +195,10 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
   const issuer = getOAuthIssuer(requestOrOrigin);
   return {
     issuer,
-    authorization_endpoint: withVercelProtectionBypass(`${issuer}/oauth/authorize`, issuer),
-    token_endpoint: withVercelProtectionBypass(`${issuer}/oauth/token`, issuer),
-    registration_endpoint: withVercelProtectionBypass(`${issuer}/oauth/register`, issuer),
-    revocation_endpoint: withVercelProtectionBypass(`${issuer}/oauth/revoke`, issuer),
+    authorization_endpoint: `${issuer}/oauth/authorize`,
+    token_endpoint: `${issuer}/oauth/token`,
+    registration_endpoint: `${issuer}/oauth/register`,
+    revocation_endpoint: `${issuer}/oauth/revoke`,
     protected_resources: getMcpResourceUrls(issuer),
     scopes_supported: OAUTH_SCOPES,
     response_types_supported: ["code"],
