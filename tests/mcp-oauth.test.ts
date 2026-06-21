@@ -114,7 +114,7 @@ describe("MCP OAuth helpers", () => {
     }
   });
 
-  it("adds the Vercel protection bypass query to preview token metadata when configured", () => {
+  it("adds the Vercel protection bypass query to preview OAuth metadata when configured", () => {
     const previousIssuer = process.env.OAUTH_ISSUER;
     const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
     const previousBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
@@ -133,7 +133,15 @@ describe("MCP OAuth helpers", () => {
       );
       assert.equal(
         authMetadata.authorization_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize?x-vercel-protection-bypass=preview-secret",
+      );
+      assert.equal(
+        authMetadata.registration_endpoint,
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/register?x-vercel-protection-bypass=preview-secret",
+      );
+      assert.equal(
+        authMetadata.revocation_endpoint,
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/revoke?x-vercel-protection-bypass=preview-secret",
       );
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;
