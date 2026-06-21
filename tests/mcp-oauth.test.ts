@@ -4,6 +4,7 @@ import {
   createOAuthConsentToken,
   getAllowedScopesForSubject,
   getMcpEndpointFromResource,
+  getMcpResourceMetadataUrl,
   getOAuthMetadata,
   getProtectedResourceMetadata,
   getWwwAuthenticateHeader,
@@ -142,6 +143,10 @@ describe("MCP OAuth helpers", () => {
       assert.equal(
         authMetadata.revocation_endpoint,
         "https://flow-link-v2-git-develop-example.vercel.app/oauth/revoke?x-vercel-protection-bypass=preview-secret",
+      );
+      assert.equal(
+        getMcpResourceMetadataUrl(request),
+        "https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company?x-vercel-protection-bypass=preview-secret",
       );
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;

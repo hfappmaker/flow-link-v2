@@ -143,7 +143,8 @@ export function getMcpResourceMetadataUrl(
   requestOrOrigin?: Request | string,
   endpoint = getMcpEndpointFromRequest(requestOrOrigin),
 ) {
-  return `${getOAuthIssuer(requestOrOrigin)}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`;
+  const issuer = getOAuthIssuer(requestOrOrigin);
+  return withVercelProtectionBypass(`${issuer}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`, issuer);
 }
 
 function withVercelProtectionBypass(url: string, issuer: string) {
