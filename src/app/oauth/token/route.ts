@@ -141,7 +141,7 @@ async function refreshAccessToken(form: FormData) {
   const clientId = stringValue(form, "client_id");
   const refreshToken = stringValue(form, "refresh_token");
   const resource = stringValue(form, "resource");
-  if (!clientId || !refreshToken) {
+  if (!clientId || !refreshToken || !resource) {
     logTokenExchangeIssue("refresh_token_missing_field", {
       hasClientId: Boolean(clientId),
       hasRefreshToken: Boolean(refreshToken),
@@ -149,7 +149,7 @@ async function refreshAccessToken(form: FormData) {
     });
     return oauthError("invalid_grant", "Refresh token is missing or invalid. Reauthorization is required.", 400);
   }
-  if (resource && !isValidMcpResource(resource)) {
+  if (!isValidMcpResource(resource)) {
     logTokenExchangeIssue("refresh_token_invalid_resource", { resource });
     return oauthError("invalid_target", "Unsupported resource.", 400);
   }
@@ -164,10 +164,9 @@ async function refreshAccessToken(form: FormData) {
     });
     return oauthError("invalid_grant", "Invalid refresh token.", 400);
   }
-  const effectiveResource = resource || tokenRecord.resource;
-  if (!isSameOAuthResource(tokenRecord.resource, effectiveResource)) {
+  if (!isSameOAuthResource(tokenRecord.resource, resource)) {
     logTokenExchangeIssue("refresh_token_resource_mismatch", {
-      requestResource: effectiveResource,
+      requestResource: resource,
       tokenResource: tokenRecord.resource,
     });
     return oauthError("invalid_target", "Refresh token was not issued for this resource.", 400);
@@ -182,16 +181,16 @@ async function refreshAccessToken(form: FormData) {
   }
 
   const subjectKind = await getTokenSubjectKind(tokenRecord.userId, tokenRecord.companyId);
-  if (!isMcpResourceAllowedForSubject(effectiveResource, subjectKind)) {
+  if (!isMcpResourceAllowedForSubject(resource, subjectKind)) {
     logTokenExchangeIssue("refresh_token_resource_forbidden_for_subject", {
-      resource: effectiveResource,
+      resource,
       subjectKind,
     });
     return oauthError("invalid_grant", "Refresh token is not valid for this resource.", 400);
   }
 
   const nextRefreshToken = randomToken();
-  const tokenResource = normalizeOAuthResource(effectiveResource)!;
+  const tokenResource = normalizeOAuthResource(resource)!;
   const accessToken = issueMcpAccessToken({
     clientId,
     userId: tokenRecord.userId,
