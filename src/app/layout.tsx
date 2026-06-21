@@ -19,8 +19,8 @@ const siteIcon = "/favicon.ico";
 const siteAppleIcon = "/apple-touch-icon.png";
 const siteIcon192 = "/flow-link-icon-192.png";
 const siteIcon512 = "/flow-link-icon-512.png";
-const siteImage = "/flow-link-og.png";
-const siteImageUrl = new URL(siteImage, siteUrl).toString();
+const siteImagePath = "/flow-link-og.png";
+const siteImageUrl = new URL(`${siteImagePath}?v=20260621`, siteUrl).toString();
 const siteDescription =
   "FlowLinkは、フリーランスエンジニアの案件探しと企業の人材採用をつなぐマッチングプラットフォームです。案件検索・応募・スカウト・チャットまでワンストップで完結します。";
 const siteTitle = "FlowLink | フリーランスエンジニアと企業をつなぐマッチングプラットフォーム";
@@ -55,10 +55,11 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
-        url: siteImage,
+        url: siteImageUrl,
         width: 1200,
         height: 630,
         alt: "FlowLink",
+        type: "image/png",
       },
     ],
   },
@@ -66,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: [siteImage],
+    images: [{ url: siteImageUrl, alt: "FlowLink" }],
   },
 };
 
