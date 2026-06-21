@@ -23,6 +23,7 @@ describe("project search helpers", () => {
       days: ["3", "3", "9"],
       remote: [RemoteType.PARTIAL_REMOTE, "INVALID"],
       features: ["BtoB", ""],
+      sample: "include",
       sort: "unknown",
       page: "4",
     });
@@ -39,6 +40,7 @@ describe("project search helpers", () => {
       days: [3, 3],
       remote: [RemoteType.PARTIAL_REMOTE],
       features: ["BtoB"],
+      sample: "include",
       sort: "new",
       page: 4,
     });
@@ -58,6 +60,7 @@ describe("project search helpers", () => {
       days: "4",
       remote: RemoteType.FULL_REMOTE,
       features: "English OK",
+      sample: "exclude",
     });
 
     assert.deepEqual(buildProjectWhere(parsed), {
@@ -113,7 +116,18 @@ describe("project search helpers", () => {
         },
         { remoteType: { in: [RemoteType.FULL_REMOTE] } },
         { features: { hasEvery: ["English OK"] } },
+        { isSample: false },
       ],
+    });
+  });
+
+  it("excludes sample projects by default", () => {
+    const parsed = parseProjectSearch({});
+
+    assert.equal(parsed.sample, "exclude");
+    assert.deepEqual(buildProjectWhere(parsed), {
+      status: "OPEN",
+      AND: [{ isSample: false }],
     });
   });
 
@@ -132,17 +146,18 @@ describe("project search helpers", () => {
       jobText: "PM",
       lang: "lang-1",
       skillText: "AWS",
+      sample: "include",
       sort: "rate",
       page: "3",
     });
 
     assert.equal(
       buildSearchQueryString(parsed),
-      "?q=Next&jobText=PM&skill=lang-1&skillText=AWS&sort=rate",
+      "?q=Next&jobText=PM&skill=lang-1&skillText=AWS&sample=include&sort=rate",
     );
     assert.equal(
       buildSearchQueryString(parsed, { sort: "new", page: 3 }),
-      "?q=Next&jobText=PM&skill=lang-1&skillText=AWS&page=3",
+      "?q=Next&jobText=PM&skill=lang-1&skillText=AWS&sample=include&page=3",
     );
   });
 });

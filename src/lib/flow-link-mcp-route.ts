@@ -296,6 +296,7 @@ type ProjectListItem = {
   weeklyDaysMax: number;
   remoteType: RemoteType;
   prefecture: string | null;
+  isSample: boolean;
   skills: string[];
   publishedAt: string | null;
   url: string;
@@ -312,6 +313,7 @@ function toProjectListItem(project: {
   weeklyDaysMax: number;
   remoteType: RemoteType;
   prefecture: string | null;
+  isSample: boolean;
   publishedAt: Date | null;
   skills: { skill: { name: string } }[];
 }): ProjectListItem {
@@ -326,6 +328,7 @@ function toProjectListItem(project: {
     weeklyDaysMax: project.weeklyDaysMax,
     remoteType: project.remoteType,
     prefecture: project.prefecture,
+    isSample: project.isSample,
     skills: project.skills.map(({ skill }) => skill.name),
     publishedAt: toIsoString(project.publishedAt),
     url: projectUrl(project.id),
@@ -342,6 +345,7 @@ async function getProjects({
   days,
   remote,
   features,
+  includeSampleProjects,
   sort,
   page,
 }: {
@@ -354,6 +358,7 @@ async function getProjects({
   days?: number[];
   remote?: RemoteType[];
   features?: string[];
+  includeSampleProjects?: boolean;
   sort?: "new" | "rate";
   page?: number;
 }) {
@@ -367,6 +372,7 @@ async function getProjects({
     days: days?.map(String),
     remote,
     features,
+    sample: includeSampleProjects ? "include" : "exclude",
     sort,
     page: page ? String(page) : undefined,
   });
@@ -691,6 +697,10 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
           days: z.array(weeklyDaysSchema).describe("Acceptable working days per week.").optional(),
           remote: z.array(z.enum(remoteTypeValues)).describe("Remote work styles to include.").optional(),
           features: z.array(z.string().trim().min(1)).describe("Feature tags or project attributes to filter by.").optional(),
+          includeSampleProjects: z
+            .boolean()
+            .describe("Set true to include sample projects. Defaults to false, so sample projects are excluded.")
+            .optional(),
           sort: z.enum(["new", "rate"]).describe("Sort order: new for newest projects, rate for highest rate first.").optional(),
           page: z.number().int().positive().describe("1-based result page number.").optional(),
         },
