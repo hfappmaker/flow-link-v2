@@ -303,6 +303,7 @@ model Project {
   summary     String? // リード文
   jobCategory String // 募集職種
   status      ProjectStatus @default(OPEN)
+  isSample    Boolean @default(false)
   publishedAt DateTime?
 
   rateMin       Int? // 単価 下限（円/月）

@@ -142,7 +142,7 @@ async function main() {
     },
   });
 
-  const companyUser = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: "採用担当 鈴木",
       email: "company@example.com",
@@ -288,6 +288,7 @@ async function main() {
     title: string;
     summary: string;
     jobCategory: string;
+    isSample?: boolean;
     rateMin?: number;
     rateMax: number;
     weeklyDaysMin: number;
@@ -608,10 +609,14 @@ async function main() {
     const created = await prisma.project.create({
       data: {
         companyId: p.companyId,
-        title: p.title,
-        summary: p.summary,
+        title: p.isSample === false ? p.title : `【サンプル案件】${p.title}`,
+        summary:
+          p.isSample === false
+            ? p.summary
+            : `これはマッチング体験と希望条件確認のためのサンプル案件です。実際の募集案件ではありません。${p.summary}`,
         jobCategory: p.jobCategory,
         status: "OPEN",
+        isSample: p.isSample ?? true,
         publishedAt: p.publishedAt,
         rateMin: p.rateMin ?? null,
         rateMax: p.rateMax,
@@ -620,7 +625,7 @@ async function main() {
         remoteType: p.remoteType,
         location: p.location ?? null,
         industry: p.industry ?? null,
-        features: p.features,
+        features: p.isSample === false ? p.features : ["サンプル案件", ...p.features],
         merits: p.merits,
         background: p.background ?? null,
         description: p.description,
@@ -634,73 +639,6 @@ async function main() {
     });
     createdProjects.push({ id: created.id, title: created.title, companyId: created.companyId });
   }
-
-  // ---- デモ用の応募 + チャット ----
-  const targetProject = createdProjects[0]; // テックフローのフルスタック案件
-  const application = await prisma.application.create({
-    data: {
-      projectId: targetProject.id,
-      engineerUserId: engineerUser.id,
-      status: "SCREENING",
-      message:
-        "はじめまして。山田と申します。直近3年はTypeScript/Next.js/NestJSでSaaSのMVP開発をリードしており、本案件の0→1フェーズで貢献できると考え応募いたしました。",
-    },
-  });
-  const applicationConversation = await prisma.conversation.create({
-    data: {
-      companyId: targetProject.companyId,
-      engineerUserId: engineerUser.id,
-      projectId: targetProject.id,
-      applicationId: application.id,
-    },
-  });
-  await prisma.message.createMany({
-    data: [
-      {
-        conversationId: applicationConversation.id,
-        senderId: engineerUser.id,
-        body: "はじめまして。山田と申します。直近3年はTypeScript/Next.js/NestJSでSaaSのMVP開発をリードしており、本案件の0→1フェーズで貢献できると考え応募いたしました。",
-        createdAt: daysAgo(1),
-        readAt: daysAgo(1),
-      },
-      {
-        conversationId: applicationConversation.id,
-        senderId: companyUser.id,
-        body: "山田様、ご応募ありがとうございます！ご経歴を拝見し、ぜひ一度オンラインでお話しさせていただきたいです。今週のご都合はいかがでしょうか？",
-        createdAt: daysAgo(0),
-      },
-    ],
-  });
-
-  // ---- デモ用のスカウト + チャット ----
-  const satoUser = await prisma.user.findUniqueOrThrow({ where: { email: "sato@example.com" } });
-  const mlProject = createdProjects[1]; // AIワークスのML案件
-  const scout = await prisma.scout.create({
-    data: {
-      companyId: aiwork.id,
-      projectId: mlProject.id,
-      engineerUserId: satoUser.id,
-      senderUserId: (await prisma.user.findUniqueOrThrow({ where: { email: "company2@example.com" } })).id,
-      title: "画像系MLのご経験を拝見してご連絡しました",
-      message:
-        "佐藤様\n\nはじめまして。AIワークスの採用担当です。類似画像検索の精度改善プロジェクトで、佐藤様の画像系MLのご経験がまさにマッチすると考えご連絡いたしました。\n\n週3日・フルリモートでの参画が可能です。ご興味をお持ちいただけましたら、ぜひチャットでお気軽にご返信ください。",
-      status: "SENT",
-    },
-  });
-  await prisma.conversation.create({
-    data: {
-      companyId: aiwork.id,
-      engineerUserId: satoUser.id,
-      projectId: mlProject.id,
-      scoutId: scout.id,
-      messages: {
-        create: {
-          senderId: scout.senderUserId,
-          body: "佐藤様\n\nはじめまして。AIワークスの採用担当です。類似画像検索の精度改善プロジェクトで、佐藤様の画像系MLのご経験がまさにマッチすると考えご連絡いたしました。\n\n週3日・フルリモートでの参画が可能です。ご興味をお持ちいただけましたら、ぜひチャットでお気軽にご返信ください。",
-        },
-      },
-    },
-  });
 
   // ---- 保存した案件 ----
   await prisma.savedProject.createMany({

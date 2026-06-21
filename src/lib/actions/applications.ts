@@ -47,6 +47,9 @@ export async function applyToProject(
   if (!project || project.status !== "OPEN") {
     return { error: "この案件は現在応募を受け付けていません" };
   }
+  if (project.isSample) {
+    return { error: "サンプル案件には応募できません" };
+  }
 
   const existing = await prisma.application.findUnique({
     where: {
