@@ -130,19 +130,19 @@ describe("MCP OAuth helpers", () => {
       const authMetadata = getOAuthMetadata(request);
       assert.equal(
         authMetadata.token_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/token",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/token?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         authMetadata.authorization_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         authMetadata.registration_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/register",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/register?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         authMetadata.revocation_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/revoke",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/revoke?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         getMcpResourceMetadataUrl(request),
