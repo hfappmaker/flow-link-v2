@@ -212,7 +212,7 @@ export function getProtectedResourceMetadata(requestOrOrigin?: Request | string)
   const endpoint = getMcpEndpointFromRequest(requestOrOrigin);
   return {
     resource: getMcpResourceUrl(issuer, endpoint),
-    authorization_servers: [issuer],
+    authorization_servers: [withVercelProtectionBypass(issuer, issuer)],
     scopes_supported: PROTECTED_RESOURCE_SCOPES[endpoint],
     bearer_methods_supported: ["header"],
   };
