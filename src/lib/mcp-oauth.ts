@@ -144,20 +144,7 @@ export function getMcpResourceMetadataUrl(
   endpoint = getMcpEndpointFromRequest(requestOrOrigin),
 ) {
   const issuer = getOAuthIssuer(requestOrOrigin);
-  return withVercelProtectionBypass(`${issuer}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`, issuer);
-}
-
-function withVercelProtectionBypass(url: string, issuer: string) {
-  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  if (!bypassSecret) return url;
-
-  const issuerUrl = new URL(issuer);
-  if (!issuerUrl.hostname.endsWith(".vercel.app")) return url;
-
-  const endpointUrl = new URL(url);
-  endpointUrl.searchParams.set("x-vercel-protection-bypass", bypassSecret);
-  endpointUrl.searchParams.set("x-vercel-set-bypass-cookie", "true");
-  return endpointUrl.toString();
+  return `${issuer}/.well-known/oauth-protected-resource/api/mcp/${endpoint}`;
 }
 
 export function normalizeOAuthResource(value: string) {
@@ -195,10 +182,10 @@ export function getOAuthMetadata(requestOrOrigin?: Request | string) {
   const issuer = getOAuthIssuer(requestOrOrigin);
   return {
     issuer,
-    authorization_endpoint: withVercelProtectionBypass(`${issuer}/oauth/authorize`, issuer),
-    token_endpoint: withVercelProtectionBypass(`${issuer}/oauth/token`, issuer),
-    registration_endpoint: withVercelProtectionBypass(`${issuer}/oauth/register`, issuer),
-    revocation_endpoint: withVercelProtectionBypass(`${issuer}/oauth/revoke`, issuer),
+    authorization_endpoint: `${issuer}/oauth/authorize`,
+    token_endpoint: `${issuer}/oauth/token`,
+    registration_endpoint: `${issuer}/oauth/register`,
+    revocation_endpoint: `${issuer}/oauth/revoke`,
     protected_resources: getMcpResourceUrls(issuer),
     scopes_supported: OAUTH_SCOPES,
     response_types_supported: ["code"],
