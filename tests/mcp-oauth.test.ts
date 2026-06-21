@@ -130,27 +130,27 @@ describe("MCP OAuth helpers", () => {
       const authMetadata = getOAuthMetadata(request);
       assert.equal(
         authMetadata.token_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/token?x-vercel-protection-bypass=preview-secret",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/token?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         authMetadata.authorization_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize?x-vercel-protection-bypass=preview-secret",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/authorize?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         authMetadata.registration_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/register?x-vercel-protection-bypass=preview-secret",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/register?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         authMetadata.revocation_endpoint,
-        "https://flow-link-v2-git-develop-example.vercel.app/oauth/revoke?x-vercel-protection-bypass=preview-secret",
+        "https://flow-link-v2-git-develop-example.vercel.app/oauth/revoke?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       assert.equal(
         getMcpResourceMetadataUrl(request),
-        "https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company?x-vercel-protection-bypass=preview-secret",
+        "https://flow-link-v2-git-develop-example.vercel.app/.well-known/oauth-protected-resource/api/mcp/company?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       );
       const resourceMetadata = getProtectedResourceMetadata(request);
       assert.deepEqual(resourceMetadata.authorization_servers, [
-        "https://flow-link-v2-git-develop-example.vercel.app/?x-vercel-protection-bypass=preview-secret",
+        "https://flow-link-v2-git-develop-example.vercel.app/?x-vercel-protection-bypass=preview-secret&x-vercel-set-bypass-cookie=true",
       ]);
     } finally {
       if (previousIssuer === undefined) delete process.env.OAUTH_ISSUER;

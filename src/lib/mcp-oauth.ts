@@ -156,6 +156,7 @@ function withVercelProtectionBypass(url: string, issuer: string) {
 
   const endpointUrl = new URL(url);
   endpointUrl.searchParams.set("x-vercel-protection-bypass", bypassSecret);
+  endpointUrl.searchParams.set("x-vercel-set-bypass-cookie", "true");
   return endpointUrl.toString();
 }
 
