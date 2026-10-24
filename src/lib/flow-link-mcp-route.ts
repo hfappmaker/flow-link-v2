@@ -1,5 +1,5 @@
 import { RemoteType, WorkStatus, type ProjectStatus } from "@prisma/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { getAppUrl } from "@/lib/app-url";
@@ -687,7 +687,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Search projects",
         description: "Search FlowLink projects that are currently open to applications.",
-        inputSchema: {
+        inputSchema: z.object({
           q: z.string().trim().describe("Free-text keyword query searched against public project content.").optional(),
           jobText: z.array(z.string().trim().min(1)).describe("Job category or role keywords to filter by.").optional(),
           skillText: z.array(z.string().trim().min(1)).describe("Skill names or technology keywords to filter by.").optional(),
@@ -703,7 +703,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
             .optional(),
           sort: z.enum(["new", "rate"]).describe("Sort order: new for newest projects, rate for highest rate first.").optional(),
           page: z.number().int().positive().describe("1-based result page number.").optional(),
-        },
+        }),
         annotations: {
           readOnlyHint: true,
           openWorldHint: true,
@@ -733,9 +733,9 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Get project",
         description: "Get details for a single open FlowLink project.",
-        inputSchema: {
+        inputSchema: z.object({
           projectId: z.string().trim().min(1).describe("FlowLink project ID returned by search_projects."),
-        },
+        }),
         annotations: {
           readOnlyHint: true,
           openWorldHint: true,
@@ -854,7 +854,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Search engineers",
         description: "Search public FlowLink engineer profiles. Requires a company account and engineer_search:read scope.",
-        inputSchema: {
+        inputSchema: z.object({
           q: z.string().trim().describe("Free-text keyword query searched against public engineer profile content.").optional(),
           jobText: z.array(z.string().trim().min(1)).describe("Engineer title or role keywords to filter by.").optional(),
           skillText: z.array(z.string().trim().min(1)).describe("Skill names or technology keywords to filter by.").optional(),
@@ -864,7 +864,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
           remote: z.array(z.enum(remoteTypeValues)).describe("Preferred remote work styles to include.").optional(),
           availableOnly: z.boolean().describe("When true, include only engineers open to work or offers.").optional(),
           page: z.number().int().positive().describe("1-based result page number.").optional(),
-        },
+        }),
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -894,9 +894,9 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Get engineer",
         description: "Get details for a single public FlowLink engineer profile. Requires a company account and engineer_search:read scope.",
-        inputSchema: {
+        inputSchema: z.object({
           engineerProfileId: z.string().trim().min(1).describe("FlowLink engineer profile ID returned by search_engineers."),
-        },
+        }),
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -990,9 +990,9 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "List my company projects",
         description: "List projects owned by the authenticated company.",
-        inputSchema: {
+        inputSchema: z.object({
           status: z.enum(["DRAFT", "OPEN", "CLOSED"]).describe("Optional project status filter.").optional(),
-        },
+        }),
         annotations: {
           readOnlyHint: true,
           openWorldHint: false,
@@ -1059,7 +1059,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Register my company profile",
         description: "Register a company profile for an authenticated user that has not completed onboarding.",
-        inputSchema: mcpCompanyProfileInputSchema,
+        inputSchema: z.object(mcpCompanyProfileInputSchema),
         annotations: {
           readOnlyHint: false,
           openWorldHint: false,
@@ -1146,7 +1146,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Update my company profile",
         description: "Update the authenticated user's existing company profile.",
-        inputSchema: mcpCompanyProfileInputSchema,
+        inputSchema: z.object(mcpCompanyProfileInputSchema),
         annotations: {
           readOnlyHint: false,
           openWorldHint: false,
@@ -1270,7 +1270,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Register my engineer profile",
         description: "Register an engineer profile for an authenticated user that has not completed onboarding.",
-        inputSchema: mcpEngineerProfileInputSchema,
+        inputSchema: z.object(mcpEngineerProfileInputSchema),
         annotations: {
           readOnlyHint: false,
           openWorldHint: false,
@@ -1417,7 +1417,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Update my engineer profile",
         description: "Update the authenticated user's existing engineer profile.",
-        inputSchema: mcpEngineerProfileInputSchema,
+        inputSchema: z.object(mcpEngineerProfileInputSchema),
         annotations: {
           readOnlyHint: false,
           openWorldHint: false,
@@ -1558,7 +1558,7 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Create project draft",
         description: "Create a DRAFT project for the authenticated company. MCP cannot publish projects.",
-        inputSchema: mcpProjectInputSchema,
+        inputSchema: z.object(mcpProjectInputSchema),
         annotations: {
           readOnlyHint: false,
           openWorldHint: false,
@@ -1620,10 +1620,10 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       {
         title: "Update project draft",
         description: "Update a DRAFT project owned by the authenticated company. OPEN and CLOSED projects cannot be edited from MCP.",
-        inputSchema: {
+        inputSchema: z.object({
           projectId: z.string().trim().min(1).describe("Draft project ID owned by the authenticated company."),
           ...mcpProjectUpdateInputSchema,
-        },
+        }),
         annotations: {
           readOnlyHint: false,
           openWorldHint: false,
@@ -1716,11 +1716,6 @@ function createEndpointMcpHandler(endpoint: McpEndpoint) {
       version: "0.2.0",
     },
     instructions: endpointConfig.instructions,
-  },
-  {
-    streamableHttpEndpoint: `/api/mcp/${endpoint}`,
-    disableSse: true,
-    maxDuration: 60,
   },
   );
 }
